@@ -1,0 +1,96 @@
+Baseball and softball scorekeeping involves more than just keeping track of how many runs cross the plate.
+
+In fact, scorekeeping — a system of numbers, symbols and methodology that is as much a part of the game as an old glove — is a language all its own. But it’s not hard to learn. And once you’re fluent in scorekeeping, you’re ready to keep track of every pitch, every at-bat, every hit and every out.
+
+The League President shall appoint an Official Scorer for each league. The scorer shall have sole authority to make all decisions involving judgment, such as whether a batter’s advance to first base is the result of a hit or an error. The scorer shall communicate such decisions to the press by hand signals or over the loudspeaker system and shall advise the announcer of such decisions if requested. In the event of a question of eligibility of a pitcher, the record of the Official Scorer shall be deemed official.
+
+To achieve uniformity in keeping the records, the scorer shall conform strictly to the Scoring Rules. The scorer shall have authority to rule on any point not specifically covered in these rules.
+
+If the teams change sides before three are put out, the scorer shall immediately inform the umpire of the mistake.
+
+If the game is protested or play suspended, the scorer shall make note of the exact situation at the time of the protest or suspension, including the score, the number of outs, the position of any runners, and the ball and strike count on the batter.
+
+The scorer shall not: 1) make any decision conflicting with the Official Playing rules, or with an umpire’s decision; 2) call attention to the umpire or of any member of either team to the fact that a player is batting out of turn.
+
+The scorer is an official representative of the league, and is entitled to the respect and dignity of the office.
+
+The Basics
+
+The crux of scorekeeping is the system that assigns a number to each player. Don’t confuse these with jersey numbers; these standard numerical symbols used in scorekeeping never change:
+
+1 = pitcher
+2 = catcher
+3 = first base
+4 = second base
+5 = third base
+6 = shortstop
+7 = left field
+8 = center field
+9 = right field
+
+If you play a 10-player lineup, a “10” would indicate a short fielder or fourth outfielder. A designated hitter is labeled simply “DH.”
+
+Likewise, there are several symbols used to denote game action. Among them:
+
+1B = single
+2B = double
+3B = triple
+HR = home run
+DP = double play
+FC = fielder’s choice
+E = error
+HBP = hit by pitch
+WP = wild pitch
+PB = passed ball
+RBI = run batted in
+SB = stolen base
+IP = Illegal Pitch (Major Division and below)
+BK = balk (Intermediate 50/70 and above)
+
+Trying It Out
+
+To begin, first write down each team’s batting order. They will be exchanged by the two managers and, except for substitutions, cannot change during the game. It’s important to write down player jersey numbers with the batting order, to make sure the proper players bat in the proper order.
+
+The basic scorebook will somewhat resemble a giant checkerboard — with nine (or 10 or more) rows going across the page, with a corresponding number of columns going down the page.
+
+The rows correspond to the batting order; the columns correspond to the inning. There is a column for the first inning, the second inning, and so on.
+
+To score the game, match up the correct batter with the correct inning where he or she is batting.
+
+For example, let’s start with the Mudville Mudhens, batting in the top of the first.
+
+Go to the square in inning 1 that matches up with the leadoff hitter.
+
+Now, let’s assume the leadoff batter grounds out to the shortstop. Remember the scorekeeping symbols? This would be noted 6-3. It was a grounder to the shortstop (6), who threw to first base (3) to record the out.
+
+Likewise, a grounder to third base would be 5-3. A flyout to left field would listed as F7. A lineout to center field might be L8, or F8 with a straight line above the F and the 8 to indicate a line drive. A popup to the center fielder might be listed as P8, or F8 with an arc above the F and the 8 to indicate a popup. Again, different scorers use different symbols, but if it goes to the center fielder, it goes to the “8” every time.
+
+For greater detail, you can track every pitch by noting a ‘B’ or an ‘S’ for a ball or a strike. Some scorebooks will have small squares within each at-bat square to mark this. If a player fouls off a 2-2 pitch, simply note an ‘F’ or a hashmark to indicate a foul. This allows you to keep precise pitch counts.
+
+So, the first batter is out. Now, the second batter is up. Go to his square in the first inning, which is right beneath the leadoff hitter’s square. He hits a single to right field. In his at-bat square for the first inning, denote 1B for “single,” or if you want to be more specific, you could write “1B9” for “single to right field.”
+
+In a paper scorebook, you should draw a line from home plate to first base in his at-bat square, with “1B” or “1B9” noted next to the line. This shows how the batter reached base.
+
+Now the Mudhens have a runner on first, one out, and their third hitter is up. He’s the shortstop. He hits a double to right field. This is scored “2B” or “2B9,” and mark a line noting he went from home plate to first to second.
+
+The runner on first, meanwhile, came all the way around and scored on the play. How is that scored? In his at-bat square, denote that he made the entire trip around the diamond, to second, third and then home. Once he made the whole trip, you’ve outlined the whole diamond in his square. Color that diamond in to indicate that he scored a run. And, to show how he scored, add a “6” at the bottom of the diamond, at home plate. Why a 6? That indicates that the “6,” or shortstop, is the one that drove him in. Meanwhile, in the No. 3 hitter’s square, make a notation that says “RBI” so you know he drove in a run.
+
+There won’t be a lot of room for all of this, so if using a paper scorebook, writing small — but legibly — is critical.
+
+The Mudhens now have a runner on second with one out. The runner on second tries to steal third and is thrown out. Any idea how that might be scored? It’s most likely 2-5 — the catcher “2” threw to the third baseman, “5,” who tagged him out.
+
+Now the Mudhens have two outs and Casey is up. But the mighty Casey strikes out. In this case, Casey gets a “K” — the universal scoring symbol for a strikeout. Or, a backward K indicates the batter looked at strike three without swinging.
+
+Heading to the Bottom
+
+The top of the first is over. Your first scoring experience is in the books. Well, not quite. At the end of the half inning, mark a line, or an ‘x,’ at the next batter. This clearly indicates who the leadoff batter will be in the next inning. Then it’s best to add up the runs, hits, errors and, if keeping it, pitches thrown, and mark notations at the bottom of the page. An electronic or a paper scorebook should have a spot for that.
+
+Now it’s on to the bottom of the first. Move to the other half of the book, where you should have the home team’s lineup in place, and you’re ready to go.
+
+Getting the hang of it? Great! You’ll find that baseball and softball have a million possibilities, but once you get the hang of scoring a game, you will be ready for all of them.
+
+And now that you can score a game, that T-shirt you might see at the ballpark makes sense: 6-4-3=2. Translated: shortstop to second base to first base equals a double play.
+
+How to Provide a Box Score
+
+A box score is in balance (or proved) when the total of the team’s times at bat, bases on balls received, hit batters, sacrifice bunts, sacrifice flies and batters awarded first base because of interference or obstruction, equals the total of that team’s runs, players left on base, runners removed under playing rule 7.13(c) (Little League Baseball Majors and below) and the opposing team’s putouts.
