@@ -114,15 +114,15 @@ Tailwind v4 uses CSS-native configuration. The correct setup is:
 
 ## Data Model
 
-Key entities (see design doc for complete field definitions):
+> **Source of truth:** See the design doc (`docs/plans/2026-02-22-scorekeeper-design-v2.md`) for complete field definitions.
 
-- **Team** — id, name, createdAt
-- **Player** — id, teamId, name, jerseyNumber, defaultPosition
-- **Game** — id, teamId, code (6-char like "MUDH-0421"), date, opponentName, homeOrAway, status (draft/in_progress/completed)
-- **Lineup** — id, gameId, side ("us" | "them"), battingOrder (array of LineupSlot)
-- **LineupSlot** — orderPosition, playerId (nullable for opponents), playerName, jerseyNumber, position, substitutions[]
-- **Play** (event log) — id, gameId, sequenceNumber, inning, half, batterOrderPosition, playType, notation, pitches[] ('B'|'S'|'F'), isAtBat, runsScoredOnPlay, rbis, etc.
-- **GameSnapshot** (computed, never stored) — inning, half, outs, scores, baseRunners, pitchCountByPitcher, runsPerInning, current batter positions
+- **Team** — roster container
+- **Player** — belongs to a team, has default position
+- **Game** — single game instance with status lifecycle (draft → in_progress → completed)
+- **Lineup** — per-game batting order for "us" or "them", contains LineupSlots
+- **LineupSlot** — one spot in the batting order, with substitution history
+- **Play** — single event in the game log (at-bat result or baserunning event)
+- **GameSnapshot** — computed by replaying plays, never stored
 
 ## Project Structure (Target)
 
