@@ -89,6 +89,11 @@ export interface Game {
 
 // --- Play event log ---
 
+export interface BaseRunner {
+  playerName: string
+  orderPosition: number
+}
+
 export interface BaseRunnerOverride {
   first: BaseRunner | null
   second: BaseRunner | null
@@ -116,11 +121,6 @@ export interface Play {
 
 // --- Computed game state (never stored) ---
 
-export interface BaseRunner {
-  playerName: string
-  orderPosition: number
-}
-
 export interface BaseRunners {
   first: BaseRunner | null
   second: BaseRunner | null
@@ -136,7 +136,7 @@ export interface GameSnapshot {
   currentBatterUs: number      // 1-based order position
   currentBatterThem: number    // 1-based order position
   baseRunners: BaseRunners
-  pitchCountByPitcher: Map<string, number>  // pitcher name → cumulative count
+  pitchCountByPitcher: Map<string, number>  // pitcher name → cumulative count (Map — not JSON-serializable; GameSnapshot is always computed, never stored or transported)
   runsPerInningUs: number[]    // index 0 = inning 1
   runsPerInningThem: number[]
   isGameOver: boolean
