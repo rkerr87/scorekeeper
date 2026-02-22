@@ -45,8 +45,8 @@ Use the `superpowers` skills for all development work:
 
 ## Current Status
 
-- **Phase:** Phase 2 in progress (Task 2 done)
-- **Next step:** Phase 2, Task 3 — Game engine core logic
+- **Phase:** Phase 2 in progress (Tasks 2-3 done)
+- **Next step:** Phase 2, Task 4 — Notation parser and stats
 - **Test runner:** vitest configured and passing
 
 ## Architecture

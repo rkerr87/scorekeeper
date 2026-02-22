@@ -1,0 +1,282 @@
+import type { Play, Lineup, GameSnapshot, HalfInning, BaseRunner } from './types'
+
+function initialSnapshot(): GameSnapshot {
+  return {
+    inning: 1,
+    half: 'top',
+    outs: 0,
+    scoreUs: 0,
+    scoreThem: 0,
+    currentBatterUs: 1,
+    currentBatterThem: 1,
+    baseRunners: { first: null, second: null, third: null },
+    pitchCountByPitcher: new Map(),
+    runsPerInningUs: [],
+    runsPerInningThem: [],
+    isGameOver: false,
+  }
+}
+
+function getOutsForPlay(play: Play): number {
+  if (!play.isAtBat) return 0
+  switch (play.playType) {
+    case 'K':
+    case 'KL':
+    case 'GO':
+    case 'FO':
+    case 'LO':
+    case 'PO':
+    case 'FC':
+    case 'SAC':
+      return 1
+    case 'DP':
+      return 2
+    default:
+      return 0
+  }
+}
+
+function advanceBatter(current: number, lineupSize: number): number {
+  return current >= lineupSize ? 1 : current + 1
+}
+
+function advanceHalfInning(snapshot: GameSnapshot): void {
+  snapshot.baseRunners = { first: null, second: null, third: null }
+  snapshot.outs = 0
+  if (snapshot.half === 'top') {
+    snapshot.half = 'bottom'
+  } else {
+    snapshot.half = 'top'
+    snapshot.inning += 1
+  }
+}
+
+function ensureInningArray(arr: number[], inning: number): void {
+  while (arr.length < inning) {
+    arr.push(0)
+  }
+}
+
+function getBaseRunnerForBatter(
+  batterOrderPosition: number,
+  half: HalfInning,
+  lineupUs: Lineup,
+  lineupThem: Lineup,
+): BaseRunner {
+  const lineup = half === 'top' ? lineupUs : lineupThem
+  const slot = lineup.battingOrder.find(s => s.orderPosition === batterOrderPosition)
+  return {
+    playerName: slot?.playerName ?? `Player${batterOrderPosition}`,
+    orderPosition: batterOrderPosition,
+  }
+}
+
+function applyBaseRunning(
+  snapshot: GameSnapshot,
+  play: Play,
+  lineupUs: Lineup,
+  lineupThem: Lineup,
+): number {
+  let runsScored = 0
+  const batter = getBaseRunnerForBatter(play.batterOrderPosition, play.half, lineupUs, lineupThem)
+  const runners = snapshot.baseRunners
+
+  // If play has runner overrides from scorekeeper confirmation, use those
+  if (play.runnerOverrides) {
+    snapshot.baseRunners = {
+      first: play.runnerOverrides.first,
+      second: play.runnerOverrides.second,
+      third: play.runnerOverrides.third,
+    }
+    return play.runsScoredOnPlay
+  }
+
+  switch (play.playType) {
+    case '1B': {
+      if (runners.third) runsScored++
+      if (runners.second) runsScored++
+      const newSecond = runners.first
+      snapshot.baseRunners = { first: batter, second: newSecond, third: null }
+      break
+    }
+    case '2B': {
+      if (runners.third) runsScored++
+      if (runners.second) runsScored++
+      const newThird = runners.first
+      snapshot.baseRunners = { first: null, second: batter, third: newThird }
+      break
+    }
+    case '3B': {
+      if (runners.third) runsScored++
+      if (runners.second) runsScored++
+      if (runners.first) runsScored++
+      snapshot.baseRunners = { first: null, second: null, third: batter }
+      break
+    }
+    case 'HR': {
+      if (runners.third) runsScored++
+      if (runners.second) runsScored++
+      if (runners.first) runsScored++
+      runsScored++ // batter
+      snapshot.baseRunners = { first: null, second: null, third: null }
+      break
+    }
+    case 'BB':
+    case 'HBP': {
+      if (runners.first) {
+        if (runners.second) {
+          if (runners.third) {
+            runsScored++ // bases loaded walk/HBP
+          }
+          snapshot.baseRunners.third = runners.second
+        }
+        snapshot.baseRunners.second = runners.first
+      }
+      snapshot.baseRunners.first = batter
+      break
+    }
+    case 'SB': {
+      if (runners.third) {
+        runsScored++
+        snapshot.baseRunners.third = null
+      } else if (runners.second) {
+        snapshot.baseRunners.third = runners.second
+        snapshot.baseRunners.second = null
+      } else if (runners.first) {
+        snapshot.baseRunners.second = runners.first
+        snapshot.baseRunners.first = null
+      }
+      break
+    }
+    case 'WP':
+    case 'PB':
+    case 'BK': {
+      if (runners.third) {
+        runsScored++
+        snapshot.baseRunners.third = null
+      }
+      if (runners.second) {
+        snapshot.baseRunners.third = runners.second
+        snapshot.baseRunners.second = null
+      }
+      if (runners.first) {
+        snapshot.baseRunners.second = runners.first
+        snapshot.baseRunners.first = null
+      }
+      break
+    }
+    case 'FC': {
+      if (runners.third) {
+        snapshot.baseRunners.third = null
+      } else if (runners.second) {
+        snapshot.baseRunners.second = null
+      } else if (runners.first) {
+        snapshot.baseRunners.first = null
+      }
+      snapshot.baseRunners.first = batter
+      break
+    }
+    case 'SAC': {
+      if (runners.third) {
+        runsScored++
+        snapshot.baseRunners.third = null
+      }
+      if (runners.second) {
+        snapshot.baseRunners.third = runners.second
+        snapshot.baseRunners.second = null
+      }
+      if (runners.first) {
+        snapshot.baseRunners.second = runners.first
+        snapshot.baseRunners.first = null
+      }
+      break
+    }
+    case 'DP': {
+      if (runners.first) {
+        snapshot.baseRunners.first = null
+      } else if (runners.second) {
+        snapshot.baseRunners.second = null
+      } else if (runners.third) {
+        snapshot.baseRunners.third = null
+      }
+      break
+    }
+    case 'E': {
+      if (runners.third) runsScored++
+      if (runners.second) runsScored++
+      const newSecond: BaseRunner | null = runners.first
+      snapshot.baseRunners = { first: batter, second: newSecond, third: null }
+      break
+    }
+    case 'K':
+    case 'KL':
+    case 'GO':
+    case 'FO':
+    case 'LO':
+    case 'PO':
+      // Out — runners stay put
+      break
+  }
+
+  return runsScored
+}
+
+export function replayGame(
+  plays: Play[],
+  lineupUs: Lineup,
+  lineupThem: Lineup,
+): GameSnapshot {
+  const snapshot = initialSnapshot()
+  const lineupSizeUs = lineupUs.battingOrder.length
+  const lineupSizeThem = lineupThem.battingOrder.length
+
+  const sorted = [...plays].sort((a, b) => a.sequenceNumber - b.sequenceNumber)
+
+  for (const play of sorted) {
+    // Track pitch count
+    if (play.pitches.length > 0) {
+      const pitcherLineup = play.half === 'top' ? lineupThem : lineupUs
+      const pitcher = pitcherLineup.battingOrder.find(s => s.position === 'P')
+      if (pitcher) {
+        const key = pitcher.playerName
+        const current = snapshot.pitchCountByPitcher.get(key) ?? 0
+        snapshot.pitchCountByPitcher.set(key, current + play.pitches.length)
+      }
+    }
+
+    // Apply base running and scoring
+    const outsOnPlay = getOutsForPlay(play)
+    const runsScored = applyBaseRunning(snapshot, play, lineupUs, lineupThem)
+
+    // Apply outs
+    snapshot.outs += outsOnPlay
+
+    // Apply runs
+    const isUsBatting = play.half === 'top'
+    if (isUsBatting) {
+      snapshot.scoreUs += runsScored
+      ensureInningArray(snapshot.runsPerInningUs, play.inning)
+      snapshot.runsPerInningUs[play.inning - 1] += runsScored
+    } else {
+      snapshot.scoreThem += runsScored
+      ensureInningArray(snapshot.runsPerInningThem, play.inning)
+      snapshot.runsPerInningThem[play.inning - 1] += runsScored
+    }
+
+    // Advance batter
+    if (play.isAtBat) {
+      if (isUsBatting) {
+        snapshot.currentBatterUs = advanceBatter(snapshot.currentBatterUs, lineupSizeUs)
+      } else {
+        snapshot.currentBatterThem = advanceBatter(snapshot.currentBatterThem, lineupSizeThem)
+      }
+    }
+
+    // Check for inning change
+    if (snapshot.outs >= 3) {
+      advanceHalfInning(snapshot)
+    }
+  }
+
+  return snapshot
+}
