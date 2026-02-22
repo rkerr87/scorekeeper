@@ -33,8 +33,8 @@ Use the `superpowers` skills for all development work:
 - `npm run dev` — start dev server
 - `npm run build` — production build
 - `npm run lint` — run ESLint
-- `npm run test` — run vitest (available after Task 1)
-- `npm run test:watch` — vitest watch mode (available after Task 1)
+- `npm run test` — run vitest
+- `npm run test:watch` — vitest watch mode
 
 ## Reference Documents
 
@@ -45,11 +45,9 @@ Use the `superpowers` skills for all development work:
 
 ## Current Status
 
-- **Phase:** Pre-implementation (planning complete, no application code written yet)
-- **Source state:** Default Vite scaffold — no application code exists
-- **Next step:** Phase 1, Task 1 — project cleanup & dependency setup
-- **Test runner:** Not yet configured (added in Task 1)
-- **Note:** `package.json` still contains `zustand` and `axios` (to be removed in Task 1). Tailwind v4 plugin not yet wired up (Task 1). Old `tailwind.config.js` and `postcss.config.js` still present (deleted in Task 1).
+- **Phase:** Phase 1 complete (Task 1 done)
+- **Next step:** Phase 2, Task 2 — TypeScript types
+- **Test runner:** vitest configured and passing
 
 ## Architecture
 
@@ -72,23 +70,19 @@ Use the `superpowers` skills for all development work:
 
 ## Tech Stack
 
-> **Note:** This table shows the target stack. Currently installed deps differ — see "Current Status" for what Task 1 will change.
-
 | Tool | Version | Notes |
 |------|---------|-------|
-| React | 19 | Already installed |
-| TypeScript | ~5.9 | Already installed. Strict mode, see TS rules below |
-| Vite | 7 | Already installed. Bundler & dev server |
-| Tailwind CSS | v4 | Already installed, but needs `@tailwindcss/vite` plugin wired up (Task 1) |
-| Dexie.js | 4 | Already installed. IndexedDB wrapper for offline persistence |
-| react-router-dom | | **Not yet installed** — added in Task 1 |
-| vite-plugin-pwa | | Already installed. Service worker, offline caching, install prompt |
-| vitest | | **Not yet installed** — added in Task 1 |
-| @testing-library/react | | **Not yet installed** — added in Task 1 |
-| fake-indexeddb | | **Not yet installed** — added in Task 1. For Dexie testing in jsdom |
-| ESLint | 9 | Already installed with typescript-eslint, react-hooks, react-refresh plugins. Config: `eslint.config.js` |
-
-**To be removed in Task 1:** `zustand`, `axios`, `autoprefixer`, `postcss`
+| React | 19 | |
+| TypeScript | ~5.9 | Strict mode, see TS rules below |
+| Vite | 7 | Bundler & dev server |
+| Tailwind CSS | v4 | Uses `@tailwindcss/vite` plugin, CSS-native config |
+| Dexie.js | 4 | IndexedDB wrapper for offline persistence |
+| react-router-dom | 7 | Client-side routing |
+| vite-plugin-pwa | | Service worker, offline caching, install prompt |
+| vitest | 4 | Test runner, configured with jsdom environment |
+| @testing-library/react | | Component testing |
+| fake-indexeddb | | Dexie testing in jsdom |
+| ESLint | 9 | typescript-eslint, react-hooks, react-refresh plugins. Config: `eslint.config.js` |
 
 ## TypeScript Rules
 
@@ -103,9 +97,7 @@ These are enforced in `tsconfig.app.json`:
 
 ## Tailwind CSS v4 Setup
 
-> **Note:** This describes the target configuration. Currently the project has old v3 files (`tailwind.config.js`, `postcss.config.js`, v3 directives in `index.css`). Task 1 will migrate to this setup.
-
-Tailwind v4 uses CSS-native configuration. The correct setup is:
+Tailwind v4 uses CSS-native configuration:
 
 - Plugin: `@tailwindcss/vite` added to `vite.config.ts`
 - CSS entry: `@import "tailwindcss";` in `src/index.css`
@@ -126,7 +118,7 @@ Tailwind v4 uses CSS-native configuration. The correct setup is:
 
 ## Project Structure (Target)
 
-> **Currently:** Default Vite scaffold only (`App.tsx`, `main.tsx`, `index.css`, `assets/react.svg`). This structure will be created incrementally across Phases 1-10.
+> **Currently:** Scaffold cleaned up. `App.tsx`, `main.tsx`, `index.css` are minimal placeholders. Structure below will be created incrementally across Phases 2-10.
 
 ```
 src/
