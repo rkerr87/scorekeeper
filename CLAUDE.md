@@ -45,8 +45,8 @@ Use the `superpowers` skills for all development work:
 
 ## Current Status
 
-- **Phase:** Phase 1 complete (Task 1 done)
-- **Next step:** Phase 2, Task 2 — TypeScript types
+- **Phase:** Phase 2 in progress (Task 2 done)
+- **Next step:** Phase 2, Task 3 — Game engine core logic
 - **Test runner:** vitest configured and passing
 
 ## Architecture
@@ -106,7 +106,7 @@ Tailwind v4 uses CSS-native configuration:
 
 ## Data Model
 
-> **Source of truth:** See the design doc (`docs/plans/2026-02-22-scorekeeper-design-v2.md`) for complete field definitions.
+> **Source of truth:** See the design doc (`docs/plans/2026-02-22-scorekeeper-design-v2.md`) for complete field definitions. Note: `GameSnapshot` field names in the design doc are superseded by the implementation plan — use `currentBatterUs`/`currentBatterThem` and `runsPerInningUs`/`runsPerInningThem` (see `src/engine/types.ts`).
 
 - **Team** — roster container
 - **Player** — belongs to a team, has default position
