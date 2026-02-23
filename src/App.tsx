@@ -1,10 +1,25 @@
+import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { AppLayout } from './layouts/AppLayout'
+import { HomePage } from './pages/HomePage'
+import { NotFoundPage } from './pages/NotFoundPage'
+
+const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <AppLayout />,
+    children: [
+      { index: true, element: <HomePage /> },
+      { path: 'team', element: <div>Team page placeholder</div> },
+      { path: 'game/:gameId/setup', element: <div>Game setup placeholder</div> },
+      { path: 'game/:gameId', element: <div>Game page placeholder</div> },
+      { path: 'game/:gameId/stats', element: <div>Game stats placeholder</div> },
+      { path: '*', element: <NotFoundPage /> },
+    ],
+  },
+])
+
 function App() {
-  return (
-    <div className="min-h-screen bg-slate-50 p-8">
-      <h1 className="text-3xl font-bold text-slate-900">Scorekeeper</h1>
-      <p className="mt-2 text-slate-600">Coming soon.</p>
-    </div>
-  )
+  return <RouterProvider router={router} />
 }
 
 export default App
