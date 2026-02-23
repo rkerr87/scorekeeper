@@ -45,8 +45,8 @@ Use the `superpowers` skills for all development work:
 
 ## Current Status
 
-- **Phase:** Phase 2 in progress (Tasks 2-3 done)
-- **Next step:** Phase 2, Task 4 — Notation parser and stats
+- **Phase:** Phase 2 complete (Tasks 2-4 done)
+- **Next step:** Phase 3, Task 5 — Dexie database setup
 - **Test runner:** vitest configured and passing
 
 ## Architecture
