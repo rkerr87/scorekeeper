@@ -47,7 +47,7 @@ Use the `superpowers` skills for all development work:
 
 - **Phase:** Phase 3 complete (Tasks 2-6 done)
 - **Next step:** Phase 4, Task 7 — React Router setup and app layout
-- **Test runner:** vitest configured and passing (52 tests)
+- **Test runner:** vitest configured and passing (56 tests)
 
 ## Architecture
 

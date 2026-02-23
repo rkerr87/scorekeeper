@@ -3,11 +3,14 @@ import { db } from '../database'
 import {
   createTeam,
   getTeam,
+  getAllTeams,
   addPlayer,
   getPlayersForTeam,
+  deletePlayer,
   createGame,
   getGame,
   getGamesForTeam,
+  updateGameStatus,
   saveLineup,
   getLineupsForGame,
   addPlay,
@@ -35,6 +38,14 @@ describe('gameService', () => {
       const fetched = await getTeam(team.id!)
       expect(fetched?.name).toBe('Mudcats')
     })
+
+    it('should list all teams', async () => {
+      await createTeam('Mudcats')
+      await createTeam('Tigers')
+
+      const teams = await getAllTeams()
+      expect(teams).toHaveLength(2)
+    })
   })
 
   describe('players', () => {
@@ -46,6 +57,15 @@ describe('gameService', () => {
       const players = await getPlayersForTeam(team.id!)
       expect(players).toHaveLength(2)
       expect(players[0].name).toBe('John Doe')
+    })
+
+    it('should delete a player', async () => {
+      const team = await createTeam('Mudcats')
+      const player = await addPlayer(team.id!, 'John Doe', 23, 'SS')
+      await deletePlayer(player.id!)
+
+      const players = await getPlayersForTeam(team.id!)
+      expect(players).toHaveLength(0)
     })
   })
 
@@ -74,6 +94,16 @@ describe('gameService', () => {
 
       const games = await getGamesForTeam(team.id!)
       expect(games).toHaveLength(2)
+    })
+
+    it('should update game status', async () => {
+      const team = await createTeam('Mudcats')
+      const game = await createGame(team.id!, 'Tigers', 'home')
+      expect(game.status).toBe('in_progress')
+
+      await updateGameStatus(game.id!, 'completed')
+      const updated = await getGame(game.id!)
+      expect(updated?.status).toBe('completed')
     })
   })
 
@@ -151,6 +181,14 @@ describe('gameService', () => {
       const plays = await getPlaysForGame(game.id!)
       expect(plays).toHaveLength(1)
       expect(plays[0].playType).toBe('K')
+    })
+
+    it('should handle deleteLastPlay on a game with no plays', async () => {
+      const team = await createTeam('Mudcats')
+      const game = await createGame(team.id!, 'Tigers', 'home')
+      await deleteLastPlay(game.id!)
+      const plays = await getPlaysForGame(game.id!)
+      expect(plays).toHaveLength(0)
     })
 
     it('should update an existing play (edit)', async () => {

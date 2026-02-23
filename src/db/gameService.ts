@@ -83,17 +83,19 @@ export async function saveLineup(
   side: 'us' | 'them',
   battingOrder: LineupSlot[],
 ): Promise<Lineup> {
-  // Upsert: delete existing lineup for this game+side, then add
-  const existing = await db.lineups
-    .where('[gameId+side]')
-    .equals([gameId, side])
-    .first()
-  if (existing?.id) {
-    await db.lineups.delete(existing.id)
-  }
-  const lineup: Lineup = { gameId, side, battingOrder }
-  const id = await db.lineups.add(lineup)
-  return { ...lineup, id }
+  // Upsert in a transaction to prevent data loss if crash between delete and add
+  return db.transaction('rw', db.lineups, async () => {
+    const existing = await db.lineups
+      .where('[gameId+side]')
+      .equals([gameId, side])
+      .first()
+    if (existing?.id) {
+      await db.lineups.delete(existing.id)
+    }
+    const lineup: Lineup = { gameId, side, battingOrder }
+    const id = await db.lineups.add(lineup)
+    return { ...lineup, id }
+  })
 }
 
 export async function getLineupsForGame(gameId: number): Promise<Lineup[]> {
@@ -117,18 +119,20 @@ interface AddPlayInput {
 }
 
 export async function addPlay(gameId: number, input: AddPlayInput): Promise<Play> {
-  // Get next sequence number
-  const existing = await db.plays.where('gameId').equals(gameId).toArray()
-  const maxSeq = existing.reduce((max, p) => Math.max(max, p.sequenceNumber), 0)
+  // Transaction ensures atomic read-then-write for sequence number
+  return db.transaction('rw', db.plays, async () => {
+    const existing = await db.plays.where('gameId').equals(gameId).toArray()
+    const maxSeq = existing.reduce((max, p) => Math.max(max, p.sequenceNumber), 0)
 
-  const play: Play = {
-    gameId,
-    sequenceNumber: maxSeq + 1,
-    ...input,
-    timestamp: new Date(),
-  }
-  const id = await db.plays.add(play)
-  return { ...play, id }
+    const play: Play = {
+      gameId,
+      sequenceNumber: maxSeq + 1,
+      ...input,
+      timestamp: new Date(),
+    }
+    const id = await db.plays.add(play)
+    return { ...play, id }
+  })
 }
 
 export async function getPlaysForGame(gameId: number): Promise<Play[]> {
