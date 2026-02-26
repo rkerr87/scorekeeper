@@ -5,6 +5,7 @@ import { HomePage } from './pages/HomePage'
 import { TeamPage } from './pages/TeamPage'
 import { GameSetupPage } from './pages/GameSetupPage'
 import { GamePage } from './pages/GamePage'
+import { GameStatsPage } from './pages/GameStatsPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 
 const router = createBrowserRouter([
@@ -16,7 +17,7 @@ const router = createBrowserRouter([
       { path: 'team', element: <TeamPage /> },
       { path: 'game/:gameId/setup', element: <GameSetupPage /> },
       { path: 'game/:gameId', element: <GamePage /> },
-      { path: 'game/:gameId/stats', element: <div>Game stats placeholder</div> },
+      { path: 'game/:gameId/stats', element: <GameStatsPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },
