@@ -128,6 +128,13 @@ export function HomePage() {
         </div>
       )}
 
+      {/* Season stats link */}
+      <div className="mb-6">
+        <Link to="/stats" className="block w-full text-center bg-slate-500 hover:bg-slate-600 text-white py-3 px-4 rounded-lg font-semibold">
+          Season Stats
+        </Link>
+      </div>
+
       {/* Completed games */}
       {completedGames.length > 0 && (
         <div>
