@@ -4,6 +4,7 @@ import { AppLayout } from './layouts/AppLayout'
 import { HomePage } from './pages/HomePage'
 import { TeamPage } from './pages/TeamPage'
 import { GameSetupPage } from './pages/GameSetupPage'
+import { GamePage } from './pages/GamePage'
 import { NotFoundPage } from './pages/NotFoundPage'
 
 const router = createBrowserRouter([
@@ -14,7 +15,7 @@ const router = createBrowserRouter([
       { index: true, element: <HomePage /> },
       { path: 'team', element: <TeamPage /> },
       { path: 'game/:gameId/setup', element: <GameSetupPage /> },
-      { path: 'game/:gameId', element: <div>Game page placeholder</div> },
+      { path: 'game/:gameId', element: <GamePage /> },
       { path: 'game/:gameId/stats', element: <div>Game stats placeholder</div> },
       { path: '*', element: <NotFoundPage /> },
     ],
