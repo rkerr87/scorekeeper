@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback } from 'react'
 import type { ReactNode } from 'react'
-import type { Game, Lineup, Play, GameSnapshot, HalfInning, PlayType, PitchResult } from '../engine/types'
+import type { Game, Lineup, Play, GameSnapshot, HalfInning, PlayType, PitchResult, HomeOrAway } from '../engine/types'
 import { replayGame } from '../engine/engine'
 import { getGame, getLineupsForGame, getPlaysForGame, addPlay, deleteLastPlay, updatePlay } from '../db/gameService'
 
@@ -40,9 +40,15 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [plays, setPlays] = useState<Play[]>([])
   const [snapshot, setSnapshot] = useState<GameSnapshot | null>(null)
 
-  const recompute = useCallback((currentPlays: Play[], lusVal: Lineup | null, lthVal: Lineup | null) => {
+  const recompute = useCallback((
+    currentPlays: Play[],
+    lusVal: Lineup | null,
+    lthVal: Lineup | null,
+    homeOrAway: HomeOrAway,
+  ) => {
     if (!lusVal || !lthVal) return
-    const snap = replayGame(currentPlays, lusVal, lthVal)
+    if (lusVal.battingOrder.length === 0 || lthVal.battingOrder.length === 0) return
+    const snap = replayGame(currentPlays, lusVal, lthVal, homeOrAway)
     setSnapshot(snap)
   }, [])
 
@@ -60,34 +66,31 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setLineupThem(lth)
     setPlays(p)
 
-    if (lus && lth) {
-      const snap = replayGame(p, lus, lth)
-      setSnapshot(snap)
-    }
-  }, [])
+    recompute(p, lus, lth, g.homeOrAway)
+  }, [recompute])
 
   const recordPlay = useCallback(async (input: RecordPlayInput) => {
     if (!game?.id) return
     const newPlay = await addPlay(game.id, input)
     const newPlays = [...plays, newPlay]
     setPlays(newPlays)
-    recompute(newPlays, lineupUs, lineupThem)
+    recompute(newPlays, lineupUs, lineupThem, game.homeOrAway)
   }, [game, plays, lineupUs, lineupThem, recompute])
 
   const undoLastPlay = useCallback(async () => {
     if (!game?.id) return
     await deleteLastPlay(game.id)
-    const newPlays = plays.slice(0, -1)
-    setPlays(newPlays)
-    recompute(newPlays, lineupUs, lineupThem)
-  }, [game, plays, lineupUs, lineupThem, recompute])
+    const refreshed = await getPlaysForGame(game.id)
+    setPlays(refreshed)
+    recompute(refreshed, lineupUs, lineupThem, game.homeOrAway)
+  }, [game, lineupUs, lineupThem, recompute])
 
   const editPlay = useCallback(async (playId: number, updates: Partial<Play>) => {
     if (!game?.id) return
     await updatePlay(playId, updates)
     const refreshed = await getPlaysForGame(game.id)
     setPlays(refreshed)
-    recompute(refreshed, lineupUs, lineupThem)
+    recompute(refreshed, lineupUs, lineupThem, game.homeOrAway)
   }, [game, lineupUs, lineupThem, recompute])
 
   const clearGame = useCallback(() => {

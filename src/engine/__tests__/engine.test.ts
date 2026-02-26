@@ -35,7 +35,7 @@ const lineupThem = makeLineup('them')
 
 describe('replayGame — initial state', () => {
   it('should return initial state with no plays', () => {
-    const snapshot = replayGame([], lineupUs, lineupThem)
+    const snapshot = replayGame([], lineupUs, lineupThem, 'away')
     expect(snapshot.inning).toBe(1)
     expect(snapshot.half).toBe('top')
     expect(snapshot.outs).toBe(0)
@@ -52,7 +52,7 @@ describe('replayGame — batting order', () => {
     const plays: Play[] = [
       makePlay({ sequenceNumber: 1, half: 'top', batterOrderPosition: 1, playType: 'K' }),
     ]
-    const snapshot = replayGame(plays, lineupUs, lineupThem)
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'away')
     expect(snapshot.currentBatterUs).toBe(2)
     expect(snapshot.outs).toBe(1)
   })
@@ -64,7 +64,7 @@ describe('replayGame — batting order', () => {
         playType: 'SB', isAtBat: false,
       }),
     ]
-    const snapshot = replayGame(plays, lineupUs, lineupThem)
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'away')
     expect(snapshot.currentBatterUs).toBe(1)
   })
 
@@ -78,7 +78,17 @@ describe('replayGame — batting order', () => {
         playType: 'K',
       })
     )
-    const snapshot = replayGame(plays, lineupUs, lineupThem)
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'away')
+    expect(snapshot.currentBatterUs).toBe(1)
+  })
+
+  it('should advance them batter when home team bats in top half', () => {
+    // For a home game, us bats in the bottom — top half is them batting
+    const plays: Play[] = [
+      makePlay({ sequenceNumber: 1, half: 'top', batterOrderPosition: 1, playType: 'K' }),
+    ]
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'home')
+    expect(snapshot.currentBatterThem).toBe(2)
     expect(snapshot.currentBatterUs).toBe(1)
   })
 })
@@ -90,7 +100,7 @@ describe('replayGame — inning advancement', () => {
       makePlay({ sequenceNumber: 2, half: 'top', batterOrderPosition: 2, playType: 'GO', fieldersInvolved: [6, 3] }),
       makePlay({ sequenceNumber: 3, half: 'top', batterOrderPosition: 3, playType: 'FO', fieldersInvolved: [8] }),
     ]
-    const snapshot = replayGame(plays, lineupUs, lineupThem)
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'away')
     expect(snapshot.inning).toBe(1)
     expect(snapshot.half).toBe('bottom')
     expect(snapshot.outs).toBe(0)
@@ -105,7 +115,7 @@ describe('replayGame — inning advancement', () => {
       makePlay({ sequenceNumber: 5, inning: 1, half: 'bottom', batterOrderPosition: 2, playType: 'K' }),
       makePlay({ sequenceNumber: 6, inning: 1, half: 'bottom', batterOrderPosition: 3, playType: 'K' }),
     ]
-    const snapshot = replayGame(plays, lineupUs, lineupThem)
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'away')
     expect(snapshot.inning).toBe(2)
     expect(snapshot.half).toBe('top')
     expect(snapshot.outs).toBe(0)
@@ -115,7 +125,7 @@ describe('replayGame — inning advancement', () => {
     const plays: Play[] = [
       makePlay({ sequenceNumber: 1, half: 'top', batterOrderPosition: 1, playType: 'DP', fieldersInvolved: [6, 4, 3] }),
     ]
-    const snapshot = replayGame(plays, lineupUs, lineupThem)
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'away')
     expect(snapshot.outs).toBe(2)
   })
 })
@@ -125,7 +135,7 @@ describe('replayGame — baserunners', () => {
     const plays: Play[] = [
       makePlay({ sequenceNumber: 1, half: 'top', batterOrderPosition: 1, playType: '1B', basesReached: [1] }),
     ]
-    const snapshot = replayGame(plays, lineupUs, lineupThem)
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'away')
     expect(snapshot.baseRunners.first?.orderPosition).toBe(1)
     expect(snapshot.baseRunners.second).toBeNull()
     expect(snapshot.baseRunners.third).toBeNull()
@@ -136,7 +146,7 @@ describe('replayGame — baserunners', () => {
       makePlay({ sequenceNumber: 1, half: 'top', batterOrderPosition: 1, playType: '1B', basesReached: [1] }),
       makePlay({ sequenceNumber: 2, half: 'top', batterOrderPosition: 2, playType: '1B', basesReached: [1] }),
     ]
-    const snapshot = replayGame(plays, lineupUs, lineupThem)
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'away')
     expect(snapshot.baseRunners.first?.orderPosition).toBe(2)
     expect(snapshot.baseRunners.second?.orderPosition).toBe(1)
   })
@@ -146,7 +156,7 @@ describe('replayGame — baserunners', () => {
       makePlay({ sequenceNumber: 1, half: 'top', batterOrderPosition: 1, playType: '3B', basesReached: [1, 2, 3] }),
       makePlay({ sequenceNumber: 2, half: 'top', batterOrderPosition: 2, playType: '1B', basesReached: [1] }),
     ]
-    const snapshot = replayGame(plays, lineupUs, lineupThem)
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'away')
     expect(snapshot.scoreUs).toBe(1)
     expect(snapshot.baseRunners.first?.orderPosition).toBe(2)
     expect(snapshot.baseRunners.third).toBeNull()
@@ -158,7 +168,7 @@ describe('replayGame — baserunners', () => {
       makePlay({ sequenceNumber: 2, half: 'top', batterOrderPosition: 2, playType: '2B', basesReached: [1, 2] }),
       makePlay({ sequenceNumber: 3, half: 'top', batterOrderPosition: 3, playType: 'HR', basesReached: [1, 2, 3, 4] }),
     ]
-    const snapshot = replayGame(plays, lineupUs, lineupThem)
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'away')
     expect(snapshot.scoreUs).toBe(3)
     expect(snapshot.baseRunners.first).toBeNull()
     expect(snapshot.baseRunners.second).toBeNull()
@@ -172,7 +182,7 @@ describe('replayGame — baserunners', () => {
       makePlay({ sequenceNumber: 3, half: 'top', batterOrderPosition: 3, playType: '1B', basesReached: [1] }),
       makePlay({ sequenceNumber: 4, half: 'top', batterOrderPosition: 4, playType: 'BB', basesReached: [1] }),
     ]
-    const snapshot = replayGame(plays, lineupUs, lineupThem)
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'away')
     expect(snapshot.scoreUs).toBe(1)
     expect(snapshot.baseRunners.first).not.toBeNull()
     expect(snapshot.baseRunners.second).not.toBeNull()
@@ -186,7 +196,7 @@ describe('replayGame — baserunners', () => {
       makePlay({ sequenceNumber: 3, half: 'top', batterOrderPosition: 3, playType: 'K' }),
       makePlay({ sequenceNumber: 4, half: 'top', batterOrderPosition: 4, playType: 'K' }),
     ]
-    const snapshot = replayGame(plays, lineupUs, lineupThem)
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'away')
     expect(snapshot.half).toBe('bottom')
     expect(snapshot.baseRunners.first).toBeNull()
   })
@@ -196,7 +206,7 @@ describe('replayGame — baserunners', () => {
       makePlay({ sequenceNumber: 1, half: 'top', batterOrderPosition: 1, playType: '1B', basesReached: [1] }),
       makePlay({ sequenceNumber: 2, half: 'top', batterOrderPosition: 2, playType: 'SB', isAtBat: false }),
     ]
-    const snapshot = replayGame(plays, lineupUs, lineupThem)
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'away')
     expect(snapshot.baseRunners.first).toBeNull()
     expect(snapshot.baseRunners.second?.orderPosition).toBe(1)
     expect(snapshot.currentBatterUs).toBe(2)
@@ -207,7 +217,7 @@ describe('replayGame — baserunners', () => {
       makePlay({ sequenceNumber: 1, half: 'top', batterOrderPosition: 1, playType: '2B', basesReached: [1, 2] }),
       makePlay({ sequenceNumber: 2, half: 'top', batterOrderPosition: 2, playType: 'WP', isAtBat: false }),
     ]
-    const snapshot = replayGame(plays, lineupUs, lineupThem)
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'away')
     expect(snapshot.baseRunners.second).toBeNull()
     expect(snapshot.baseRunners.third?.orderPosition).toBe(1)
   })
@@ -221,7 +231,7 @@ describe('replayGame — scoring', () => {
       makePlay({ sequenceNumber: 3, inning: 1, half: 'top', batterOrderPosition: 3, playType: 'K' }),
       makePlay({ sequenceNumber: 4, inning: 1, half: 'top', batterOrderPosition: 4, playType: 'K' }),
     ]
-    const snapshot = replayGame(plays, lineupUs, lineupThem)
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'away')
     expect(snapshot.runsPerInningUs[0]).toBe(1)
     expect(snapshot.scoreUs).toBe(1)
   })
@@ -233,7 +243,7 @@ describe('replayGame — scoring', () => {
       makePlay({ sequenceNumber: 3, inning: 1, half: 'top', batterOrderPosition: 3, playType: 'K' }),
       makePlay({ sequenceNumber: 4, inning: 1, half: 'bottom', batterOrderPosition: 1, playType: 'HR', basesReached: [1, 2, 3, 4] }),
     ]
-    const snapshot = replayGame(plays, lineupUs, lineupThem)
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'away')
     expect(snapshot.runsPerInningThem[0]).toBe(1)
     expect(snapshot.scoreThem).toBe(1)
   })
@@ -244,9 +254,23 @@ describe('replayGame — scoring', () => {
       makePlay({ sequenceNumber: 2, inning: 1, half: 'top', batterOrderPosition: 2, playType: '1B', basesReached: [1] }),
       makePlay({ sequenceNumber: 3, inning: 1, half: 'top', batterOrderPosition: 3, playType: 'HR', basesReached: [1, 2, 3, 4] }),
     ]
-    const snapshot = replayGame(plays, lineupUs, lineupThem)
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'away')
     expect(snapshot.scoreUs).toBe(3)
     expect(snapshot.runsPerInningUs[0]).toBe(3)
+  })
+
+  it('should credit runs to us when home team bats in bottom half', () => {
+    // Home game: us bats in bottom half
+    const plays: Play[] = [
+      makePlay({ sequenceNumber: 1, inning: 1, half: 'top', batterOrderPosition: 1, playType: 'K' }),
+      makePlay({ sequenceNumber: 2, inning: 1, half: 'top', batterOrderPosition: 2, playType: 'K' }),
+      makePlay({ sequenceNumber: 3, inning: 1, half: 'top', batterOrderPosition: 3, playType: 'K' }),
+      makePlay({ sequenceNumber: 4, inning: 1, half: 'bottom', batterOrderPosition: 1, playType: 'HR', basesReached: [1, 2, 3, 4] }),
+    ]
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'home')
+    expect(snapshot.scoreUs).toBe(1)
+    expect(snapshot.scoreThem).toBe(0)
+    expect(snapshot.runsPerInningUs[0]).toBe(1)
   })
 })
 
@@ -262,7 +286,7 @@ describe('replayGame — pitch count', () => {
         playType: 'BB', pitches: ['B', 'B', 'S', 'B', 'B'],
       }),
     ]
-    const snapshot = replayGame(plays, lineupUs, lineupThem)
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'away')
     expect(snapshot.pitchCountByPitcher.get('them-Player1')).toBe(9)
   })
 
@@ -273,8 +297,68 @@ describe('replayGame — pitch count', () => {
       makePlay({ sequenceNumber: 3, inning: 1, half: 'top', batterOrderPosition: 3, playType: 'K', pitches: ['S', 'S', 'S'] }),
       makePlay({ sequenceNumber: 4, inning: 1, half: 'bottom', batterOrderPosition: 1, playType: 'K', pitches: ['S', 'B', 'S', 'S'] }),
     ]
-    const snapshot = replayGame(plays, lineupUs, lineupThem)
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'away')
     expect(snapshot.pitchCountByPitcher.get('them-Player1')).toBe(9)
     expect(snapshot.pitchCountByPitcher.get('us-Player1')).toBe(4)
+  })
+})
+
+describe('replayGame — isGameOver', () => {
+  function makeInning(startSeq: number, inning: number, half: 'top' | 'bottom'): Play[] {
+    return [
+      makePlay({ sequenceNumber: startSeq, inning, half, batterOrderPosition: 1, playType: 'K' }),
+      makePlay({ sequenceNumber: startSeq + 1, inning, half, batterOrderPosition: 2, playType: 'K' }),
+      makePlay({ sequenceNumber: startSeq + 2, inning, half, batterOrderPosition: 3, playType: 'K' }),
+    ]
+  }
+
+  it('should set isGameOver after 6 complete innings', () => {
+    const plays: Play[] = [
+      ...makeInning(1, 1, 'top'),
+      ...makeInning(4, 1, 'bottom'),
+      ...makeInning(7, 2, 'top'),
+      ...makeInning(10, 2, 'bottom'),
+      ...makeInning(13, 3, 'top'),
+      ...makeInning(16, 3, 'bottom'),
+      ...makeInning(19, 4, 'top'),
+      ...makeInning(22, 4, 'bottom'),
+      ...makeInning(25, 5, 'top'),
+      ...makeInning(28, 5, 'bottom'),
+      ...makeInning(31, 6, 'top'),
+      ...makeInning(34, 6, 'bottom'),
+    ]
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'away')
+    expect(snapshot.isGameOver).toBe(true)
+  })
+
+  it('should not set isGameOver before 6 innings are complete', () => {
+    const plays: Play[] = [
+      ...makeInning(1, 1, 'top'),
+      ...makeInning(4, 1, 'bottom'),
+    ]
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'away')
+    expect(snapshot.isGameOver).toBe(false)
+  })
+
+  it('should stop processing plays once isGameOver is true', () => {
+    const plays: Play[] = [
+      ...makeInning(1, 1, 'top'),
+      ...makeInning(4, 1, 'bottom'),
+      ...makeInning(7, 2, 'top'),
+      ...makeInning(10, 2, 'bottom'),
+      ...makeInning(13, 3, 'top'),
+      ...makeInning(16, 3, 'bottom'),
+      ...makeInning(19, 4, 'top'),
+      ...makeInning(22, 4, 'bottom'),
+      ...makeInning(25, 5, 'top'),
+      ...makeInning(28, 5, 'bottom'),
+      ...makeInning(31, 6, 'top'),
+      ...makeInning(34, 6, 'bottom'),
+      // Extra plays that should be ignored
+      makePlay({ sequenceNumber: 37, inning: 7, half: 'top', batterOrderPosition: 1, playType: 'HR', basesReached: [1, 2, 3, 4] }),
+    ]
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'away')
+    expect(snapshot.isGameOver).toBe(true)
+    expect(snapshot.scoreUs).toBe(0) // HR in inning 7 was not processed
   })
 })

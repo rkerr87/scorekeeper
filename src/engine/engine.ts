@@ -1,4 +1,4 @@
-import type { Play, Lineup, GameSnapshot, HalfInning, BaseRunner } from './types'
+import type { Play, Lineup, GameSnapshot, HalfInning, BaseRunner, HomeOrAway } from './types'
 
 function initialSnapshot(): GameSnapshot {
   return {
@@ -57,13 +57,19 @@ function ensureInningArray(arr: number[], inning: number): void {
   }
 }
 
+// Away team bats in the top half; home team bats in the bottom half.
+function isUsBattingHalf(half: HalfInning, homeOrAway: HomeOrAway): boolean {
+  return homeOrAway === 'away' ? half === 'top' : half === 'bottom'
+}
+
 function getBaseRunnerForBatter(
   batterOrderPosition: number,
   half: HalfInning,
+  homeOrAway: HomeOrAway,
   lineupUs: Lineup,
   lineupThem: Lineup,
 ): BaseRunner {
-  const lineup = half === 'top' ? lineupUs : lineupThem
+  const lineup = isUsBattingHalf(half, homeOrAway) ? lineupUs : lineupThem
   const slot = lineup.battingOrder.find(s => s.orderPosition === batterOrderPosition)
   return {
     playerName: slot?.playerName ?? `Player${batterOrderPosition}`,
@@ -74,11 +80,12 @@ function getBaseRunnerForBatter(
 function applyBaseRunning(
   snapshot: GameSnapshot,
   play: Play,
+  homeOrAway: HomeOrAway,
   lineupUs: Lineup,
   lineupThem: Lineup,
 ): number {
   let runsScored = 0
-  const batter = getBaseRunnerForBatter(play.batterOrderPosition, play.half, lineupUs, lineupThem)
+  const batter = getBaseRunnerForBatter(play.batterOrderPosition, play.half, homeOrAway, lineupUs, lineupThem)
   const runners = snapshot.baseRunners
 
   // If play has runner overrides from scorekeeper confirmation, use those
@@ -225,6 +232,7 @@ export function replayGame(
   plays: Play[],
   lineupUs: Lineup,
   lineupThem: Lineup,
+  homeOrAway: HomeOrAway,
 ): GameSnapshot {
   const snapshot = initialSnapshot()
   const lineupSizeUs = lineupUs.battingOrder.length
@@ -233,9 +241,11 @@ export function replayGame(
   const sorted = [...plays].sort((a, b) => a.sequenceNumber - b.sequenceNumber)
 
   for (const play of sorted) {
-    // Track pitch count
+    if (snapshot.isGameOver) break
+
+    // Track pitch count — pitcher is the fielding team's position 'P'
     if (play.pitches.length > 0) {
-      const pitcherLineup = play.half === 'top' ? lineupThem : lineupUs
+      const pitcherLineup = isUsBattingHalf(play.half, homeOrAway) ? lineupThem : lineupUs
       const pitcher = pitcherLineup.battingOrder.find(s => s.position === 'P')
       if (pitcher) {
         const key = pitcher.playerName
@@ -246,13 +256,13 @@ export function replayGame(
 
     // Apply base running and scoring
     const outsOnPlay = getOutsForPlay(play)
-    const runsScored = applyBaseRunning(snapshot, play, lineupUs, lineupThem)
+    const runsScored = applyBaseRunning(snapshot, play, homeOrAway, lineupUs, lineupThem)
 
     // Apply outs
     snapshot.outs += outsOnPlay
 
     // Apply runs
-    const isUsBatting = play.half === 'top'
+    const isUsBatting = isUsBattingHalf(play.half, homeOrAway)
     if (isUsBatting) {
       snapshot.scoreUs += runsScored
       ensureInningArray(snapshot.runsPerInningUs, play.inning)
@@ -272,9 +282,12 @@ export function replayGame(
       }
     }
 
-    // Check for inning change
+    // Check for inning change (standard 6-inning LL game)
     if (snapshot.outs >= 3) {
       advanceHalfInning(snapshot)
+      if (snapshot.inning > 6) {
+        snapshot.isGameOver = true
+      }
     }
   }
 

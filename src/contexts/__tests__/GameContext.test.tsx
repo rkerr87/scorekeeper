@@ -52,7 +52,7 @@ describe('GameContext', () => {
 
   it('should record a play and update snapshot', async () => {
     const team = await createTeam('Mudcats')
-    const game = await createGame(team.id!, 'Tigers', 'home')
+    const game = await createGame(team.id!, 'Tigers', 'away')
     await saveLineup(game.id!, 'us', [
       { orderPosition: 1, playerId: 1, playerName: 'P1', jerseyNumber: 1, position: 'P', substitutions: [] },
       { orderPosition: 2, playerId: 2, playerName: 'P2', jerseyNumber: 2, position: 'C', substitutions: [] },
@@ -90,7 +90,7 @@ describe('GameContext', () => {
 
   it('should undo the last play', async () => {
     const team = await createTeam('Mudcats')
-    const game = await createGame(team.id!, 'Tigers', 'home')
+    const game = await createGame(team.id!, 'Tigers', 'away')
     await saveLineup(game.id!, 'us', [
       { orderPosition: 1, playerId: 1, playerName: 'P1', jerseyNumber: 1, position: 'P', substitutions: [] },
     ])
