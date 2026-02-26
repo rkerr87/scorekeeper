@@ -1,4 +1,5 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { PreferencesProvider } from './contexts/PreferencesContext'
 import { GameProvider } from './contexts/GameContext'
 import { AppLayout } from './layouts/AppLayout'
 import { HomePage } from './pages/HomePage'
@@ -27,9 +28,11 @@ const router = createBrowserRouter([
 
 function App() {
   return (
-    <GameProvider>
-      <RouterProvider router={router} />
-    </GameProvider>
+    <PreferencesProvider>
+      <GameProvider>
+        <RouterProvider router={router} />
+      </GameProvider>
+    </PreferencesProvider>
   )
 }
 
