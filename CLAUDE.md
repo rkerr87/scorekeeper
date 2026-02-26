@@ -45,9 +45,9 @@ Use the `superpowers` skills for all development work:
 
 ## Current Status
 
-- **Phase:** Phase 6 complete (Tasks 11-15 done)
-- **Next step:** Phase 7, Task 16 — Pitch tracking panel
-- **Test runner:** vitest configured and passing (92 tests)
+- **Phase:** Phase 7 complete (Tasks 16-20 done)
+- **Next step:** Phase 8, Task 21 — SubstitutionDialog
+- **Test runner:** vitest configured and passing (112 tests)
 
 ## Architecture
 
