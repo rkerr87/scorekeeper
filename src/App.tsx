@@ -2,6 +2,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { GameProvider } from './contexts/GameContext'
 import { AppLayout } from './layouts/AppLayout'
 import { HomePage } from './pages/HomePage'
+import { TeamPage } from './pages/TeamPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 
 const router = createBrowserRouter([
@@ -10,7 +11,7 @@ const router = createBrowserRouter([
     element: <AppLayout />,
     children: [
       { index: true, element: <HomePage /> },
-      { path: 'team', element: <div>Team page placeholder</div> },
+      { path: 'team', element: <TeamPage /> },
       { path: 'game/:gameId/setup', element: <div>Game setup placeholder</div> },
       { path: 'game/:gameId', element: <div>Game page placeholder</div> },
       { path: 'game/:gameId/stats', element: <div>Game stats placeholder</div> },
