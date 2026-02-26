@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import type { Player, LineupSlot } from '../engine/types'
 import { useGame } from '../contexts/GameContext'
-import { getGame, getPlayersForTeam, saveLineup } from '../db/gameService'
+import { getGame, getPlayersForTeam, saveLineup, updateGameStatus } from '../db/gameService'
 
 interface OpponentPlayer {
   name: string
@@ -96,6 +96,7 @@ export function GameSetupPage() {
 
     await saveLineup(gId, 'us', ourSlots)
     await saveLineup(gId, 'them', oppSlots)
+    await updateGameStatus(gId, 'in_progress')
     await loadGame(gId)
     navigate(`/game/${gId}`)
   }
