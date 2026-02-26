@@ -23,7 +23,7 @@ export function HomePage() {
     load()
   }, [])
 
-  const handleStartNewGame = async () => {
+  const handleStartNewGame = () => {
     if (!team) {
       navigate('/team')
       return
@@ -141,7 +141,7 @@ export function HomePage() {
               >
                 <div className="font-semibold text-slate-900">vs {g.opponentName}</div>
                 <div className="text-xs text-slate-500">
-                  {g.finalScoreUs ?? '?'} - {g.finalScoreThem ?? '?'}
+                  {g.homeOrAway === 'home' ? 'Home' : 'Away'} &middot; {g.code}
                 </div>
               </Link>
             ))}
