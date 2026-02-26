@@ -45,9 +45,9 @@ Use the `superpowers` skills for all development work:
 
 ## Current Status
 
-- **Phase:** Phase 4 complete (Tasks 2-8 done)
-- **Next step:** Phase 5, Task 9 — Team roster management page
-- **Test runner:** vitest configured and passing (60 tests)
+- **Phase:** Phase 5 complete (Tasks 2-10 done)
+- **Next step:** Phase 6, Task 11 — Wire HomePage to create games and navigate
+- **Test runner:** vitest configured and passing (67 tests)
 
 ## Architecture
 
