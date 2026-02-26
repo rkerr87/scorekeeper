@@ -19,7 +19,7 @@ interface PlayEntryPanelProps {
   onClose: () => void
 }
 
-type PanelMode = 'select' | 'fielding' | 'shorthand'
+type PanelMode = 'select' | 'fielding'
 
 const COMMON_PLAYS: { label: string; playType: PlayType; basesReached: number[] }[] = [
   { label: 'K', playType: 'K', basesReached: [] },
@@ -105,6 +105,7 @@ export function PlayEntryPanel({ batterName, onPlayRecorded, onClose }: PlayEntr
       notation: generateNotation(parsed.playType, parsed.fieldersInvolved),
       pitches,
     })
+    setShorthand('')
   }
 
   return (

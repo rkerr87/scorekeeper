@@ -1,5 +1,5 @@
 import { db } from './database'
-import type { Team, Player, Game, Lineup, Play, LineupSlot, HomeOrAway, HalfInning, PlayType, PitchResult } from '../engine/types'
+import type { Team, Player, Game, Lineup, Play, LineupSlot, HomeOrAway, HalfInning, PlayType, PitchResult, BaseRunnerOverride } from '../engine/types'
 
 // --- Teams ---
 
@@ -116,6 +116,7 @@ interface AddPlayInput {
   rbis: number
   pitches: PitchResult[]
   isAtBat: boolean
+  runnerOverrides?: BaseRunnerOverride
 }
 
 export async function addPlay(gameId: number, input: AddPlayInput): Promise<Play> {

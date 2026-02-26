@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback } from 'react'
 import type { ReactNode } from 'react'
-import type { Game, Lineup, Play, GameSnapshot, HalfInning, PlayType, PitchResult, HomeOrAway } from '../engine/types'
+import type { Game, Lineup, Play, GameSnapshot, HalfInning, PlayType, PitchResult, HomeOrAway, BaseRunnerOverride } from '../engine/types'
 import { replayGame } from '../engine/engine'
 import { getGame, getLineupsForGame, getPlaysForGame, addPlay, deleteLastPlay, updatePlay } from '../db/gameService'
 
@@ -16,6 +16,7 @@ interface RecordPlayInput {
   rbis: number
   pitches: PitchResult[]
   isAtBat: boolean
+  runnerOverrides?: BaseRunnerOverride
 }
 
 interface GameContextValue {

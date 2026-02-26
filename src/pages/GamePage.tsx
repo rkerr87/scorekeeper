@@ -140,6 +140,9 @@ export function GamePage() {
       rbis: data.isAtBat && data.basesReached.length > 0 ? runsScored : 0,
       pitches: data.pitches,
       isAtBat: data.isAtBat,
+      runnerOverrides: runnerOverrides
+        ? { first: runnerOverrides.first, second: runnerOverrides.second, third: runnerOverrides.third }
+        : undefined,
     })
 
     setShowPlayEntry(false)
