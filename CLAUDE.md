@@ -45,9 +45,9 @@ Use the `superpowers` skills for all development work:
 
 ## Current Status
 
-- **Phase:** Phase 3 complete (Tasks 2-6 done)
-- **Next step:** Phase 4, Task 7 — React Router setup and app layout
-- **Test runner:** vitest configured and passing (56 tests)
+- **Phase:** Phase 7 complete (Tasks 16-20 done)
+- **Next step:** Phase 8, Task 21 — SubstitutionDialog
+- **Test runner:** vitest configured and passing (112 tests)
 
 ## Architecture
 
@@ -182,9 +182,9 @@ src/
 ```
 /                   → Home (start game, resume game, enter game code, manage roster)
 /team               → Team roster management
-/game/:id/setup     → Pre-game setup (batting order, positions, opponent lineup)
-/game/:id           → Main scoresheet (primary view during a game)
-/game/:id/stats     → Post-game stats view
+/game/:gameId/setup     → Pre-game setup (batting order, positions, opponent lineup)
+/game/:gameId       → Main scoresheet (primary view during a game)
+/game/:gameId/stats → Post-game stats view
 /stats              → Season cumulative stats
 ```
 
