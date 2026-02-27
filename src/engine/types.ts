@@ -1,7 +1,7 @@
 // --- Play types (string unions, no enums per tsconfig) ---
 
 export type HalfInning = 'top' | 'bottom'
-export type GameStatus = 'draft' | 'in_progress' | 'completed'
+export type GameStatus = 'draft' | 'in_progress' | 'completed' | 'deleted'
 export type HomeOrAway = 'home' | 'away'
 export type Side = 'us' | 'them'
 export type PitchResult = 'B' | 'S' | 'F'
