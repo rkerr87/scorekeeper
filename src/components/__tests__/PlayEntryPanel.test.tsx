@@ -32,8 +32,8 @@ describe('PlayEntryPanel', () => {
     render(<PlayEntryPanel batterName="John" onPlayRecorded={onPlayRecorded} onClose={() => {}} />)
 
     // Track some pitches first
-    await user.click(screen.getByRole('button', { name: /strike/i }))
-    await user.click(screen.getByRole('button', { name: /strike/i }))
+    await user.click(screen.getByRole('button', { name: /^strike$/i }))
+    await user.click(screen.getByRole('button', { name: /^strike$/i }))
 
     // Record the outcome
     await user.click(screen.getByRole('button', { name: /^K$/i }))
@@ -116,6 +116,18 @@ describe('PlayEntryPanel', () => {
     )
     await user.click(screen.getByRole('button', { name: /^SB$/i }))
     expect(screen.getByText(/who is stealing/i)).toBeInTheDocument()
+  })
+
+  it('should render KL button as a backwards K with correct aria-label and data-testid', () => {
+    render(<PlayEntryPanel batterName="John" onPlayRecorded={() => {}} onClose={() => {}} />)
+
+    const backwardsK = screen.getByTestId('backwards-k-button')
+    expect(backwardsK).toBeInTheDocument()
+    expect(backwardsK.textContent).toBe('K')
+    expect(backwardsK.style.transform).toBe('scaleX(-1)')
+
+    const button = backwardsK.closest('button')
+    expect(button).toHaveAttribute('aria-label', 'Strikeout looking')
   })
 
   it('should record SB with runnerOverrides for the selected runner', async () => {
