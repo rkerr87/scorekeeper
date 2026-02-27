@@ -42,4 +42,44 @@ describe('Diamond', () => {
     expect(mirror).toBeInTheDocument()
     expect(mirror?.textContent).toBe('K')
   })
+
+  describe('continuation lines', () => {
+    it('renders dashed continuation lines for runner advancement', () => {
+      const { container } = render(
+        <Diamond basesReached={[1]} continuationBases={[2, 3]} />
+      )
+      // Original path: solid line to 1st (home->1st)
+      const paths = container.querySelectorAll('[data-testid="base-path"]')
+      expect(paths.length).toBe(1)
+
+      // Continuation paths: dashed lines 1st->2nd, 2nd->3rd
+      const contPaths = container.querySelectorAll('[data-testid="continuation-path"]')
+      expect(contPaths.length).toBe(2)
+      expect(contPaths[0].getAttribute('stroke-dasharray')).toBeTruthy()
+    })
+
+    it('fills diamond when runner eventually scores via continuation', () => {
+      const { container } = render(
+        <Diamond basesReached={[1]} continuationBases={[2, 3, 4]} runScored={true} />
+      )
+      expect(container.querySelector('[data-testid="run-scored"]')).toBeTruthy()
+    })
+
+    it('renders no continuation paths when continuationBases not provided', () => {
+      const { container } = render(
+        <Diamond basesReached={[1, 2]} />
+      )
+      const contPaths = container.querySelectorAll('[data-testid="continuation-path"]')
+      expect(contPaths.length).toBe(0)
+    })
+
+    it('renders continuation from home when basesReached is empty', () => {
+      // Edge case: non-AB play where runner later advances
+      const { container } = render(
+        <Diamond basesReached={[]} continuationBases={[1, 2]} />
+      )
+      const contPaths = container.querySelectorAll('[data-testid="continuation-path"]')
+      expect(contPaths.length).toBe(2)
+    })
+  })
 })

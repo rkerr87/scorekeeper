@@ -45,6 +45,7 @@ export function GamePage() {
   const [pendingPrePlayRunners, setPendingPrePlayRunners] = useState<BaseRunners | null>(null)
   const [pendingPreRunsScored, setPendingPreRunsScored] = useState(0)
   const [gameOverDismissed, setGameOverDismissed] = useState(false)
+  const [showStrikeoutConfirm, setShowStrikeoutConfirm] = useState(false)
 
   const gId = parseInt(gameId ?? '0')
 
@@ -109,8 +110,57 @@ export function GamePage() {
     ? lineupUs.battingOrder.find(s => s.orderPosition === snapshot.currentBatterUs)
     : lineupThem.battingOrder.find(s => s.orderPosition === snapshot.currentBatterThem)
 
-  const handleAddPitch = (p: PitchResult) => setCurrentAtBatPitches(prev => [...prev, p])
+  const handleAddPitch = (p: PitchResult) => {
+    const newPitches = [...currentAtBatPitches, p]
+    setCurrentAtBatPitches(newPitches)
+
+    // Count balls and strikes from the FULL sequence
+    let balls = 0, strikes = 0
+    for (const pitch of newPitches) {
+      if (pitch === 'B') balls++
+      else if (pitch === 'S') strikes++
+      else if (pitch === 'F') strikes = Math.min(strikes + 1, 2)
+    }
+
+    // Auto-walk on 4th ball
+    if (balls >= 4) {
+      const walkPlay: PendingPlay = {
+        playType: 'BB',
+        notation: 'BB',
+        fieldersInvolved: [],
+        basesReached: [1],
+        pitches: newPitches,
+        isAtBat: true,
+      }
+      setShowPlayEntry(false)
+      setTimeout(() => handlePlayRecorded(walkPlay), 0)
+      return
+    }
+
+    // Auto-strikeout on 3rd strike (only triggered by 'S', not 'F')
+    if (p === 'S' && strikes >= 3) {
+      setShowStrikeoutConfirm(true)
+    }
+  }
   const handleRemovePitch = () => setCurrentAtBatPitches(prev => prev.slice(0, -1))
+  const handleClearPitches = () => setCurrentAtBatPitches([])
+  const handleRemovePitchAt = (index: number) => {
+    setCurrentAtBatPitches(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const handleStrikeoutConfirm = (type: 'K' | 'KL') => {
+    const play: PendingPlay = {
+      playType: type,
+      notation: type === 'KL' ? 'KL' : 'K',
+      fieldersInvolved: [],
+      basesReached: [],
+      pitches: currentAtBatPitches,
+      isAtBat: true,
+    }
+    setShowStrikeoutConfirm(false)
+    setShowPlayEntry(false)
+    handlePlayRecorded(play)
+  }
 
   const handlePlayRecorded = (data: PendingPlay) => {
     // Determine the actual current batter position based on current half
@@ -272,6 +322,10 @@ export function GamePage() {
         <Scoresheet
           lineup={activeLineup.battingOrder}
           plays={activePlays}
+          allPlays={plays}
+          lineupUs={lineupUs}
+          lineupThem={lineupThem}
+          homeOrAway={game.homeOrAway}
           currentInning={snapshot.inning}
           currentBatterPosition={currentBatter}
           maxInnings={6}
@@ -318,11 +372,37 @@ export function GamePage() {
           batterName={currentBatterSlot?.playerName ?? 'Unknown'}
           baseRunners={snapshot.baseRunners}
           pitches={currentAtBatPitches}
+          outs={snapshot.outs}
           onAddPitch={handleAddPitch}
           onRemovePitch={handleRemovePitch}
+          onClear={handleClearPitches}
+          onRemoveAt={handleRemovePitchAt}
           onPlayRecorded={handlePlayRecorded}
           onClose={() => setShowPlayEntry(false)}
         />
+      )}
+
+      {/* Strikeout confirmation dialog */}
+      {showStrikeoutConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-xs w-full mx-4 text-center">
+            <h3 className="text-lg font-bold text-slate-900 mb-4">Swinging or looking?</h3>
+            <div className="flex gap-3">
+              <button
+                onClick={() => handleStrikeoutConfirm('K')}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-bold transition-all duration-150 active:scale-95"
+              >
+                K (Swinging)
+              </button>
+              <button
+                onClick={() => handleStrikeoutConfirm('KL')}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-bold transition-all duration-150 active:scale-95"
+              >
+                <span style={{ display: 'inline-block', transform: 'scaleX(-1)' }}>K</span> (Looking)
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Runner confirmation */}

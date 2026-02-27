@@ -2,6 +2,7 @@ import type { PitchResult } from '../engine/types'
 
 interface DiamondProps {
   basesReached: number[]
+  continuationBases?: number[]
   runScored?: boolean
   notation?: string
   pitches?: PitchResult[]
@@ -10,6 +11,7 @@ interface DiamondProps {
 
 export function Diamond({
   basesReached,
+  continuationBases = [],
   runScored = false,
   notation = '',
   pitches = [],
@@ -21,6 +23,13 @@ export function Diamond({
   const second = { x: 50, y: 12 }
   const third = { x: 15, y: 50 }
 
+  const baseCoord = (n: number) => {
+    if (n === 1) return first
+    if (n === 2) return second
+    if (n === 3) return third
+    return home // 0 or 4
+  }
+
   const hasBase = (n: number) => basesReached.includes(n)
 
   // Build path segments for bases reached
@@ -29,6 +38,20 @@ export function Diamond({
   if (hasBase(2)) segments.push(`M ${first.x} ${first.y} L ${second.x} ${second.y}`)
   if (hasBase(3)) segments.push(`M ${second.x} ${second.y} L ${third.x} ${third.y}`)
   if (hasBase(4)) segments.push(`M ${third.x} ${third.y} L ${home.x} ${home.y}`)
+
+  // Build continuation path segments (dashed lines for subsequent advancement)
+  const continuationSegments: string[] = []
+  if (continuationBases.length > 0) {
+    // Start from the last base the batter originally reached, or home if empty
+    const startBase = basesReached.length > 0 ? Math.max(...basesReached) : 0
+    let prevBase = startBase
+    for (const nextBase of continuationBases) {
+      const from = baseCoord(prevBase)
+      const to = baseCoord(nextBase)
+      continuationSegments.push(`M ${from.x} ${from.y} L ${to.x} ${to.y}`)
+      prevBase = nextBase
+    }
+  }
 
   // Pitch dot colors
   const pitchColor = (p: PitchResult) => {
@@ -75,6 +98,21 @@ export function Diamond({
             stroke="#1e40af"
             strokeWidth="2.5"
             strokeLinecap="round"
+          />
+        ))}
+
+        {/* Continuation paths (dashed lines for subsequent advancement) */}
+        {continuationSegments.map((d, i) => (
+          <path
+            key={`cont-${i}`}
+            data-testid="continuation-path"
+            d={d}
+            fill="none"
+            stroke="#1e40af"
+            strokeWidth="2"
+            strokeDasharray="4 3"
+            strokeLinecap="round"
+            opacity="0.6"
           />
         ))}
 
