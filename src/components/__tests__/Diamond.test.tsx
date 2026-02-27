@@ -32,4 +32,13 @@ describe('Diamond', () => {
     const dots = container.querySelectorAll('[data-testid="pitch-dot"]')
     expect(dots.length).toBe(5)
   })
+
+  it('should render a mirrored K for KL notation', () => {
+    const { container } = render(<Diamond basesReached={[]} notation="KL" />)
+    // Should NOT contain the literal text "KL"
+    expect(container.textContent).not.toContain('KL')
+    // Should contain a K inside a mirrored span
+    const mirror = container.querySelector('[data-testid="backwards-k"]')
+    expect(mirror).toBeInTheDocument()
+  })
 })

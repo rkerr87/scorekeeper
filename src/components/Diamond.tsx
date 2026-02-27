@@ -95,15 +95,27 @@ export function Diamond({
 
         {/* Notation text */}
         {notation && (
-          <text
-            x="50"
-            y="54"
-            textAnchor="middle"
-            className="text-[10px] font-bold"
-            fill="#1e293b"
-          >
-            {notation}
-          </text>
+          notation === 'KL' ? (
+            <foreignObject x="30" y="40" width="40" height="20">
+              <span
+                xmlns="http://www.w3.org/1999/xhtml"
+                data-testid="backwards-k"
+                style={{ display: 'inline-block', transform: 'scaleX(-1)', fontSize: 11, fontWeight: 'bold', color: '#1e293b' }}
+              >
+                K
+              </span>
+            </foreignObject>
+          ) : (
+            <text
+              x="50"
+              y="54"
+              textAnchor="middle"
+              className="text-[10px] font-bold"
+              fill="#1e293b"
+            >
+              {notation}
+            </text>
+          )
         )}
       </svg>
 
