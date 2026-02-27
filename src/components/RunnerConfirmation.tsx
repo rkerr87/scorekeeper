@@ -25,6 +25,15 @@ const BASE_LABELS: Record<OrigBase, string> = {
   third: '3rd',
 }
 
+const BASE_ORDER: Record<OrigBase, number> = { first: 1, second: 2, third: 3 }
+const DEST_ORDER: Record<RunnerDest, number> = { first: 1, second: 2, third: 3, scored: 4, out: 0 }
+
+function isValidDest(orig: OrigBase, dest: RunnerDest): boolean {
+  if (dest === 'out') return true
+  if (dest === 'scored') return true
+  return DEST_ORDER[dest] > BASE_ORDER[orig]
+}
+
 function initAssignments(runners: BaseRunners): Map<OrigBase, RunnerDest> {
   const m = new Map<OrigBase, RunnerDest>()
   if (runners.first) m.set('first', 'first')
@@ -100,23 +109,29 @@ export function RunnerConfirmation({ runners, onConfirm, onCancel, initialRunsSc
                   {runner.playerName} <span className="text-slate-400">(was on {BASE_LABELS[orig]})</span>
                 </div>
                 <div className="flex gap-1 flex-wrap">
-                  {DEST_LABELS.map(({ dest, label }) => (
-                    <button
-                      key={dest}
-                      onClick={() => setDest(orig, dest)}
-                      className={`px-2.5 py-1.5 rounded text-xs font-bold transition-all duration-150 active:scale-95 ${
-                        currentDest === dest
-                          ? dest === 'scored'
-                            ? 'bg-green-600 text-white ring-2 ring-green-800'
-                            : dest === 'out'
-                              ? 'bg-red-500 text-white ring-2 ring-red-700'
-                              : 'bg-blue-600 text-white ring-2 ring-blue-800'
-                          : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
+                  {DEST_LABELS.map(({ dest, label }) => {
+                    const valid = isValidDest(orig, dest)
+                    return (
+                      <button
+                        key={dest}
+                        onClick={() => setDest(orig, dest)}
+                        disabled={!valid}
+                        className={`px-2.5 py-1.5 rounded text-xs font-bold transition-all duration-150 ${
+                          !valid
+                            ? 'bg-slate-100 text-slate-300 cursor-not-allowed'
+                            : currentDest === dest
+                              ? dest === 'scored'
+                                ? 'bg-green-600 text-white ring-2 ring-green-800 active:scale-95'
+                                : dest === 'out'
+                                  ? 'bg-red-500 text-white ring-2 ring-red-700 active:scale-95'
+                                  : 'bg-blue-600 text-white ring-2 ring-blue-800 active:scale-95'
+                              : 'bg-slate-200 text-slate-700 hover:bg-slate-300 active:scale-95'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             )

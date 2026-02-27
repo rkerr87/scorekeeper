@@ -100,4 +100,60 @@ describe('RunnerConfirmation', () => {
       runsScored: 0,
     })
   })
+
+  describe('backward movement prevention', () => {
+    it('should disable 1st base button for runner on 2nd', () => {
+      const runnersOn2nd: BaseRunners = {
+        first: null,
+        second: { playerName: 'Carol', orderPosition: 3 },
+        third: null,
+      }
+      render(<RunnerConfirmation runners={runnersOn2nd} onConfirm={() => {}} onCancel={() => {}} />)
+      const firstButtons = screen.getAllByRole('button', { name: /^1st$/i })
+      expect(firstButtons[0]).toBeDisabled()
+    })
+
+    it('should disable 1st and 2nd base buttons for runner on 3rd', () => {
+      const runnersOn3rd: BaseRunners = {
+        first: null,
+        second: null,
+        third: { playerName: 'Bob', orderPosition: 2 },
+      }
+      render(<RunnerConfirmation runners={runnersOn3rd} onConfirm={() => {}} onCancel={() => {}} />)
+      const firstButtons = screen.getAllByRole('button', { name: /^1st$/i })
+      const secondButtons = screen.getAllByRole('button', { name: /^2nd$/i })
+      expect(firstButtons[0]).toBeDisabled()
+      expect(secondButtons[0]).toBeDisabled()
+    })
+
+    it('should enable all forward destinations for runner on 1st', () => {
+      const runnersOn1st: BaseRunners = {
+        first: { playerName: 'Alice', orderPosition: 1 },
+        second: null,
+        third: null,
+      }
+      render(<RunnerConfirmation runners={runnersOn1st} onConfirm={() => {}} onCancel={() => {}} />)
+      const secondButtons = screen.getAllByRole('button', { name: /^2nd$/i })
+      const thirdButtons = screen.getAllByRole('button', { name: /^3rd$/i })
+      const scoredButtons = screen.getAllByRole('button', { name: /^scored$/i })
+      const outButtons = screen.getAllByRole('button', { name: /^out$/i })
+      expect(secondButtons[0]).toBeEnabled()
+      expect(thirdButtons[0]).toBeEnabled()
+      expect(scoredButtons[0]).toBeEnabled()
+      expect(outButtons[0]).toBeEnabled()
+    })
+
+    it('should always enable Scored and Out buttons regardless of starting base', () => {
+      const runnersOn2nd: BaseRunners = {
+        first: null,
+        second: { playerName: 'Carol', orderPosition: 3 },
+        third: null,
+      }
+      render(<RunnerConfirmation runners={runnersOn2nd} onConfirm={() => {}} onCancel={() => {}} />)
+      const scoredButtons = screen.getAllByRole('button', { name: /^scored$/i })
+      const outButtons = screen.getAllByRole('button', { name: /^out$/i })
+      expect(scoredButtons[0]).toBeEnabled()
+      expect(outButtons[0]).toBeEnabled()
+    })
+  })
 })
