@@ -1,75 +1,125 @@
 import { useState } from 'react'
-import type { BaseRunners } from '../engine/types'
+import type { BaseRunners, BaseRunner } from '../engine/types'
+
+type OrigBase = 'first' | 'second' | 'third'
+type RunnerDest = 'first' | 'second' | 'third' | 'scored' | 'out'
 
 interface RunnerConfirmationProps {
   runners: BaseRunners
-  onConfirm: (runners: BaseRunners) => void
+  onConfirm: (result: { runners: BaseRunners; runsScored: number }) => void
   onCancel: () => void
 }
 
-export function RunnerConfirmation({ runners, onConfirm, onCancel }: RunnerConfirmationProps) {
-  const [current, setCurrent] = useState<BaseRunners>({ ...runners })
+const DEST_LABELS: { dest: RunnerDest; label: string }[] = [
+  { dest: 'first', label: '1st' },
+  { dest: 'second', label: '2nd' },
+  { dest: 'third', label: '3rd' },
+  { dest: 'scored', label: 'Scored' },
+  { dest: 'out', label: 'Out' },
+]
 
-  const clearBase = (base: 'first' | 'second' | 'third') => {
-    setCurrent({ ...current, [base]: null })
+const BASE_LABELS: Record<OrigBase, string> = {
+  first: '1st',
+  second: '2nd',
+  third: '3rd',
+}
+
+function initAssignments(runners: BaseRunners): Map<OrigBase, RunnerDest> {
+  const m = new Map<OrigBase, RunnerDest>()
+  if (runners.first) m.set('first', 'first')
+  if (runners.second) m.set('second', 'second')
+  if (runners.third) m.set('third', 'third')
+  return m
+}
+
+function computeResult(
+  runners: BaseRunners,
+  assignments: Map<OrigBase, RunnerDest>,
+): { runners: BaseRunners; runsScored: number } {
+  const result: BaseRunners = { first: null, second: null, third: null }
+  let runsScored = 0
+
+  const ORIG_BASES: OrigBase[] = ['third', 'second', 'first']
+  for (const orig of ORIG_BASES) {
+    const runner: BaseRunner | null = runners[orig]
+    if (!runner) continue
+    const dest = assignments.get(orig)
+    if (!dest || dest === 'out') continue
+    if (dest === 'scored') {
+      runsScored++
+    } else {
+      result[dest] = runner
+    }
   }
+
+  return { runners: result, runsScored }
+}
+
+export function RunnerConfirmation({ runners, onConfirm, onCancel }: RunnerConfirmationProps) {
+  const [assignments, setAssignments] = useState<Map<OrigBase, RunnerDest>>(() => initAssignments(runners))
+
+  const setDest = (orig: OrigBase, dest: RunnerDest) => {
+    setAssignments(prev => new Map(prev).set(orig, dest))
+  }
+
+  const handleConfirm = () => {
+    onConfirm(computeResult(runners, assignments))
+  }
+
+  const occupiedBases: OrigBase[] = (['third', 'second', 'first'] as OrigBase[]).filter(b => runners[b] !== null)
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl p-6 max-w-sm w-full mx-4">
         <h3 className="text-lg font-bold text-slate-900 mb-4">Confirm Runners</h3>
 
-        <div className="space-y-3 mb-6">
-          {/* Third base */}
-          <div className="flex items-center justify-between bg-slate-50 rounded-lg px-4 py-2">
-            <span className="text-sm font-semibold text-slate-600">3rd</span>
-            {current.third ? (
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold">{current.third.playerName}</span>
-                <button onClick={() => clearBase('third')} className="text-red-400 hover:text-red-600 text-xs transition-all duration-150 ease-in-out active:scale-95">clear</button>
+        <div className="space-y-4 mb-6">
+          {occupiedBases.map(orig => {
+            const runner = runners[orig]!
+            const currentDest = assignments.get(orig) ?? orig
+            return (
+              <div key={orig} className="bg-slate-50 rounded-lg p-3">
+                <div className="text-xs font-semibold text-slate-500 mb-2">
+                  {runner.playerName} <span className="text-slate-400">(was on {BASE_LABELS[orig]})</span>
+                </div>
+                <div className="flex gap-1 flex-wrap">
+                  {DEST_LABELS.map(({ dest, label }) => (
+                    <button
+                      key={dest}
+                      onClick={() => setDest(orig, dest)}
+                      className={`px-2.5 py-1.5 rounded text-xs font-bold transition-all duration-150 active:scale-95 ${
+                        currentDest === dest
+                          ? dest === 'scored'
+                            ? 'bg-green-600 text-white ring-2 ring-green-800'
+                            : dest === 'out'
+                              ? 'bg-red-500 text-white ring-2 ring-red-700'
+                              : 'bg-blue-600 text-white ring-2 ring-blue-800'
+                          : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            ) : (
-              <span className="text-xs text-slate-400">empty</span>
-            )}
-          </div>
+            )
+          })}
 
-          {/* Second base */}
-          <div className="flex items-center justify-between bg-slate-50 rounded-lg px-4 py-2">
-            <span className="text-sm font-semibold text-slate-600">2nd</span>
-            {current.second ? (
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold">{current.second.playerName}</span>
-                <button onClick={() => clearBase('second')} className="text-red-400 hover:text-red-600 text-xs transition-all duration-150 ease-in-out active:scale-95">clear</button>
-              </div>
-            ) : (
-              <span className="text-xs text-slate-400">empty</span>
-            )}
-          </div>
-
-          {/* First base */}
-          <div className="flex items-center justify-between bg-slate-50 rounded-lg px-4 py-2">
-            <span className="text-sm font-semibold text-slate-600">1st</span>
-            {current.first ? (
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold">{current.first.playerName}</span>
-                <button onClick={() => clearBase('first')} className="text-red-400 hover:text-red-600 text-xs transition-all duration-150 ease-in-out active:scale-95">clear</button>
-              </div>
-            ) : (
-              <span className="text-xs text-slate-400">empty</span>
-            )}
-          </div>
+          {occupiedBases.length === 0 && (
+            <p className="text-sm text-slate-400 text-center py-2">No runners on base</p>
+          )}
         </div>
 
         <div className="flex gap-2">
           <button
             onClick={onCancel}
-            className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 py-2.5 rounded-lg font-semibold transition-all duration-150 ease-in-out active:scale-95"
+            className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 py-2.5 rounded-lg font-semibold transition-all duration-150 active:scale-95"
           >
             Cancel
           </button>
           <button
-            onClick={() => onConfirm(current)}
-            className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-lg font-semibold transition-all duration-150 ease-in-out active:scale-95"
+            onClick={handleConfirm}
+            className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-lg font-semibold transition-all duration-150 active:scale-95"
           >
             Confirm
           </button>

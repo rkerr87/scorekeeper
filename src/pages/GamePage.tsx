@@ -86,11 +86,12 @@ export function GamePage() {
 
     const tempSnapshot = replayGame(tempPlays, lineupUs, lineupThem, game.homeOrAway)
 
-    // If this play could affect runners, show confirmation
+    const hasRunnersOnBase = !!(snapshot.baseRunners.first || snapshot.baseRunners.second || snapshot.baseRunners.third)
     const affectsRunners = data.basesReached.length > 0 ||
       ['SB', 'WP', 'PB', 'BK', 'FC', 'E'].includes(data.playType)
+    const isOut = ['K', 'KL', 'GO', 'FO', 'LO', 'PO', 'SAC', 'DP'].includes(data.playType)
 
-    if (affectsRunners && (snapshot.baseRunners.first || snapshot.baseRunners.second || snapshot.baseRunners.third)) {
+    if (hasRunnersOnBase && (affectsRunners || isOut)) {
       setPendingPlay(data)
       setPendingRunners(tempSnapshot.baseRunners)
       setShowPlayEntry(false)
@@ -99,34 +100,34 @@ export function GamePage() {
     }
   }
 
-  const finalizePlay = (data: PendingPlay, runnerOverrides?: BaseRunners) => {
+  const finalizePlay = (data: PendingPlay, runnerOverrides?: BaseRunners, runsScoredOverride?: number) => {
     const half: HalfInning = snapshot.half
     const batterPos = half === usBattingHalf
       ? snapshot.currentBatterUs
       : snapshot.currentBatterThem
 
-    // Compute runs scored via engine replay
-    const tempPlays = [...plays, {
-      id: undefined,
-      gameId: gId,
-      sequenceNumber: plays.length + 1,
-      inning: snapshot.inning,
-      half,
-      batterOrderPosition: batterPos,
-      ...data,
-      runsScoredOnPlay: 0,
-      rbis: 0,
-      runnerOverrides: runnerOverrides ? {
-        first: runnerOverrides.first,
-        second: runnerOverrides.second,
-        third: runnerOverrides.third,
-      } : undefined,
-      timestamp: new Date(),
-    }]
-    const tempSnapshot = replayGame(tempPlays, lineupUs, lineupThem, game.homeOrAway)
-    const runsScored = half === usBattingHalf
-      ? tempSnapshot.scoreUs - snapshot.scoreUs
-      : tempSnapshot.scoreThem - snapshot.scoreThem
+    let runsScored: number
+
+    if (runnerOverrides !== undefined && runsScoredOverride !== undefined) {
+      runsScored = runsScoredOverride
+    } else {
+      const tempPlays = [...plays, {
+        id: undefined,
+        gameId: gId,
+        sequenceNumber: plays.length + 1,
+        inning: snapshot.inning,
+        half,
+        batterOrderPosition: batterPos,
+        ...data,
+        runsScoredOnPlay: 0,
+        rbis: 0,
+        timestamp: new Date(),
+      }]
+      const tempSnapshot = replayGame(tempPlays, lineupUs, lineupThem, game.homeOrAway)
+      runsScored = half === usBattingHalf
+        ? tempSnapshot.scoreUs - snapshot.scoreUs
+        : tempSnapshot.scoreThem - snapshot.scoreThem
+    }
 
     recordPlay({
       inning: snapshot.inning,
@@ -150,9 +151,9 @@ export function GamePage() {
     setPendingRunners(null)
   }
 
-  const handleRunnerConfirm = (runners: BaseRunners) => {
+  const handleRunnerConfirm = (result: { runners: BaseRunners; runsScored: number }) => {
     if (pendingPlay) {
-      finalizePlay(pendingPlay, runners)
+      finalizePlay(pendingPlay, result.runners, result.runsScored)
     }
   }
 
