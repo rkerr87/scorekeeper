@@ -24,7 +24,7 @@ const SIMPLE_PLAYS: Record<string, { playType: PlayType; basesReached: number[];
   'SAC': { playType: 'SAC', basesReached: [], isAtBat: true },
 }
 
-export function parseShorthand(input: string): ParsedPlay {
+export function parseShorthand(input: string): ParsedPlay | null {
   const trimmed = input.trim().toUpperCase()
 
   if (SIMPLE_PLAYS[trimmed]) {
@@ -73,8 +73,7 @@ export function parseShorthand(input: string): ParsedPlay {
     return { playType: 'E', fieldersInvolved: [parseInt(errorMatch[1])], basesReached: [1], isAtBat: true }
   }
 
-  // Fallback
-  return { playType: 'K', fieldersInvolved: [], basesReached: [], isAtBat: true }
+  return null
 }
 
 export function generateNotation(playType: PlayType, fieldersInvolved: number[]): string {

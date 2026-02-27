@@ -62,4 +62,16 @@ describe('PlayEntryPanel', () => {
     render(<PlayEntryPanel batterName="John" onPlayRecorded={() => {}} onClose={() => {}} />)
     expect(screen.getByPlaceholderText(/shorthand/i)).toBeInTheDocument()
   })
+
+  it('should show error and not call onPlayRecorded for invalid shorthand', async () => {
+    const user = userEvent.setup()
+    const onPlayRecorded = vi.fn()
+    render(<PlayEntryPanel batterName="John" onPlayRecorded={onPlayRecorded} onClose={() => {}} />)
+
+    await user.type(screen.getByPlaceholderText(/shorthand/i), '???')
+    await user.click(screen.getByRole('button', { name: /^enter$/i }))
+
+    expect(onPlayRecorded).not.toHaveBeenCalled()
+    expect(screen.getByText(/unrecognized/i)).toBeInTheDocument()
+  })
 })

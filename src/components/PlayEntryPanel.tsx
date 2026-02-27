@@ -56,6 +56,7 @@ export function PlayEntryPanel({ batterName, onPlayRecorded, onClose }: PlayEntr
   const [fieldingPlayType, setFieldingPlayType] = useState<PlayType>('GO')
   const [selectedPositions, setSelectedPositions] = useState<number[]>([])
   const [shorthand, setShorthand] = useState('')
+  const [shorthandError, setShorthandError] = useState('')
 
   const handleAddPitch = (p: PitchResult) => setPitches([...pitches, p])
   const handleRemovePitch = () => setPitches(pitches.slice(0, -1))
@@ -100,6 +101,11 @@ export function PlayEntryPanel({ batterName, onPlayRecorded, onClose }: PlayEntr
   const handleShorthandSubmit = () => {
     if (!shorthand.trim()) return
     const parsed = parseShorthand(shorthand)
+    if (!parsed) {
+      setShorthandError(`Unrecognized shorthand: "${shorthand}"`)
+      return
+    }
+    setShorthandError('')
     onPlayRecorded({
       ...parsed,
       notation: generateNotation(parsed.playType, parsed.fieldersInvolved),
@@ -181,7 +187,7 @@ export function PlayEntryPanel({ batterName, onPlayRecorded, onClose }: PlayEntr
                 type="text"
                 placeholder="Shorthand (e.g. 6-3, 1B7, F8)"
                 value={shorthand}
-                onChange={e => setShorthand(e.target.value)}
+                onChange={e => { setShorthand(e.target.value); setShorthandError('') }}
                 onKeyDown={e => e.key === 'Enter' && handleShorthandSubmit()}
                 className="flex-1 border border-slate-300 rounded px-3 py-2 text-sm font-mono"
               />
@@ -193,6 +199,9 @@ export function PlayEntryPanel({ batterName, onPlayRecorded, onClose }: PlayEntr
                 Enter
               </button>
             </div>
+            {shorthandError && (
+              <p className="text-red-600 text-xs mt-1">{shorthandError}</p>
+            )}
           </>
         )}
 
