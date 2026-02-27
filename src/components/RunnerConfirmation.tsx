@@ -85,7 +85,10 @@ export function RunnerConfirmation({ runners, onConfirm, onCancel, initialRunsSc
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl p-6 max-w-sm w-full mx-4">
-        <h3 className="text-lg font-bold text-slate-900 mb-4">Confirm Runners</h3>
+        <div className="mb-4">
+          <h3 className="text-lg font-bold text-slate-900">Where did they end up?</h3>
+          <p className="text-xs text-slate-500 mt-0.5">The app made its best guess — tap to correct any runner.</p>
+        </div>
 
         <div className="space-y-4 mb-6">
           {occupiedBases.map(orig => {

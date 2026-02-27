@@ -12,6 +12,12 @@ describe('RunnerConfirmation', () => {
     third: { playerName: 'Bob', orderPosition: 2 },
   }
 
+  it('should display an instructional title and subtitle', () => {
+    render(<RunnerConfirmation runners={runners} onConfirm={() => {}} onCancel={() => {}} />)
+    expect(screen.getByText(/where did they end up/i)).toBeInTheDocument()
+    expect(screen.getByText(/best guess/i)).toBeInTheDocument()
+  })
+
   it('should display current base runners with their names', () => {
     render(<RunnerConfirmation runners={runners} onConfirm={() => {}} onCancel={() => {}} />)
     expect(screen.getByText(/alice/i)).toBeInTheDocument()
