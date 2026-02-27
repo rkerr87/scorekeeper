@@ -8,6 +8,7 @@ interface RunnerConfirmationProps {
   runners: BaseRunners
   onConfirm: (result: { runners: BaseRunners; runsScored: number }) => void
   onCancel: () => void
+  initialRunsScored?: number
 }
 
 const DEST_LABELS: { dest: RunnerDest; label: string }[] = [
@@ -35,9 +36,10 @@ function initAssignments(runners: BaseRunners): Map<OrigBase, RunnerDest> {
 function computeResult(
   runners: BaseRunners,
   assignments: Map<OrigBase, RunnerDest>,
+  initialRunsScored: number,
 ): { runners: BaseRunners; runsScored: number } {
   const result: BaseRunners = { first: null, second: null, third: null }
-  let runsScored = 0
+  let runsScored = initialRunsScored
 
   const ORIG_BASES: OrigBase[] = ['third', 'second', 'first']
   for (const orig of ORIG_BASES) {
@@ -55,7 +57,7 @@ function computeResult(
   return { runners: result, runsScored }
 }
 
-export function RunnerConfirmation({ runners, onConfirm, onCancel }: RunnerConfirmationProps) {
+export function RunnerConfirmation({ runners, onConfirm, onCancel, initialRunsScored = 0 }: RunnerConfirmationProps) {
   const [assignments, setAssignments] = useState<Map<OrigBase, RunnerDest>>(() => initAssignments(runners))
   const [error, setError] = useState<string | null>(null)
 
@@ -75,7 +77,7 @@ export function RunnerConfirmation({ runners, onConfirm, onCancel }: RunnerConfi
       return
     }
     setError(null)
-    onConfirm(computeResult(runners, assignments))
+    onConfirm(computeResult(runners, assignments, initialRunsScored))
   }
 
   const occupiedBases: OrigBase[] = (['third', 'second', 'first'] as OrigBase[]).filter(b => runners[b] !== null)
@@ -131,7 +133,7 @@ export function RunnerConfirmation({ runners, onConfirm, onCancel }: RunnerConfi
             onClick={onCancel}
             className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 py-2.5 rounded-lg font-semibold transition-all duration-150 active:scale-95"
           >
-            Cancel
+            Cancel Play
           </button>
           <button
             onClick={handleConfirm}

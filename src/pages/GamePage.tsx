@@ -38,6 +38,7 @@ export function GamePage() {
   const [showPlayEntry, setShowPlayEntry] = useState(false)
   const [pendingPlay, setPendingPlay] = useState<PendingPlay | null>(null)
   const [pendingRunners, setPendingRunners] = useState<BaseRunners | null>(null)
+  const [pendingPreRunsScored, setPendingPreRunsScored] = useState(0)
 
   const gId = parseInt(gameId ?? '0')
 
@@ -122,9 +123,14 @@ export function GamePage() {
       ['SB', 'WP', 'PB', 'BK', 'FC', 'E'].includes(data.playType)
     const isOut = ['K', 'KL', 'GO', 'FO', 'LO', 'PO', 'SAC', 'DP'].includes(data.playType)
 
+    const preRunsScored = snapshot.half === usBattingHalf
+      ? tempSnapshot.scoreUs - snapshot.scoreUs
+      : tempSnapshot.scoreThem - snapshot.scoreThem
+
     if (hasRunnersOnBase && (affectsRunners || isOut)) {
       setPendingPlay(data)
       setPendingRunners(tempSnapshot.baseRunners)
+      setPendingPreRunsScored(preRunsScored)
       setShowPlayEntry(false)
     } else {
       finalizePlay(data)
@@ -180,6 +186,7 @@ export function GamePage() {
     setShowPlayEntry(false)
     setPendingPlay(null)
     setPendingRunners(null)
+    setPendingPreRunsScored(0)
   }
 
   const handleRunnerConfirm = (result: { runners: BaseRunners; runsScored: number }) => {
@@ -191,6 +198,7 @@ export function GamePage() {
   const handleRunnerCancel = () => {
     setPendingPlay(null)
     setPendingRunners(null)
+    setPendingPreRunsScored(0)
   }
 
   return (
@@ -271,6 +279,7 @@ export function GamePage() {
       {pendingRunners && (
         <RunnerConfirmation
           runners={pendingRunners}
+          initialRunsScored={pendingPreRunsScored}
           onConfirm={handleRunnerConfirm}
           onCancel={handleRunnerCancel}
         />
@@ -278,7 +287,7 @@ export function GamePage() {
 
       {/* Toast notification */}
       {pendingToast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-5 py-2.5 rounded-full text-sm font-semibold shadow-lg z-50">
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-5 py-2.5 rounded-full text-sm font-semibold shadow-lg z-50">
           {pendingToast}
         </div>
       )}

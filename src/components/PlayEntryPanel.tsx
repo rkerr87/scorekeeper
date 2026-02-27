@@ -126,19 +126,23 @@ export function PlayEntryPanel({ batterName, baseRunners, onPlayRecorded, onClos
     }
   }
 
-  const computeSbOverride = (stealing: 'first' | 'second' | 'third') => {
+  const computeSbOverride = (stealing: 'first' | 'second') => {
     const runners = baseRunners ?? { first: null, second: null, third: null }
     const result = { first: runners.first, second: runners.second, third: runners.third }
     const runner = runners[stealing]
     if (!runner) return result
     result[stealing] = null
     if (stealing === 'first') result.second = runner
-    else if (stealing === 'second') result.third = runner
-    else result.third = null  // stealing home — clear 3rd, RunnerConfirmation handles the score
+    else result.third = runner  // stealing === 'second'
     return result
   }
 
   const handleSbRunnerSelect = (stealing: 'first' | 'second' | 'third') => {
+    if (stealing === 'third') {
+      // Stealing home — no override; engine advances the 3rd-base runner to score
+      onPlayRecorded({ playType: 'SB', notation: 'SB', fieldersInvolved: [], basesReached: [], pitches, isAtBat: false })
+      return
+    }
     onPlayRecorded({
       playType: 'SB',
       notation: 'SB',
@@ -151,7 +155,7 @@ export function PlayEntryPanel({ batterName, baseRunners, onPlayRecorded, onClos
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-0 bg-white border-t-2 border-slate-300 shadow-2xl max-h-[80vh] overflow-y-auto z-50 transition-transform duration-200">
+    <div className="fixed inset-x-0 bottom-0 bg-white border-t-2 border-slate-300 shadow-2xl max-h-[80vh] overflow-y-auto z-50" style={{ animation: 'slideUp 200ms ease-out' }}>
       <div className="p-4">
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
