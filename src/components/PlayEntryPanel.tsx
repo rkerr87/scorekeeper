@@ -17,6 +17,9 @@ interface PlayRecordedData {
 interface PlayEntryPanelProps {
   batterName: string
   baseRunners?: BaseRunners
+  pitches: PitchResult[]
+  onAddPitch: (pitch: PitchResult) => void
+  onRemovePitch: () => void
   onPlayRecorded: (data: PlayRecordedData) => void
   onClose: () => void
 }
@@ -52,16 +55,12 @@ const SPECIAL_PLAYS: { label: string; playType: PlayType; basesReached: number[]
   { label: 'BK', playType: 'BK', basesReached: [], isAtBat: false },
 ]
 
-export function PlayEntryPanel({ batterName, baseRunners, onPlayRecorded, onClose }: PlayEntryPanelProps) {
-  const [pitches, setPitches] = useState<PitchResult[]>([])
+export function PlayEntryPanel({ batterName, baseRunners, pitches, onAddPitch, onRemovePitch, onPlayRecorded, onClose }: PlayEntryPanelProps) {
   const [mode, setMode] = useState<PanelMode>('select')
   const [fieldingPlayType, setFieldingPlayType] = useState<PlayType>('GO')
   const [selectedPositions, setSelectedPositions] = useState<number[]>([])
   const [shorthand, setShorthand] = useState('')
   const [shorthandError, setShorthandError] = useState('')
-
-  const handleAddPitch = (p: PitchResult) => setPitches([...pitches, p])
-  const handleRemovePitch = () => setPitches(pitches.slice(0, -1))
 
   const recordSimplePlay = (playType: PlayType, basesReached: number[], isAtBat = true) => {
     onPlayRecorded({
@@ -168,7 +167,7 @@ export function PlayEntryPanel({ batterName, baseRunners, onPlayRecorded, onClos
 
         {/* Pitch tracker */}
         <div className="mb-4">
-          <PitchTracker pitches={pitches} onAddPitch={handleAddPitch} onRemovePitch={handleRemovePitch} />
+          <PitchTracker pitches={pitches} onAddPitch={onAddPitch} onRemovePitch={onRemovePitch} />
         </div>
 
         {mode === 'select' && (

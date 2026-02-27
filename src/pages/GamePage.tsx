@@ -39,8 +39,10 @@ export function GamePage() {
   // visible toast message. The effect below schedules its clearance after 3 seconds.
   const [pendingToast, setPendingToast] = useState<string | null>(null)
   const [showPlayEntry, setShowPlayEntry] = useState(false)
+  const [currentAtBatPitches, setCurrentAtBatPitches] = useState<PitchResult[]>([])
   const [pendingPlay, setPendingPlay] = useState<PendingPlay | null>(null)
   const [pendingRunners, setPendingRunners] = useState<BaseRunners | null>(null)
+  const [pendingPrePlayRunners, setPendingPrePlayRunners] = useState<BaseRunners | null>(null)
   const [pendingPreRunsScored, setPendingPreRunsScored] = useState(0)
   const [gameOverDismissed, setGameOverDismissed] = useState(false)
 
@@ -83,6 +85,7 @@ export function GamePage() {
     const halfLabel = snapshot.half === 'top' ? 'Top' : 'Bot'
     setTrackedHalfKey(halfKey)
     setActiveTab(snapshot.half === usBattingHalf ? 'us' : 'them')
+    setCurrentAtBatPitches([])
     setPendingToast(`Side retired — ${halfLabel} ${snapshot.inning}`)
   } else if (trackedHalfKey === '') {
     // First render after game loads — record the initial half key without changing the tab
@@ -105,6 +108,9 @@ export function GamePage() {
   const currentBatterSlot = snapshot.half === usBattingHalf
     ? lineupUs.battingOrder.find(s => s.orderPosition === snapshot.currentBatterUs)
     : lineupThem.battingOrder.find(s => s.orderPosition === snapshot.currentBatterThem)
+
+  const handleAddPitch = (p: PitchResult) => setCurrentAtBatPitches(prev => [...prev, p])
+  const handleRemovePitch = () => setCurrentAtBatPitches(prev => prev.slice(0, -1))
 
   const handlePlayRecorded = (data: PendingPlay) => {
     // Determine the actual current batter position based on current half
@@ -140,6 +146,7 @@ export function GamePage() {
 
     if (hasRunnersOnBase && (affectsRunners || isOut)) {
       setPendingPlay(data)
+      setPendingPrePlayRunners(snapshot.baseRunners)
       setPendingRunners(tempSnapshot.baseRunners)
       setPendingPreRunsScored(preRunsScored)
       setShowPlayEntry(false)
@@ -194,10 +201,12 @@ export function GamePage() {
         : undefined,
     })
 
+    setCurrentAtBatPitches([])
     setLastRecordedPlay({ playType: data.playType, notation: data.notation })
     setShowPlayEntry(false)
     setPendingPlay(null)
     setPendingRunners(null)
+    setPendingPrePlayRunners(null)
     setPendingPreRunsScored(0)
   }
 
@@ -210,6 +219,7 @@ export function GamePage() {
   const handleRunnerCancel = () => {
     setPendingPlay(null)
     setPendingRunners(null)
+    setPendingPrePlayRunners(null)
     setPendingPreRunsScored(0)
   }
 
@@ -294,7 +304,7 @@ export function GamePage() {
           Record Play
         </button>
         <button
-          onClick={undoLastPlay}
+          onClick={() => { undoLastPlay(); setCurrentAtBatPitches([]) }}
           disabled={plays.length === 0}
           className="bg-slate-200 hover:bg-slate-300 disabled:bg-slate-100 disabled:text-slate-400 text-slate-700 py-2.5 px-4 rounded-lg font-bold transition-all duration-150 ease-in-out active:scale-95"
         >
@@ -307,6 +317,9 @@ export function GamePage() {
         <PlayEntryPanel
           batterName={currentBatterSlot?.playerName ?? 'Unknown'}
           baseRunners={snapshot.baseRunners}
+          pitches={currentAtBatPitches}
+          onAddPitch={handleAddPitch}
+          onRemovePitch={handleRemovePitch}
           onPlayRecorded={handlePlayRecorded}
           onClose={() => setShowPlayEntry(false)}
         />
@@ -315,6 +328,7 @@ export function GamePage() {
       {/* Runner confirmation */}
       {pendingRunners && (
         <RunnerConfirmation
+          prePlayRunners={pendingPrePlayRunners ?? undefined}
           runners={pendingRunners}
           initialRunsScored={pendingPreRunsScored}
           onConfirm={handleRunnerConfirm}

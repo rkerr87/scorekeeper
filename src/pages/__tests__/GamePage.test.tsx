@@ -257,6 +257,44 @@ describe('GamePage', () => {
     })
   })
 
+  it('should preserve pitch tracking when play entry panel is closed and reopened', async () => {
+    const user = userEvent.setup()
+    const gameId = await seedFullGame()
+    renderGame(gameId)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /record play/i })).toBeInTheDocument()
+    })
+
+    // Open play entry panel and add a ball
+    await user.click(screen.getByRole('button', { name: /record play/i }))
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /ball/i })).toBeInTheDocument()
+    })
+    await user.click(screen.getByRole('button', { name: /ball/i }))
+
+    // Verify count shows 1-0
+    expect(screen.getByText('1-0')).toBeInTheDocument()
+    expect(screen.getByText('1 pitches')).toBeInTheDocument()
+
+    // Close the panel
+    await user.click(screen.getByText('\u00D7'))
+
+    // Panel should be gone
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /ball/i })).not.toBeInTheDocument()
+    })
+
+    // Reopen the panel
+    await user.click(screen.getByRole('button', { name: /record play/i }))
+
+    // Pitch count should be preserved
+    await waitFor(() => {
+      expect(screen.getByText('1-0')).toBeInTheDocument()
+      expect(screen.getByText('1 pitches')).toBeInTheDocument()
+    })
+  })
+
   it('should show toast and auto-switch tab to Us after top half ends (home game)', async () => {
     const user = userEvent.setup()
     const gameId = await seedFullGame()
