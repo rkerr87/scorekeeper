@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { Game, Team } from '../engine/types'
-import { getAllTeams, getGamesForTeam, createGame } from '../db/gameService'
+import { getAllTeams, getGamesForTeam, createGame, deleteGame } from '../db/gameService'
 
 export function HomePage() {
   const navigate = useNavigate()
@@ -10,6 +10,7 @@ export function HomePage() {
   const [showNewGame, setShowNewGame] = useState(false)
   const [opponentName, setOpponentName] = useState('')
   const [homeOrAway, setHomeOrAway] = useState<'home' | 'away'>('home')
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -37,8 +38,60 @@ export function HomePage() {
     navigate(`/game/${game.id}/setup`)
   }
 
+  const handleDeleteGame = async (id: number) => {
+    await deleteGame(id)
+    setGames(prev => prev.filter(g => g.id !== id))
+    setConfirmDeleteId(null)
+  }
+
   const inProgressGames = games.filter(g => g.status === 'in_progress')
   const completedGames = games.filter(g => g.status === 'completed')
+
+  function GameRow({ game, linkTo }: { game: Game; linkTo: string }) {
+    const isConfirming = confirmDeleteId === game.id
+    const label = `${game.homeOrAway === 'home' ? 'Home' : 'Away'} \u00b7 ${game.code}`
+
+    if (isConfirming) {
+      return (
+        <div className="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-4 py-3">
+          <div>
+            <div className="font-semibold text-slate-900">vs {game.opponentName}</div>
+            <div className="text-xs text-slate-500">{label}</div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setConfirmDeleteId(null)}
+              className="text-sm px-3 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg font-semibold"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => handleDeleteGame(game.id!)}
+              className="text-sm px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold"
+            >
+              Yes, delete
+            </button>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div className="flex items-stretch bg-white border border-slate-200 rounded-lg hover:bg-slate-50">
+        <Link to={linkTo} className="flex-1 px-4 py-3">
+          <div className="font-semibold text-slate-900">vs {game.opponentName}</div>
+          <div className="text-xs text-slate-500">{label}</div>
+        </Link>
+        <button
+          onClick={() => setConfirmDeleteId(game.id!)}
+          aria-label={`Delete game vs ${game.opponentName}`}
+          className="px-3 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-r-lg transition-colors"
+        >
+          ✕
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-lg mx-auto p-6">
@@ -113,16 +166,7 @@ export function HomePage() {
           <h2 className="text-lg font-semibold text-slate-800 mb-3">In Progress</h2>
           <div className="space-y-2">
             {inProgressGames.map(g => (
-              <Link
-                key={g.id}
-                to={`/game/${g.id}`}
-                className="block bg-white border border-slate-200 rounded-lg px-4 py-3 hover:bg-slate-50"
-              >
-                <div className="font-semibold text-slate-900">vs {g.opponentName}</div>
-                <div className="text-xs text-slate-500">
-                  {g.homeOrAway === 'home' ? 'Home' : 'Away'} &middot; {g.code}
-                </div>
-              </Link>
+              <GameRow key={g.id} game={g} linkTo={`/game/${g.id}`} />
             ))}
           </div>
         </div>
@@ -141,16 +185,7 @@ export function HomePage() {
           <h2 className="text-lg font-semibold text-slate-800 mb-3">Completed</h2>
           <div className="space-y-2">
             {completedGames.map(g => (
-              <Link
-                key={g.id}
-                to={`/game/${g.id}/stats`}
-                className="block bg-white border border-slate-200 rounded-lg px-4 py-3 hover:bg-slate-50"
-              >
-                <div className="font-semibold text-slate-900">vs {g.opponentName}</div>
-                <div className="text-xs text-slate-500">
-                  {g.homeOrAway === 'home' ? 'Home' : 'Away'} &middot; {g.code}
-                </div>
-              </Link>
+              <GameRow key={g.id} game={g} linkTo={`/game/${g.id}/stats`} />
             ))}
           </div>
         </div>
