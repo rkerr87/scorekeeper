@@ -24,7 +24,8 @@ export function Scoresheet({
   const innings = Array.from({ length: Math.max(maxInnings, currentInning) }, (_, i) => i + 1)
 
   const getPlayForCell = (batterPosition: number, inning: number): Play | undefined => {
-    return plays.find(p => p.batterOrderPosition === batterPosition && p.inning === inning && p.isAtBat)
+    const candidates = plays.filter(p => p.batterOrderPosition === batterPosition && p.inning === inning && p.isAtBat)
+    return candidates.reduce<Play | undefined>((last, p) => (last === undefined || p.sequenceNumber > last.sequenceNumber) ? p : last, undefined)
   }
 
   return (
