@@ -5,9 +5,10 @@ import { ScoreSummary } from '../components/ScoreSummary'
 import { Scoresheet } from '../components/Scoresheet'
 import { PlayEntryPanel } from '../components/PlayEntryPanel'
 import { RunnerConfirmation } from '../components/RunnerConfirmation'
-import type { BaseRunner, BaseRunners, HalfInning, PlayType, PitchResult } from '../engine/types'
+import type { BaseRunner, BaseRunners, HalfInning, Play, PlayType, PitchResult } from '../engine/types'
 import { replayGame } from '../engine/engine'
 import { BeginnerGuide } from '../components/BeginnerGuide'
+import { PlayDetailPopover } from '../components/PlayDetailPopover'
 
 type ActiveTab = 'us' | 'them'
 
@@ -26,7 +27,7 @@ export function GamePage() {
   const navigate = useNavigate()
   const {
     game, lineupUs, lineupThem, plays, snapshot,
-    loadGame, recordPlay, undoLastPlay,
+    loadGame, recordPlay, undoLastPlay, undoFromPlay,
   } = useGame()
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('us')
@@ -46,6 +47,7 @@ export function GamePage() {
   const [pendingPreRunsScored, setPendingPreRunsScored] = useState(0)
   const [gameOverDismissed, setGameOverDismissed] = useState(false)
   const [showStrikeoutConfirm, setShowStrikeoutConfirm] = useState(false)
+  const [selectedPlay, setSelectedPlay] = useState<Play | null>(null)
 
   const gId = parseInt(gameId ?? '0')
 
@@ -329,7 +331,18 @@ export function GamePage() {
           currentInning={snapshot.inning}
           currentBatterPosition={currentBatter}
           maxInnings={6}
-          onCellClick={() => setShowPlayEntry(true)}
+          onCellClick={(batterPosition, inning, play) => {
+            if (play) {
+              setSelectedPlay(play)
+            } else if (
+              batterPosition === currentBatter &&
+              inning === snapshot.inning &&
+              !snapshot.isGameOver
+            ) {
+              setShowPlayEntry(true)
+            }
+            // Empty future cell: do nothing
+          }}
           runsMap={activeTab === 'us' ? snapshot.runsScoredByPositionUs : snapshot.runsScoredByPositionThem}
         />
       </div>
@@ -403,6 +416,24 @@ export function GamePage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Play detail popover */}
+      {selectedPlay && (
+        <PlayDetailPopover
+          play={selectedPlay}
+          playsAfterCount={plays.filter(p => p.sequenceNumber > selectedPlay.sequenceNumber).length}
+          onEdit={() => {
+            // For now: close popover (edit functionality is future work)
+            setSelectedPlay(null)
+          }}
+          onUndo={async (playId) => {
+            await undoFromPlay(playId)
+            setSelectedPlay(null)
+            setCurrentAtBatPitches([])
+          }}
+          onClose={() => setSelectedPlay(null)}
+        />
       )}
 
       {/* Runner confirmation */}

@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useCallback } from 'react'
 import type { ReactNode } from 'react'
 import type { Game, Lineup, Play, GameSnapshot, HalfInning, PlayType, PitchResult, HomeOrAway, BaseRunnerOverride } from '../engine/types'
 import { replayGame } from '../engine/engine'
-import { getGame, getLineupsForGame, getPlaysForGame, addPlay, deleteLastPlay, updatePlay } from '../db/gameService'
+import { getGame, getLineupsForGame, getPlaysForGame, addPlay, deleteLastPlay, updatePlay, deletePlayAndSubsequent } from '../db/gameService'
 
 interface RecordPlayInput {
   inning: number
@@ -28,6 +28,7 @@ interface GameContextValue {
   loadGame: (gameId: number) => Promise<void>
   recordPlay: (input: RecordPlayInput) => Promise<void>
   undoLastPlay: () => Promise<void>
+  undoFromPlay: (playId: number) => Promise<void>
   editPlay: (playId: number, updates: Partial<Play>) => Promise<void>
   clearGame: () => void
 }
@@ -86,6 +87,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
     recompute(refreshed, lineupUs, lineupThem, game.homeOrAway)
   }, [game, lineupUs, lineupThem, recompute])
 
+  const undoFromPlay = useCallback(async (playId: number) => {
+    if (!game?.id) return
+    await deletePlayAndSubsequent(game.id, playId)
+    const refreshed = await getPlaysForGame(game.id)
+    setPlays(refreshed)
+    recompute(refreshed, lineupUs, lineupThem, game.homeOrAway)
+  }, [game, lineupUs, lineupThem, recompute])
+
   const editPlay = useCallback(async (playId: number, updates: Partial<Play>) => {
     if (!game?.id) return
     await updatePlay(playId, updates)
@@ -105,7 +114,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   return (
     <GameContext.Provider value={{
       game, lineupUs, lineupThem, plays, snapshot,
-      loadGame, recordPlay, undoLastPlay, editPlay, clearGame,
+      loadGame, recordPlay, undoLastPlay, undoFromPlay, editPlay, clearGame,
     }}>
       {children}
     </GameContext.Provider>

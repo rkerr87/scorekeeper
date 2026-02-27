@@ -158,6 +158,15 @@ export async function deleteLastPlay(gameId: number): Promise<void> {
   }
 }
 
+export async function deletePlayAndSubsequent(gameId: number, playId: number): Promise<void> {
+  const plays = await db.plays.where('gameId').equals(gameId).sortBy('sequenceNumber')
+  const targetPlay = plays.find(p => p.id === playId)
+  if (!targetPlay) return
+  const toDelete = plays.filter(p => p.sequenceNumber >= targetPlay.sequenceNumber)
+  const idsToDelete = toDelete.map(p => p.id).filter((id): id is number => id !== undefined)
+  await db.plays.bulkDelete(idsToDelete)
+}
+
 export async function updatePlay(id: number, updates: Partial<Play>): Promise<void> {
   await db.plays.update(id, updates)
 }

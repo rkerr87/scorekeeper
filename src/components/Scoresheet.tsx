@@ -13,7 +13,7 @@ interface ScoresheetProps {
   currentInning: number
   currentBatterPosition: number
   maxInnings: number
-  onCellClick: (batterPosition: number, inning: number) => void
+  onCellClick: (batterPosition: number, inning: number, play?: Play) => void
   runsMap?: Map<number, number>
 }
 
@@ -197,7 +197,7 @@ export function Scoresheet({
                           pitches: play.pitches,
                         } : null}
                         isCurrentBatter={isCurrentBatter}
-                        onClick={() => onCellClick(slot.orderPosition, col.inning)}
+                        onClick={() => onCellClick(slot.orderPosition, col.inning, play)}
                       />
                     </td>
                   )
