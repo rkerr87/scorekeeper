@@ -181,7 +181,7 @@ export function GameSetupPage() {
       <div className="mt-8">
         <button
           onClick={handleStartGame}
-          disabled={battingOrder.length === 0 || opponents.length === 0}
+          disabled={battingOrder.length === 0}
           className="w-full bg-green-600 hover:bg-green-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white py-3 px-4 rounded-lg font-bold text-lg"
         >
           Start Game

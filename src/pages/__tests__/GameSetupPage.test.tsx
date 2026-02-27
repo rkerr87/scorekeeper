@@ -69,6 +69,14 @@ describe('GameSetupPage', () => {
     })
   })
 
+  it('should enable Start Game button when batting order exists but no opponents entered', async () => {
+    const gameId = await seedTeamAndGame()
+    renderSetup(gameId)
+    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument())
+    const startBtn = screen.getByRole('button', { name: /start game/i })
+    expect(startBtn).not.toBeDisabled()
+  })
+
   it('should allow adding an opponent player', async () => {
     const user = userEvent.setup()
     const gameId = await seedTeamAndGame()
