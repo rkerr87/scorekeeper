@@ -1,8 +1,8 @@
 import { createContext, useContext, useState, useCallback } from 'react'
 import type { ReactNode } from 'react'
-import type { Game, Lineup, Play, GameSnapshot, HalfInning, PlayType, PitchResult, HomeOrAway, BaseRunnerOverride } from '../engine/types'
+import type { Game, Lineup, Play, GameSnapshot, HalfInning, PlayType, PitchResult, HomeOrAway, BaseRunnerOverride, Side } from '../engine/types'
 import { replayGame } from '../engine/engine'
-import { getGame, getLineupsForGame, getPlaysForGame, addPlay, deleteLastPlay, updatePlay, deletePlayAndSubsequent } from '../db/gameService'
+import { getGame, getLineupsForGame, getPlaysForGame, addPlay, deleteLastPlay, updatePlay, deletePlayAndSubsequent, saveLineup } from '../db/gameService'
 
 interface RecordPlayInput {
   inning: number
@@ -30,6 +30,12 @@ interface GameContextValue {
   undoLastPlay: () => Promise<void>
   undoFromPlay: (playId: number) => Promise<void>
   editPlay: (playId: number, updates: Partial<Play>) => Promise<void>
+  updateLineupPositions: (
+    side: Side,
+    changes: { orderPosition: number; newPosition: string }[],
+    inning: number,
+    half: HalfInning,
+  ) => Promise<void>
   clearGame: () => void
 }
 
@@ -103,6 +109,43 @@ export function GameProvider({ children }: { children: ReactNode }) {
     recompute(refreshed, lineupUs, lineupThem, game.homeOrAway)
   }, [game, lineupUs, lineupThem, recompute])
 
+  const updateLineupPositions = useCallback(async (
+    side: Side,
+    changes: { orderPosition: number; newPosition: string }[],
+    inning: number,
+    half: HalfInning,
+  ) => {
+    const lineup = side === 'us' ? lineupUs : lineupThem
+    if (!lineup || !game?.id) return
+
+    const updatedOrder = lineup.battingOrder.map(slot => {
+      const change = changes.find(c => c.orderPosition === slot.orderPosition)
+      if (change) {
+        return {
+          ...slot,
+          position: change.newPosition,
+          substitutions: [...slot.substitutions, {
+            inning,
+            half,
+            newPlayerName: slot.playerName,
+            newJerseyNumber: slot.jerseyNumber,
+            newPosition: change.newPosition,
+          }],
+        }
+      }
+      return slot
+    })
+
+    await saveLineup(game.id, side, updatedOrder)
+    // Reload to pick up changes
+    const lineups = await getLineupsForGame(game.id)
+    const lus = lineups.find(l => l.side === 'us') ?? null
+    const lth = lineups.find(l => l.side === 'them') ?? null
+    setLineupUs(lus)
+    setLineupThem(lth)
+    recompute(plays, lus, lth, game.homeOrAway)
+  }, [game, lineupUs, lineupThem, plays, recompute])
+
   const clearGame = useCallback(() => {
     setGame(null)
     setLineupUs(null)
@@ -114,7 +157,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   return (
     <GameContext.Provider value={{
       game, lineupUs, lineupThem, plays, snapshot,
-      loadGame, recordPlay, undoLastPlay, undoFromPlay, editPlay, clearGame,
+      loadGame, recordPlay, undoLastPlay, undoFromPlay, editPlay, updateLineupPositions, clearGame,
     }}>
       {children}
     </GameContext.Provider>

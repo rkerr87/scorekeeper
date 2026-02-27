@@ -5,10 +5,11 @@ import { ScoreSummary } from '../components/ScoreSummary'
 import { Scoresheet } from '../components/Scoresheet'
 import { PlayEntryPanel } from '../components/PlayEntryPanel'
 import { RunnerConfirmation } from '../components/RunnerConfirmation'
-import type { BaseRunner, BaseRunners, HalfInning, Play, PlayType, PitchResult } from '../engine/types'
+import type { BaseRunner, BaseRunners, HalfInning, Play, PlayType, PitchResult, Side } from '../engine/types'
 import { replayGame } from '../engine/engine'
 import { BeginnerGuide } from '../components/BeginnerGuide'
 import { PlayDetailPopover } from '../components/PlayDetailPopover'
+import { PositionChangeDialog } from '../components/PositionChangeDialog'
 
 type ActiveTab = 'us' | 'them'
 
@@ -27,7 +28,7 @@ export function GamePage() {
   const navigate = useNavigate()
   const {
     game, lineupUs, lineupThem, plays, snapshot,
-    loadGame, recordPlay, undoLastPlay, undoFromPlay,
+    loadGame, recordPlay, undoLastPlay, undoFromPlay, updateLineupPositions,
   } = useGame()
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('us')
@@ -48,6 +49,7 @@ export function GamePage() {
   const [gameOverDismissed, setGameOverDismissed] = useState(false)
   const [showStrikeoutConfirm, setShowStrikeoutConfirm] = useState(false)
   const [selectedPlay, setSelectedPlay] = useState<Play | null>(null)
+  const [showPosChange, setShowPosChange] = useState(false)
 
   const gId = parseInt(gameId ?? '0')
 
@@ -275,6 +277,16 @@ export function GamePage() {
     setPendingPreRunsScored(0)
   }
 
+  // Defensive team lineup — position changes apply to the team NOT batting
+  const defensiveLineup = snapshot.half === usBattingHalf ? lineupThem : lineupUs
+
+  const handlePositionChange = async (changes: { orderPosition: number; newPosition: string }[]) => {
+    // Position changes are for the defensive team
+    const side: Side = snapshot.half === usBattingHalf ? 'them' : 'us'
+    await updateLineupPositions(side, changes, snapshot.inning, snapshot.half)
+    setShowPosChange(false)
+  }
+
   return (
     <div className="h-screen flex flex-col bg-slate-50">
       {/* Persistent back button */}
@@ -371,6 +383,13 @@ export function GamePage() {
           Record Play
         </button>
         <button
+          onClick={() => setShowPosChange(true)}
+          disabled={snapshot.isGameOver}
+          className="bg-slate-200 hover:bg-slate-300 disabled:bg-slate-100 disabled:text-slate-400 text-slate-700 py-2.5 px-4 rounded-lg font-bold transition-all duration-150 ease-in-out active:scale-95"
+        >
+          Pos Change
+        </button>
+        <button
           onClick={() => { undoLastPlay(); setCurrentAtBatPitches([]) }}
           disabled={plays.length === 0}
           className="bg-slate-200 hover:bg-slate-300 disabled:bg-slate-100 disabled:text-slate-400 text-slate-700 py-2.5 px-4 rounded-lg font-bold transition-all duration-150 ease-in-out active:scale-95"
@@ -433,6 +452,15 @@ export function GamePage() {
             setCurrentAtBatPitches([])
           }}
           onClose={() => setSelectedPlay(null)}
+        />
+      )}
+
+      {/* Position change dialog */}
+      {showPosChange && (
+        <PositionChangeDialog
+          lineup={defensiveLineup.battingOrder}
+          onConfirm={handlePositionChange}
+          onCancel={() => setShowPosChange(false)}
         />
       )}
 
