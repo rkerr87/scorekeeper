@@ -320,7 +320,7 @@ export function GamePage() {
 
       {/* Game-over overlay */}
       {snapshot.isGameOver && !gameOverDismissed && (
-        <div className="fixed inset-0 bg-slate-900/80 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-slate-900/80 flex items-center justify-center z-60">
           <div className="bg-white rounded-2xl p-8 max-w-sm w-full mx-4 text-center">
             <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Game Over</div>
             <div className="text-5xl font-bold text-slate-900 mb-1">
