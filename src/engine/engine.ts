@@ -101,9 +101,10 @@ function applyBaseRunning(
   switch (play.playType) {
     case '1B': {
       if (runners.third) runsScored++
-      if (runners.second) runsScored++
+      // Runner on 2nd advances to 3rd (default); scorekeeper can override via RunnerConfirmation
+      const newThird = runners.second
       const newSecond = runners.first
-      snapshot.baseRunners = { first: batter, second: newSecond, third: null }
+      snapshot.baseRunners = { first: batter, second: newSecond, third: newThird }
       break
     }
     case '2B': {
@@ -210,9 +211,10 @@ function applyBaseRunning(
     }
     case 'E': {
       if (runners.third) runsScored++
-      if (runners.second) runsScored++
+      // Runner on 2nd advances to 3rd (default); scorekeeper can override via RunnerConfirmation
+      const newThird: BaseRunner | null = runners.second
       const newSecond: BaseRunner | null = runners.first
-      snapshot.baseRunners = { first: batter, second: newSecond, third: null }
+      snapshot.baseRunners = { first: batter, second: newSecond, third: newThird }
       break
     }
     case 'K':

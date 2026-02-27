@@ -362,3 +362,44 @@ describe('replayGame — isGameOver', () => {
     expect(snapshot.scoreUs).toBe(0) // HR in inning 7 was not processed
   })
 })
+
+describe('replayGame — runner advancement bugs', () => {
+  it('1B with runner on 2nd: batter on 1st, runner on 2nd advances to 3rd', () => {
+    const plays = [
+      makePlay({ sequenceNumber: 1, half: 'top', batterOrderPosition: 1, playType: '2B', basesReached: [1,2] }),
+      makePlay({ sequenceNumber: 2, half: 'top', batterOrderPosition: 2, playType: '1B', basesReached: [1] }),
+    ]
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'away')
+    expect(snapshot.scoreUs).toBe(0)
+    expect(snapshot.baseRunners.first?.orderPosition).toBe(2)  // batter on 1st
+    expect(snapshot.baseRunners.third?.orderPosition).toBe(1)  // runner advanced to 3rd
+    expect(snapshot.baseRunners.second).toBeNull()
+  })
+
+  it('1B with runners on 2nd and 3rd: only runner on 3rd scores, runner on 2nd advances to 3rd', () => {
+    // Use 3 walks to load bases: pos1 on 3rd, pos2 on 2nd, pos3 on 1st
+    const plays = [
+      makePlay({ sequenceNumber: 1, half: 'top', batterOrderPosition: 1, playType: 'BB', basesReached: [1], isAtBat: true }),
+      makePlay({ sequenceNumber: 2, half: 'top', batterOrderPosition: 2, playType: 'BB', basesReached: [1], isAtBat: true }),
+      makePlay({ sequenceNumber: 3, half: 'top', batterOrderPosition: 3, playType: 'BB', basesReached: [1], isAtBat: true }),
+      // pos4 singles: pos1 (on 3rd) scores, pos2 (on 2nd) → 3rd, pos3 (on 1st) → 2nd, pos4 → 1st
+      makePlay({ sequenceNumber: 4, half: 'top', batterOrderPosition: 4, playType: '1B', basesReached: [1] }),
+    ]
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'away')
+    expect(snapshot.scoreUs).toBe(1)  // only pos1 (was on 3rd) scores
+    expect(snapshot.baseRunners.third?.orderPosition).toBe(2)  // pos2 (was on 2nd) advances to 3rd
+    expect(snapshot.baseRunners.second?.orderPosition).toBe(3) // pos3 (was on 1st) advances to 2nd
+    expect(snapshot.baseRunners.first?.orderPosition).toBe(4)  // batter on 1st
+  })
+
+  it('E with runner on 2nd should advance runner to 3rd, not score', () => {
+    const plays = [
+      makePlay({ sequenceNumber: 1, half: 'top', batterOrderPosition: 1, playType: '2B', basesReached: [1,2] }),
+      makePlay({ sequenceNumber: 2, half: 'top', batterOrderPosition: 2, playType: 'E', basesReached: [1] }),
+    ]
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'away')
+    expect(snapshot.scoreUs).toBe(0)
+    expect(snapshot.baseRunners.third?.orderPosition).toBe(1)  // runner advanced to 3rd
+    expect(snapshot.baseRunners.first?.orderPosition).toBe(2)  // batter on 1st
+  })
+})
