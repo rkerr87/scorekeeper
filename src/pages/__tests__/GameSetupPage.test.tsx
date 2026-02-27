@@ -95,4 +95,20 @@ describe('GameSetupPage', () => {
       expect(screen.getByText('Smith')).toBeInTheDocument()
     })
   })
+
+  it('should render drag handles for each player in the batting order', async () => {
+    const gameId = await seedTeamAndGame()
+    renderSetup(gameId)
+    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument())
+    const handles = screen.getAllByRole('button', { name: /drag to reorder/i })
+    expect(handles.length).toBeGreaterThan(0)
+  })
+
+  it('should not render up/down arrow buttons', async () => {
+    const gameId = await seedTeamAndGame()
+    renderSetup(gameId)
+    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument())
+    expect(screen.queryByRole('button', { name: /move up/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /move down/i })).not.toBeInTheDocument()
+  })
 })

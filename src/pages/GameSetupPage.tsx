@@ -3,11 +3,58 @@ import { useParams, useNavigate } from 'react-router-dom'
 import type { Player, LineupSlot } from '../engine/types'
 import { useGame } from '../contexts/GameContext'
 import { getGame, getPlayersForTeam, saveLineup, updateGameStatus } from '../db/gameService'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 interface OpponentPlayer {
   name: string
   jerseyNumber: number
   position: string
+}
+
+interface SortablePlayerRowProps {
+  playerId: number
+  index: number
+  player: Player
+}
+
+function SortablePlayerRow({ playerId, index, player }: SortablePlayerRowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: playerId })
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-center gap-2 bg-white border border-slate-200 rounded px-3 py-2">
+      <button
+        {...attributes}
+        {...listeners}
+        aria-label="Drag to reorder"
+        className="text-slate-400 hover:text-slate-600 cursor-grab active:cursor-grabbing px-1 text-lg leading-none touch-none"
+      >
+        ≡
+      </button>
+      <span className="text-sm font-mono text-slate-400 w-6">{index + 1}.</span>
+      <span className="text-sm font-semibold flex-1">{player.name}</span>
+      <span className="text-xs text-slate-500">#{player.jerseyNumber}</span>
+      <span className="text-xs text-slate-500 w-8">{player.defaultPosition}</span>
+    </div>
+  )
 }
 
 export function GameSetupPage() {
@@ -52,22 +99,20 @@ export function GameSetupPage() {
     setOppPosition('')
   }
 
-  const handleMoveUp = (index: number) => {
-    if (index === 0) return
-    const newOrder = [...battingOrder]
-    const temp = newOrder[index - 1]
-    newOrder[index - 1] = newOrder[index]
-    newOrder[index] = temp
-    setBattingOrder(newOrder)
-  }
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
 
-  const handleMoveDown = (index: number) => {
-    if (index >= battingOrder.length - 1) return
-    const newOrder = [...battingOrder]
-    const temp = newOrder[index + 1]
-    newOrder[index + 1] = newOrder[index]
-    newOrder[index] = temp
-    setBattingOrder(newOrder)
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (over && active.id !== over.id) {
+      setBattingOrder(prev => {
+        const oldIndex = prev.indexOf(active.id as number)
+        const newIndex = prev.indexOf(over.id as number)
+        return arrayMove(prev, oldIndex, newIndex)
+      })
+    }
   }
 
   const handleStartGame = async () => {
@@ -111,22 +156,24 @@ export function GameSetupPage() {
         {/* Our batting order */}
         <div>
           <h2 className="text-lg font-semibold text-slate-800 mb-3">Our Batting Order</h2>
-          <div className="space-y-1">
-            {battingOrder.map((playerId, index) => {
-              const player = players.find(p => p.id === playerId)
-              if (!player) return null
-              return (
-                <div key={playerId} className="flex items-center gap-2 bg-white border border-slate-200 rounded px-3 py-2">
-                  <span className="text-sm font-mono text-slate-400 w-6">{index + 1}.</span>
-                  <span className="text-sm font-semibold flex-1">{player.name}</span>
-                  <span className="text-xs text-slate-500">#{player.jerseyNumber}</span>
-                  <span className="text-xs text-slate-500 w-8">{player.defaultPosition}</span>
-                  <button onClick={() => handleMoveUp(index)} className="text-slate-400 hover:text-slate-700 text-xs px-1">&uarr;</button>
-                  <button onClick={() => handleMoveDown(index)} className="text-slate-400 hover:text-slate-700 text-xs px-1">&darr;</button>
-                </div>
-              )
-            })}
-          </div>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={battingOrder} strategy={verticalListSortingStrategy}>
+              <div className="space-y-1">
+                {battingOrder.map((playerId, index) => {
+                  const player = players.find(p => p.id === playerId)
+                  if (!player) return null
+                  return (
+                    <SortablePlayerRow
+                      key={playerId}
+                      playerId={playerId}
+                      index={index}
+                      player={player}
+                    />
+                  )
+                })}
+              </div>
+            </SortableContext>
+          </DndContext>
         </div>
 
         {/* Opponent lineup */}
