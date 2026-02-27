@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import type { Game, Lineup, Play } from '../engine/types'
 import { getGame, getLineupsForGame, getPlaysForGame } from '../db/gameService'
+import { replayGame } from '../engine/engine'
 import { computePlayerStats } from '../engine/stats'
 
 export function GameStatsPage() {
   const { gameId } = useParams()
   const [game, setGame] = useState<Game | null>(null)
   const [lineupUs, setLineupUs] = useState<Lineup | null>(null)
+  const [lineupThem, setLineupThem] = useState<Lineup | null>(null)
   const [plays, setPlays] = useState<Play[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -20,6 +22,7 @@ export function GameStatsPage() {
       setGame(g)
       const lineups = await getLineupsForGame(gId)
       setLineupUs(lineups.find(l => l.side === 'us') ?? null)
+      setLineupThem(lineups.find(l => l.side === 'them') ?? null)
       const p = await getPlaysForGame(gId)
       setPlays(p)
       setLoading(false)
@@ -28,11 +31,12 @@ export function GameStatsPage() {
   }, [gId])
 
   if (loading) return <div className="p-6">Loading...</div>
-  if (!game || !lineupUs) return <div className="p-6">Game not found.</div>
+  if (!game || !lineupUs || !lineupThem) return <div className="p-6">Game not found.</div>
 
   // us bats bottom when home, top when away
   const usBattingHalf = game.homeOrAway === 'home' ? 'bottom' : 'top'
   const usPlays = plays.filter(p => p.half === usBattingHalf)
+  const snapshot = replayGame(plays, lineupUs, lineupThem, game.homeOrAway)
 
   return (
     <div className="max-w-3xl mx-auto p-6">
@@ -63,7 +67,7 @@ export function GameStatsPage() {
         </thead>
         <tbody>
           {lineupUs.battingOrder.map(slot => {
-            const stats = computePlayerStats(usPlays, slot.orderPosition)
+            const stats = computePlayerStats(usPlays, slot.orderPosition, snapshot.runsScoredByPositionUs.get(slot.orderPosition) ?? 0)
             return (
               <tr key={slot.orderPosition} className="border-t border-slate-100">
                 <td className="px-3 py-2 font-semibold">{slot.playerName}</td>

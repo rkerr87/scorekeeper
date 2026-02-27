@@ -9,6 +9,7 @@ interface ScoresheetProps {
   currentBatterPosition: number
   maxInnings: number
   onCellClick: (batterPosition: number, inning: number) => void
+  runsMap?: Map<number, number>
 }
 
 export function Scoresheet({
@@ -18,6 +19,7 @@ export function Scoresheet({
   currentBatterPosition,
   maxInnings,
   onCellClick,
+  runsMap,
 }: ScoresheetProps) {
   const innings = Array.from({ length: Math.max(maxInnings, currentInning) }, (_, i) => i + 1)
 
@@ -49,7 +51,7 @@ export function Scoresheet({
         <tbody>
           {lineup.map(slot => {
             const playerPlays = plays.filter(p => p.batterOrderPosition === slot.orderPosition && p.isAtBat)
-            const stats = computePlayerStats(playerPlays, slot.orderPosition)
+            const stats = computePlayerStats(playerPlays, slot.orderPosition, runsMap?.get(slot.orderPosition) ?? 0)
 
             return (
               <tr key={slot.orderPosition}>

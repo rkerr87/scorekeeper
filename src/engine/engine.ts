@@ -13,6 +13,8 @@ function initialSnapshot(): GameSnapshot {
     pitchCountByPitcher: new Map(),
     runsPerInningUs: [],
     runsPerInningThem: [],
+    runsScoredByPositionUs: new Map(),
+    runsScoredByPositionThem: new Map(),
     isGameOver: false,
   }
 }
@@ -83,8 +85,9 @@ function applyBaseRunning(
   homeOrAway: HomeOrAway,
   lineupUs: Lineup,
   lineupThem: Lineup,
-): number {
+): { runsScored: number; scorers: number[] } {
   let runsScored = 0
+  const scorers: number[] = []
   const batter = getBaseRunnerForBatter(play.batterOrderPosition, play.half, homeOrAway, lineupUs, lineupThem)
   const runners = snapshot.baseRunners
 
@@ -95,12 +98,12 @@ function applyBaseRunning(
       second: play.runnerOverrides.second,
       third: play.runnerOverrides.third,
     }
-    return play.runsScoredOnPlay
+    return { runsScored: play.runsScoredOnPlay, scorers }
   }
 
   switch (play.playType) {
     case '1B': {
-      if (runners.third) runsScored++
+      if (runners.third) { runsScored++; scorers.push(runners.third.orderPosition) }
       // Runner on 2nd advances to 3rd (default); scorekeeper can override via RunnerConfirmation
       const newThird = runners.second
       const newSecond = runners.first
@@ -108,24 +111,24 @@ function applyBaseRunning(
       break
     }
     case '2B': {
-      if (runners.third) runsScored++
-      if (runners.second) runsScored++
+      if (runners.third) { runsScored++; scorers.push(runners.third.orderPosition) }
+      if (runners.second) { runsScored++; scorers.push(runners.second.orderPosition) }
       const newThird = runners.first
       snapshot.baseRunners = { first: null, second: batter, third: newThird }
       break
     }
     case '3B': {
-      if (runners.third) runsScored++
-      if (runners.second) runsScored++
-      if (runners.first) runsScored++
+      if (runners.third) { runsScored++; scorers.push(runners.third.orderPosition) }
+      if (runners.second) { runsScored++; scorers.push(runners.second.orderPosition) }
+      if (runners.first) { runsScored++; scorers.push(runners.first.orderPosition) }
       snapshot.baseRunners = { first: null, second: null, third: batter }
       break
     }
     case 'HR': {
-      if (runners.third) runsScored++
-      if (runners.second) runsScored++
-      if (runners.first) runsScored++
-      runsScored++ // batter
+      if (runners.third) { runsScored++; scorers.push(runners.third.orderPosition) }
+      if (runners.second) { runsScored++; scorers.push(runners.second.orderPosition) }
+      if (runners.first) { runsScored++; scorers.push(runners.first.orderPosition) }
+      runsScored++; scorers.push(batter.orderPosition) // batter
       snapshot.baseRunners = { first: null, second: null, third: null }
       break
     }
@@ -134,7 +137,7 @@ function applyBaseRunning(
       if (runners.first) {
         if (runners.second) {
           if (runners.third) {
-            runsScored++ // bases loaded walk/HBP
+            runsScored++; scorers.push(runners.third.orderPosition) // bases loaded walk/HBP
           }
           snapshot.baseRunners.third = runners.second
         }
@@ -145,7 +148,7 @@ function applyBaseRunning(
     }
     case 'SB': {
       if (runners.third) {
-        runsScored++
+        runsScored++; scorers.push(runners.third.orderPosition)
         snapshot.baseRunners.third = null
       } else if (runners.second) {
         snapshot.baseRunners.third = runners.second
@@ -160,7 +163,7 @@ function applyBaseRunning(
     case 'PB':
     case 'BK': {
       if (runners.third) {
-        runsScored++
+        runsScored++; scorers.push(runners.third.orderPosition)
         snapshot.baseRunners.third = null
       }
       if (runners.second) {
@@ -186,7 +189,7 @@ function applyBaseRunning(
     }
     case 'SAC': {
       if (runners.third) {
-        runsScored++
+        runsScored++; scorers.push(runners.third.orderPosition)
         snapshot.baseRunners.third = null
       }
       if (runners.second) {
@@ -210,7 +213,7 @@ function applyBaseRunning(
       break
     }
     case 'E': {
-      if (runners.third) runsScored++
+      if (runners.third) { runsScored++; scorers.push(runners.third.orderPosition) }
       // Runner on 2nd advances to 3rd (default); scorekeeper can override via RunnerConfirmation
       const newThird: BaseRunner | null = runners.second
       const newSecond: BaseRunner | null = runners.first
@@ -227,7 +230,7 @@ function applyBaseRunning(
       break
   }
 
-  return runsScored
+  return { runsScored, scorers }
 }
 
 export function replayGame(
@@ -258,7 +261,7 @@ export function replayGame(
 
     // Apply base running and scoring
     const outsOnPlay = getOutsForPlay(play)
-    const runsScored = applyBaseRunning(snapshot, play, homeOrAway, lineupUs, lineupThem)
+    const { runsScored, scorers } = applyBaseRunning(snapshot, play, homeOrAway, lineupUs, lineupThem)
 
     // Apply outs
     snapshot.outs += outsOnPlay
@@ -269,10 +272,16 @@ export function replayGame(
       snapshot.scoreUs += runsScored
       ensureInningArray(snapshot.runsPerInningUs, play.inning)
       snapshot.runsPerInningUs[play.inning - 1] += runsScored
+      for (const pos of scorers) {
+        snapshot.runsScoredByPositionUs.set(pos, (snapshot.runsScoredByPositionUs.get(pos) ?? 0) + 1)
+      }
     } else {
       snapshot.scoreThem += runsScored
       ensureInningArray(snapshot.runsPerInningThem, play.inning)
       snapshot.runsPerInningThem[play.inning - 1] += runsScored
+      for (const pos of scorers) {
+        snapshot.runsScoredByPositionThem.set(pos, (snapshot.runsScoredByPositionThem.get(pos) ?? 0) + 1)
+      }
     }
 
     // Advance batter

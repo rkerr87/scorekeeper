@@ -139,5 +139,7 @@ export interface GameSnapshot {
   pitchCountByPitcher: Map<string, number>  // pitcher name → cumulative count (Map — not JSON-serializable; GameSnapshot is always computed, never stored or transported)
   runsPerInningUs: number[]    // index 0 = inning 1
   runsPerInningThem: number[]
+  runsScoredByPositionUs: Map<number, number>  // orderPosition → run count (us)
+  runsScoredByPositionThem: Map<number, number> // orderPosition → run count (them)
   isGameOver: boolean
 }

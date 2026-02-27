@@ -203,6 +203,7 @@ export function GamePage() {
           currentBatterPosition={currentBatter}
           maxInnings={6}
           onCellClick={() => setShowPlayEntry(true)}
+          runsMap={activeTab === 'us' ? snapshot.runsScoredByPositionUs : snapshot.runsScoredByPositionThem}
         />
       </div>
 

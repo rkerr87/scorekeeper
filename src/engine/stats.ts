@@ -19,7 +19,7 @@ export interface PlayerStats {
 const HIT_TYPES = ['1B', '2B', '3B', 'HR']
 const NON_AB_TYPES = ['BB', 'HBP', 'SAC']
 
-export function computePlayerStats(plays: Play[], batterOrderPosition: number): PlayerStats {
+export function computePlayerStats(plays: Play[], batterOrderPosition: number, runs = 0): PlayerStats {
   const playerPlays = plays.filter(
     p => p.batterOrderPosition === batterOrderPosition && p.isAtBat
   )
@@ -33,8 +33,6 @@ export function computePlayerStats(plays: Play[], batterOrderPosition: number): 
   const strikeouts = playerPlays.filter(p => p.playType === 'K' || p.playType === 'KL').length
   const hbp = playerPlays.filter(p => p.playType === 'HBP').length
   const rbis = playerPlays.reduce((sum, p) => sum + p.rbis, 0)
-  const runs = playerPlays.reduce((sum, p) => sum + p.runsScoredOnPlay, 0)
-
   const avg = atBats > 0 ? hits / atBats : 0
   const obpDenom = atBats + walks + hbp
   const obp = obpDenom > 0 ? (hits + walks + hbp) / obpDenom : 0

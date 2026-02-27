@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import type { Player, Play } from '../engine/types'
 import { getAllTeams, getPlayersForTeam, getGamesForTeam } from '../db/gameService'
 import { db } from '../db/database'
+import { replayGame } from '../engine/engine'
 import { computePlayerStats } from '../engine/stats'
 import type { PlayerStats } from '../engine/stats'
 
@@ -26,11 +27,13 @@ export function SeasonStatsPage() {
       // Gather all our at-bats across all games
       const allPlays: Play[] = []
       const playerOrderMap = new Map<number, number>() // playerId -> orderPosition
+      const runsPerPlayer = new Map<number, number>()  // playerId -> total runs scored
 
       for (const game of games) {
         const lineups = await db.lineups.where('gameId').equals(game.id!).toArray()
         const ourLineup = lineups.find(l => l.side === 'us')
-        if (!ourLineup) continue
+        const theirLineup = lineups.find(l => l.side === 'them')
+        if (!ourLineup || !theirLineup) continue
 
         // Map player IDs to order positions for this game
         for (const slot of ourLineup.battingOrder) {
@@ -44,12 +47,22 @@ export function SeasonStatsPage() {
         const usBattingHalf = game.homeOrAway === 'home' ? 'bottom' : 'top'
         const usPlays = plays.filter(p => p.half === usBattingHalf)
         allPlays.push(...usPlays)
+
+        // Accumulate per-player runs from this game's snapshot
+        const gameSnapshot = replayGame(plays, ourLineup, theirLineup, game.homeOrAway)
+        for (const slot of ourLineup.battingOrder) {
+          if (slot.playerId) {
+            const slotRuns = gameSnapshot.runsScoredByPositionUs.get(slot.orderPosition) ?? 0
+            runsPerPlayer.set(slot.playerId, (runsPerPlayer.get(slot.playerId) ?? 0) + slotRuns)
+          }
+        }
       }
 
       // Compute stats per player
       const results: PlayerSeasonStats[] = players.map(player => {
         const orderPos = playerOrderMap.get(player.id!) ?? 0
-        const stats = computePlayerStats(allPlays, orderPos)
+        const playerRuns = runsPerPlayer.get(player.id!) ?? 0
+        const stats = computePlayerStats(allPlays, orderPos, playerRuns)
         return { player, stats }
       })
 
