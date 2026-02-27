@@ -45,16 +45,18 @@ Use the `superpowers` skills for all development work:
 
 ## Current Status
 
-- **Phase:** All phases complete + post-review bug fixes merged
+- **Phase:** All phases complete + post-review bug fixes + 17 UX feedback fixes merged
 - **Next step:** None — MVP complete
-- **Test runner:** vitest configured and passing (135 tests)
+- **Test runner:** vitest configured and passing (234 tests across 26 test files)
+- **UX feedback design:** `docs/plans/2026-02-26-ux-feedback-design.md`
+- **UX feedback plan:** `docs/plans/2026-02-26-ux-feedback-implementation.md` (15 tasks, all complete)
 
 ## Architecture
 
 **Pattern: Pure Game Engine + Event Log (A+C Hybrid)**
 
 - All game logic lives in a pure game engine module — no React, no Dexie, no UI
-- `replayGame(plays, lineupUs, lineupThem) → GameSnapshot`
+- `replayGame(plays, lineupUs, lineupThem, homeOrAway) → GameSnapshot`
 - Plays stored as an ordered event log; current state always computed by replay
 - Undo = pop last play and recompute. Edit = replace play and recompute
 - A 6-inning LL game has ~60-80 plays max — replay is instant
@@ -118,38 +120,39 @@ Tailwind v4 uses CSS-native configuration:
 
 ## Project Structure (Target)
 
-> **Currently:** Scaffold cleaned up. `App.tsx`, `main.tsx`, `index.css` are minimal placeholders. Structure below will be created incrementally across Phases 2-10.
-
 ```
 src/
   engine/          # Pure game logic — no React, no Dexie
     types.ts       # All TypeScript types/interfaces
-    engine.ts      # replayGame(), processPlay(), etc.
+    engine.ts      # replayGame(), processPlay(), walk-off/skip-bottom logic
     notation.ts    # Shorthand parser ("6-3" → structured play)
     stats.ts       # Stat computation from play log
+    journeys.ts    # computeRunnerJourneys() — track base advancement across plays
   db/
     database.ts    # Dexie schema & instance
-    gameService.ts # CRUD operations for games, teams, players
+    gameService.ts # CRUD operations for games, teams, players, plays
   contexts/
     GameContext.tsx # Game state provider (engine + Dexie bridge)
   components/
-    Diamond.tsx          # SVG diamond with baserunner paths
-    AtBatCell.tsx        # Single scoresheet cell (Glover's style)
-    ScoreSummary.tsx     # Right-side stat columns
-    Scoresheet.tsx       # Full grid (lineup + innings + summary)
-    PitchTracker.tsx     # B/S/F pitch tracking buttons
-    FieldDiagram.tsx     # SVG field position picker
-    PlayEntryPanel.tsx   # Play recording flow
-    RunnerConfirmation.tsx # Post-play baserunner adjustment
+    Diamond.tsx            # SVG diamond with baserunner paths + continuation lines
+    AtBatCell.tsx          # Single scoresheet cell (Glover's style)
+    ScoreSummary.tsx       # Right-side stat columns
+    Scoresheet.tsx         # Full grid (lineup + innings + summary + journey integration)
+    PitchTracker.tsx       # B/S/F pitch tracking buttons with clear/edit
+    FieldDiagram.tsx       # SVG field position picker
+    PlayEntryPanel.tsx     # Play recording flow (pitches lifted to GamePage)
+    PlayDetailPopover.tsx  # Tap-on-cell popover with play info, edit, undo
+    PositionChangeDialog.tsx # Defensive position swap dialog
+    RunnerConfirmation.tsx # Post-play baserunner adjustment (pre-play positions)
     SubstitutionDialog.tsx # Player substitution UI
-    BeginnerGuide.tsx    # Notation explanation overlay
+    BeginnerGuide.tsx      # Notation explanation overlay
   layouts/
     AppLayout.tsx  # Shared layout wrapper
   pages/
     HomePage.tsx
     TeamPage.tsx
     GameSetupPage.tsx
-    GamePage.tsx
+    GamePage.tsx       # Manages pitch state, auto-walk/strikeout, popover, pos change
     GameStatsPage.tsx
     SeasonStatsPage.tsx
   services/
@@ -162,7 +165,12 @@ src/
 - **Opponent players are inline.** No separate opponent table — name/number/position stored directly in lineup slots. Opponent stats not tracked across seasons.
 - **Per-pitch tracking.** Each at-bat stores a `pitches: PitchResult[]` array of `'B' | 'S' | 'F'`. Pitcher totals derived by summing across plays.
 - **`isAtBat` flag** on Play records distinguishes batting order plays (K, 1B, BB, etc.) from mid-at-bat events (SB, WP, PB, BK).
-- **Baserunner confirmation step.** Engine applies default advancement, scorekeeper can adjust before finalizing.
+- **Baserunner confirmation step.** Engine applies default advancement, scorekeeper can adjust before finalizing. Shows pre-play positions with post-play defaults.
+- **Pitch state in GamePage.** `currentAtBatPitches` lives in GamePage (not PlayEntryPanel) to survive panel close/reopen. Auto-walk on 4th ball, auto-strikeout confirmation on 3rd strike (S only, not F).
+- **Runner continuation lines.** `computeRunnerJourneys()` tracks each batter's full base journey across subsequent plays. Diamond renders dashed lines for advancement beyond the original hit.
+- **Play detail popover.** Tapping a filled cell shows notation, pitch summary, Edit (placeholder), and Undo (with confirmation for subsequent plays). Tapping current batter cell opens Record Play. Empty cells do nothing.
+- **Position change dialog.** "Pos Change" button opens dialog for defensive changes with auto-swap detection. Records substitution entries with inning/half metadata.
+- **Walk-off / skip bottom.** Engine ends game immediately on walk-off in bottom 6th+, and skips bottom half when home team already leads after top of final inning.
 - **No Supabase yet.** Sync interface is built with JSON export/import. Transport stubbed for future Supabase backend.
 - **Conflict resolution:** Last-write-wins by timestamp. Warn user if conflicts detected. No merge UI.
 - **Game code format:** 6-char codes like "MUDH-0421" for sharing games between devices.
