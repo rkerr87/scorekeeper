@@ -293,11 +293,33 @@ export function replayGame(
       }
     }
 
+    // Walk-off: home team takes lead in bottom of 6th or later
+    // Check BEFORE the outs check which might advance the half-inning
+    if (snapshot.inning >= 6 && snapshot.half === 'bottom' && runsScored > 0) {
+      const homeScore = homeOrAway === 'home' ? snapshot.scoreUs : snapshot.scoreThem
+      const awayScore = homeOrAway === 'home' ? snapshot.scoreThem : snapshot.scoreUs
+      if (homeScore > awayScore) {
+        snapshot.isGameOver = true
+      }
+    }
+
     // Check for inning change (standard 6-inning LL game)
-    if (snapshot.outs >= 3) {
+    if (!snapshot.isGameOver && snapshot.outs >= 3) {
       advanceHalfInning(snapshot)
+
+      // Standard game over: completed all innings
       if (snapshot.inning > 6) {
         snapshot.isGameOver = true
+      }
+      // Skip bottom of last inning: home team already leads after top ends
+      // After advanceHalfInning, if we're now in the bottom of inning 6+
+      // and the home team leads, game is over
+      else if (snapshot.half === 'bottom' && snapshot.inning >= 6) {
+        const homeScore = homeOrAway === 'home' ? snapshot.scoreUs : snapshot.scoreThem
+        const awayScore = homeOrAway === 'home' ? snapshot.scoreThem : snapshot.scoreUs
+        if (homeScore > awayScore) {
+          snapshot.isGameOver = true
+        }
       }
     }
   }

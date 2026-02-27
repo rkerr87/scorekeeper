@@ -17,6 +17,7 @@ import {
   addPlay,
   getPlaysForGame,
   deleteLastPlay,
+  deletePlayAndSubsequent,
   updatePlay,
 } from '../gameService'
 
@@ -227,6 +228,52 @@ describe('gameService', () => {
       const updated = await db.plays.get(play.id!)
       expect(updated?.playType).toBe('1B')
       expect(updated?.notation).toBe('1B')
+    })
+
+    it('should delete target play and all subsequent plays, preserving earlier plays', async () => {
+      const team = await createTeam('Mudcats')
+      const game = await createGame(team.id!, 'Tigers', 'home')
+
+      const play1 = await addPlay(game.id!, {
+        inning: 1, half: 'top', batterOrderPosition: 1, playType: 'K',
+        notation: 'K', fieldersInvolved: [], basesReached: [],
+        runsScoredOnPlay: 0, rbis: 0, pitches: [], isAtBat: true,
+      })
+      const play2 = await addPlay(game.id!, {
+        inning: 1, half: 'top', batterOrderPosition: 2, playType: '1B',
+        notation: '1B', fieldersInvolved: [], basesReached: [1],
+        runsScoredOnPlay: 0, rbis: 0, pitches: [], isAtBat: true,
+      })
+      await addPlay(game.id!, {
+        inning: 1, half: 'top', batterOrderPosition: 3, playType: 'BB',
+        notation: 'BB', fieldersInvolved: [], basesReached: [1],
+        runsScoredOnPlay: 0, rbis: 0, pitches: [], isAtBat: true,
+      })
+
+      // Delete from play2 onward
+      await deletePlayAndSubsequent(game.id!, play2.id!)
+
+      const remaining = await getPlaysForGame(game.id!)
+      expect(remaining).toHaveLength(1)
+      expect(remaining[0].id).toBe(play1.id)
+      expect(remaining[0].playType).toBe('K')
+    })
+
+    it('should handle non-existent playId gracefully', async () => {
+      const team = await createTeam('Mudcats')
+      const game = await createGame(team.id!, 'Tigers', 'home')
+
+      await addPlay(game.id!, {
+        inning: 1, half: 'top', batterOrderPosition: 1, playType: 'K',
+        notation: 'K', fieldersInvolved: [], basesReached: [],
+        runsScoredOnPlay: 0, rbis: 0, pitches: [], isAtBat: true,
+      })
+
+      // Should not throw and should not delete any plays
+      await deletePlayAndSubsequent(game.id!, 99999)
+
+      const plays = await getPlaysForGame(game.id!)
+      expect(plays).toHaveLength(1)
     })
   })
 })

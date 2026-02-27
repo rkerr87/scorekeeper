@@ -1,14 +1,19 @@
-import type { LineupSlot, Play } from '../engine/types'
+import type { LineupSlot, Play, Lineup, HomeOrAway } from '../engine/types'
 import { AtBatCell } from './AtBatCell'
 import { computePlayerStats } from '../engine/stats'
+import { computeRunnerJourneys } from '../engine/journeys'
 
 interface ScoresheetProps {
   lineup: LineupSlot[]
   plays: Play[]
+  allPlays?: Play[]
+  lineupUs?: Lineup
+  lineupThem?: Lineup
+  homeOrAway?: HomeOrAway
   currentInning: number
   currentBatterPosition: number
   maxInnings: number
-  onCellClick: (batterPosition: number, inning: number) => void
+  onCellClick: (batterPosition: number, inning: number, play?: Play) => void
   runsMap?: Map<number, number>
 }
 
@@ -93,12 +98,20 @@ function getCurrentPass(
 export function Scoresheet({
   lineup,
   plays,
+  allPlays,
+  lineupUs,
+  lineupThem,
+  homeOrAway,
   currentInning,
   currentBatterPosition,
   maxInnings,
   onCellClick,
   runsMap,
 }: ScoresheetProps) {
+  const journeys = allPlays && lineupUs && lineupThem && homeOrAway
+    ? computeRunnerJourneys(allPlays, lineupUs, lineupThem, homeOrAway)
+    : new Map<number, number[]>()
+
   const passMap = computePassMap(plays)
   const columns = buildColumns(plays, passMap, maxInnings, currentInning)
   const currentPass = getCurrentPass(plays, passMap, currentInning, currentBatterPosition)
@@ -165,6 +178,13 @@ export function Scoresheet({
                     slot.orderPosition === currentBatterPosition &&
                     col.inning === currentInning &&
                     col.pass === currentPass
+
+                  // Compute continuation bases from journey data
+                  const journey = play?.id !== undefined ? journeys.get(play.id) : undefined
+                  const continuationBases = journey && play
+                    ? journey.filter(b => !play.basesReached.includes(b))
+                    : undefined
+
                   return (
                     <td key={`${col.inning}-${col.pass}`} className="border border-slate-200 p-0">
                       <AtBatCell
@@ -172,11 +192,12 @@ export function Scoresheet({
                           playType: play.playType,
                           notation: play.notation,
                           basesReached: play.basesReached,
+                          continuationBases,
                           runsScoredOnPlay: play.runsScoredOnPlay,
                           pitches: play.pitches,
                         } : null}
                         isCurrentBatter={isCurrentBatter}
-                        onClick={() => onCellClick(slot.orderPosition, col.inning)}
+                        onClick={() => onCellClick(slot.orderPosition, col.inning, play)}
                       />
                     </td>
                   )

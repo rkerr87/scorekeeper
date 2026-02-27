@@ -5,9 +5,11 @@ import { ScoreSummary } from '../components/ScoreSummary'
 import { Scoresheet } from '../components/Scoresheet'
 import { PlayEntryPanel } from '../components/PlayEntryPanel'
 import { RunnerConfirmation } from '../components/RunnerConfirmation'
-import type { BaseRunner, BaseRunners, HalfInning, PlayType, PitchResult } from '../engine/types'
+import type { BaseRunner, BaseRunners, HalfInning, Play, PlayType, PitchResult, Side } from '../engine/types'
 import { replayGame } from '../engine/engine'
 import { BeginnerGuide } from '../components/BeginnerGuide'
+import { PlayDetailPopover } from '../components/PlayDetailPopover'
+import { PositionChangeDialog } from '../components/PositionChangeDialog'
 
 type ActiveTab = 'us' | 'them'
 
@@ -26,7 +28,7 @@ export function GamePage() {
   const navigate = useNavigate()
   const {
     game, lineupUs, lineupThem, plays, snapshot,
-    loadGame, recordPlay, undoLastPlay,
+    loadGame, recordPlay, undoLastPlay, undoFromPlay, updateLineupPositions,
   } = useGame()
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('us')
@@ -39,10 +41,15 @@ export function GamePage() {
   // visible toast message. The effect below schedules its clearance after 3 seconds.
   const [pendingToast, setPendingToast] = useState<string | null>(null)
   const [showPlayEntry, setShowPlayEntry] = useState(false)
+  const [currentAtBatPitches, setCurrentAtBatPitches] = useState<PitchResult[]>([])
   const [pendingPlay, setPendingPlay] = useState<PendingPlay | null>(null)
   const [pendingRunners, setPendingRunners] = useState<BaseRunners | null>(null)
+  const [pendingPrePlayRunners, setPendingPrePlayRunners] = useState<BaseRunners | null>(null)
   const [pendingPreRunsScored, setPendingPreRunsScored] = useState(0)
   const [gameOverDismissed, setGameOverDismissed] = useState(false)
+  const [showStrikeoutConfirm, setShowStrikeoutConfirm] = useState(false)
+  const [selectedPlay, setSelectedPlay] = useState<Play | null>(null)
+  const [showPosChange, setShowPosChange] = useState(false)
 
   const gId = parseInt(gameId ?? '0')
 
@@ -83,6 +90,7 @@ export function GamePage() {
     const halfLabel = snapshot.half === 'top' ? 'Top' : 'Bot'
     setTrackedHalfKey(halfKey)
     setActiveTab(snapshot.half === usBattingHalf ? 'us' : 'them')
+    setCurrentAtBatPitches([])
     setPendingToast(`Side retired — ${halfLabel} ${snapshot.inning}`)
   } else if (trackedHalfKey === '') {
     // First render after game loads — record the initial half key without changing the tab
@@ -105,6 +113,58 @@ export function GamePage() {
   const currentBatterSlot = snapshot.half === usBattingHalf
     ? lineupUs.battingOrder.find(s => s.orderPosition === snapshot.currentBatterUs)
     : lineupThem.battingOrder.find(s => s.orderPosition === snapshot.currentBatterThem)
+
+  const handleAddPitch = (p: PitchResult) => {
+    const newPitches = [...currentAtBatPitches, p]
+    setCurrentAtBatPitches(newPitches)
+
+    // Count balls and strikes from the FULL sequence
+    let balls = 0, strikes = 0
+    for (const pitch of newPitches) {
+      if (pitch === 'B') balls++
+      else if (pitch === 'S') strikes++
+      else if (pitch === 'F') strikes = Math.min(strikes + 1, 2)
+    }
+
+    // Auto-walk on 4th ball
+    if (balls >= 4) {
+      const walkPlay: PendingPlay = {
+        playType: 'BB',
+        notation: 'BB',
+        fieldersInvolved: [],
+        basesReached: [1],
+        pitches: newPitches,
+        isAtBat: true,
+      }
+      setShowPlayEntry(false)
+      setTimeout(() => handlePlayRecorded(walkPlay), 0)
+      return
+    }
+
+    // Auto-strikeout on 3rd strike (only triggered by 'S', not 'F')
+    if (p === 'S' && strikes >= 3) {
+      setShowStrikeoutConfirm(true)
+    }
+  }
+  const handleRemovePitch = () => setCurrentAtBatPitches(prev => prev.slice(0, -1))
+  const handleClearPitches = () => setCurrentAtBatPitches([])
+  const handleRemovePitchAt = (index: number) => {
+    setCurrentAtBatPitches(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const handleStrikeoutConfirm = (type: 'K' | 'KL') => {
+    const play: PendingPlay = {
+      playType: type,
+      notation: type === 'KL' ? 'KL' : 'K',
+      fieldersInvolved: [],
+      basesReached: [],
+      pitches: currentAtBatPitches,
+      isAtBat: true,
+    }
+    setShowStrikeoutConfirm(false)
+    setShowPlayEntry(false)
+    handlePlayRecorded(play)
+  }
 
   const handlePlayRecorded = (data: PendingPlay) => {
     // Determine the actual current batter position based on current half
@@ -140,6 +200,7 @@ export function GamePage() {
 
     if (hasRunnersOnBase && (affectsRunners || isOut)) {
       setPendingPlay(data)
+      setPendingPrePlayRunners(snapshot.baseRunners)
       setPendingRunners(tempSnapshot.baseRunners)
       setPendingPreRunsScored(preRunsScored)
       setShowPlayEntry(false)
@@ -194,10 +255,12 @@ export function GamePage() {
         : undefined,
     })
 
+    setCurrentAtBatPitches([])
     setLastRecordedPlay({ playType: data.playType, notation: data.notation })
     setShowPlayEntry(false)
     setPendingPlay(null)
     setPendingRunners(null)
+    setPendingPrePlayRunners(null)
     setPendingPreRunsScored(0)
   }
 
@@ -210,11 +273,33 @@ export function GamePage() {
   const handleRunnerCancel = () => {
     setPendingPlay(null)
     setPendingRunners(null)
+    setPendingPrePlayRunners(null)
     setPendingPreRunsScored(0)
+  }
+
+  // Defensive team lineup — position changes apply to the team NOT batting
+  const defensiveLineup = snapshot.half === usBattingHalf ? lineupThem : lineupUs
+
+  const handlePositionChange = async (changes: { orderPosition: number; newPosition: string }[]) => {
+    // Position changes are for the defensive team
+    const side: Side = snapshot.half === usBattingHalf ? 'them' : 'us'
+    await updateLineupPositions(side, changes, snapshot.inning, snapshot.half)
+    setShowPosChange(false)
   }
 
   return (
     <div className="h-screen flex flex-col bg-slate-50">
+      {/* Persistent back button */}
+      <div className="bg-slate-800 px-3 pt-2 flex items-center">
+        <button
+          onClick={() => navigate('/')}
+          aria-label="Back to home"
+          className="text-slate-400 hover:text-white text-sm font-semibold transition-colors"
+        >
+          ← Home
+        </button>
+      </div>
+
       {/* Score summary */}
       <ScoreSummary
         inning={snapshot.inning}
@@ -251,10 +336,25 @@ export function GamePage() {
         <Scoresheet
           lineup={activeLineup.battingOrder}
           plays={activePlays}
+          allPlays={plays}
+          lineupUs={lineupUs}
+          lineupThem={lineupThem}
+          homeOrAway={game.homeOrAway}
           currentInning={snapshot.inning}
           currentBatterPosition={currentBatter}
           maxInnings={6}
-          onCellClick={() => setShowPlayEntry(true)}
+          onCellClick={(batterPosition, inning, play) => {
+            if (play) {
+              setSelectedPlay(play)
+            } else if (
+              batterPosition === currentBatter &&
+              inning === snapshot.inning &&
+              !snapshot.isGameOver
+            ) {
+              setShowPlayEntry(true)
+            }
+            // Empty future cell: do nothing
+          }}
           runsMap={activeTab === 'us' ? snapshot.runsScoredByPositionUs : snapshot.runsScoredByPositionThem}
         />
       </div>
@@ -283,7 +383,14 @@ export function GamePage() {
           Record Play
         </button>
         <button
-          onClick={undoLastPlay}
+          onClick={() => setShowPosChange(true)}
+          disabled={snapshot.isGameOver}
+          className="bg-slate-200 hover:bg-slate-300 disabled:bg-slate-100 disabled:text-slate-400 text-slate-700 py-2.5 px-4 rounded-lg font-bold transition-all duration-150 ease-in-out active:scale-95"
+        >
+          Pos Change
+        </button>
+        <button
+          onClick={() => { undoLastPlay(); setCurrentAtBatPitches([]) }}
           disabled={plays.length === 0}
           className="bg-slate-200 hover:bg-slate-300 disabled:bg-slate-100 disabled:text-slate-400 text-slate-700 py-2.5 px-4 rounded-lg font-bold transition-all duration-150 ease-in-out active:scale-95"
         >
@@ -296,14 +403,71 @@ export function GamePage() {
         <PlayEntryPanel
           batterName={currentBatterSlot?.playerName ?? 'Unknown'}
           baseRunners={snapshot.baseRunners}
+          pitches={currentAtBatPitches}
+          outs={snapshot.outs}
+          onAddPitch={handleAddPitch}
+          onRemovePitch={handleRemovePitch}
+          onClear={handleClearPitches}
+          onRemoveAt={handleRemovePitchAt}
           onPlayRecorded={handlePlayRecorded}
           onClose={() => setShowPlayEntry(false)}
+        />
+      )}
+
+      {/* Strikeout confirmation dialog */}
+      {showStrikeoutConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-xs w-full mx-4 text-center">
+            <h3 className="text-lg font-bold text-slate-900 mb-4">Swinging or looking?</h3>
+            <div className="flex gap-3">
+              <button
+                onClick={() => handleStrikeoutConfirm('K')}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-bold transition-all duration-150 active:scale-95"
+              >
+                K (Swinging)
+              </button>
+              <button
+                onClick={() => handleStrikeoutConfirm('KL')}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-bold transition-all duration-150 active:scale-95"
+              >
+                <span style={{ display: 'inline-block', transform: 'scaleX(-1)' }}>K</span> (Looking)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Play detail popover */}
+      {selectedPlay && (
+        <PlayDetailPopover
+          play={selectedPlay}
+          playsAfterCount={plays.filter(p => p.sequenceNumber > selectedPlay.sequenceNumber).length}
+          onEdit={() => {
+            // For now: close popover (edit functionality is future work)
+            setSelectedPlay(null)
+          }}
+          onUndo={async (playId) => {
+            await undoFromPlay(playId)
+            setSelectedPlay(null)
+            setCurrentAtBatPitches([])
+          }}
+          onClose={() => setSelectedPlay(null)}
+        />
+      )}
+
+      {/* Position change dialog */}
+      {showPosChange && (
+        <PositionChangeDialog
+          lineup={defensiveLineup.battingOrder}
+          onConfirm={handlePositionChange}
+          onCancel={() => setShowPosChange(false)}
         />
       )}
 
       {/* Runner confirmation */}
       {pendingRunners && (
         <RunnerConfirmation
+          prePlayRunners={pendingPrePlayRunners ?? undefined}
           runners={pendingRunners}
           initialRunsScored={pendingPreRunsScored}
           onConfirm={handleRunnerConfirm}
@@ -338,6 +502,12 @@ export function GamePage() {
               className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold mb-3 transition-all duration-150 active:scale-95"
             >
               View Stats
+            </button>
+            <button
+              onClick={() => navigate('/')}
+              className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 py-3 rounded-xl font-bold mb-3 transition-all duration-150 active:scale-95"
+            >
+              Home
             </button>
             <button
               onClick={() => setGameOverDismissed(true)}

@@ -6,6 +6,7 @@ type RunnerDest = 'first' | 'second' | 'third' | 'scored' | 'out'
 
 interface RunnerConfirmationProps {
   runners: BaseRunners
+  prePlayRunners?: BaseRunners
   onConfirm: (result: { runners: BaseRunners; runsScored: number }) => void
   onCancel: () => void
   initialRunsScored?: number
@@ -25,16 +26,36 @@ const BASE_LABELS: Record<OrigBase, string> = {
   third: '3rd',
 }
 
-function initAssignments(runners: BaseRunners): Map<OrigBase, RunnerDest> {
+const BASE_ORDER: Record<OrigBase, number> = { first: 1, second: 2, third: 3 }
+const DEST_ORDER: Record<RunnerDest, number> = { first: 1, second: 2, third: 3, scored: 4, out: 0 }
+
+function isValidDest(orig: OrigBase, dest: RunnerDest): boolean {
+  if (dest === 'out') return true
+  if (dest === 'scored') return true
+  return DEST_ORDER[dest] > BASE_ORDER[orig]
+}
+
+function initAssignments(preRunners: BaseRunners, postRunners: BaseRunners): Map<OrigBase, RunnerDest> {
   const m = new Map<OrigBase, RunnerDest>()
-  if (runners.first) m.set('first', 'first')
-  if (runners.second) m.set('second', 'second')
-  if (runners.third) m.set('third', 'third')
+  const BASES: OrigBase[] = ['first', 'second', 'third']
+  for (const orig of BASES) {
+    const runner = preRunners[orig]
+    if (!runner) continue
+    // Find where this runner ended up in post-play state
+    let dest: RunnerDest = 'scored' // default: not found on any base = scored
+    for (const base of BASES) {
+      if (postRunners[base]?.orderPosition === runner.orderPosition) {
+        dest = base
+        break
+      }
+    }
+    m.set(orig, dest)
+  }
   return m
 }
 
 function computeResult(
-  runners: BaseRunners,
+  sourceRunners: BaseRunners,
   assignments: Map<OrigBase, RunnerDest>,
   initialRunsScored: number,
 ): { runners: BaseRunners; runsScored: number } {
@@ -43,7 +64,7 @@ function computeResult(
 
   const ORIG_BASES: OrigBase[] = ['third', 'second', 'first']
   for (const orig of ORIG_BASES) {
-    const runner: BaseRunner | null = runners[orig]
+    const runner: BaseRunner | null = sourceRunners[orig]
     if (!runner) continue
     const dest = assignments.get(orig)
     if (!dest || dest === 'out') continue
@@ -57,8 +78,10 @@ function computeResult(
   return { runners: result, runsScored }
 }
 
-export function RunnerConfirmation({ runners, onConfirm, onCancel, initialRunsScored = 0 }: RunnerConfirmationProps) {
-  const [assignments, setAssignments] = useState<Map<OrigBase, RunnerDest>>(() => initAssignments(runners))
+export function RunnerConfirmation({ runners, prePlayRunners, onConfirm, onCancel, initialRunsScored = 0 }: RunnerConfirmationProps) {
+  // Use prePlayRunners for runner identity/labels; fall back to runners (post-play) for backward compat
+  const sourceRunners = prePlayRunners ?? runners
+  const [assignments, setAssignments] = useState<Map<OrigBase, RunnerDest>>(() => initAssignments(sourceRunners, runners))
   const [error, setError] = useState<string | null>(null)
 
   const setDest = (orig: OrigBase, dest: RunnerDest) => {
@@ -77,10 +100,10 @@ export function RunnerConfirmation({ runners, onConfirm, onCancel, initialRunsSc
       return
     }
     setError(null)
-    onConfirm(computeResult(runners, assignments, initialRunsScored))
+    onConfirm(computeResult(sourceRunners, assignments, initialRunsScored))
   }
 
-  const occupiedBases: OrigBase[] = (['third', 'second', 'first'] as OrigBase[]).filter(b => runners[b] !== null)
+  const occupiedBases: OrigBase[] = (['third', 'second', 'first'] as OrigBase[]).filter(b => sourceRunners[b] !== null)
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -92,7 +115,7 @@ export function RunnerConfirmation({ runners, onConfirm, onCancel, initialRunsSc
 
         <div className="space-y-4 mb-6">
           {occupiedBases.map(orig => {
-            const runner = runners[orig]!
+            const runner = sourceRunners[orig]!
             const currentDest = assignments.get(orig) ?? orig
             return (
               <div key={orig} className="bg-slate-50 rounded-lg p-3">
@@ -100,23 +123,29 @@ export function RunnerConfirmation({ runners, onConfirm, onCancel, initialRunsSc
                   {runner.playerName} <span className="text-slate-400">(was on {BASE_LABELS[orig]})</span>
                 </div>
                 <div className="flex gap-1 flex-wrap">
-                  {DEST_LABELS.map(({ dest, label }) => (
-                    <button
-                      key={dest}
-                      onClick={() => setDest(orig, dest)}
-                      className={`px-2.5 py-1.5 rounded text-xs font-bold transition-all duration-150 active:scale-95 ${
-                        currentDest === dest
-                          ? dest === 'scored'
-                            ? 'bg-green-600 text-white ring-2 ring-green-800'
-                            : dest === 'out'
-                              ? 'bg-red-500 text-white ring-2 ring-red-700'
-                              : 'bg-blue-600 text-white ring-2 ring-blue-800'
-                          : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
+                  {DEST_LABELS.map(({ dest, label }) => {
+                    const valid = isValidDest(orig, dest)
+                    return (
+                      <button
+                        key={dest}
+                        onClick={() => setDest(orig, dest)}
+                        disabled={!valid}
+                        className={`px-2.5 py-1.5 rounded text-xs font-bold transition-all duration-150 ${
+                          !valid
+                            ? 'bg-slate-100 text-slate-300 cursor-not-allowed'
+                            : currentDest === dest
+                              ? dest === 'scored'
+                                ? 'bg-green-600 text-white ring-2 ring-green-800 active:scale-95'
+                                : dest === 'out'
+                                  ? 'bg-red-500 text-white ring-2 ring-red-700 active:scale-95'
+                                  : 'bg-blue-600 text-white ring-2 ring-blue-800 active:scale-95'
+                              : 'bg-slate-200 text-slate-700 hover:bg-slate-300 active:scale-95'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             )

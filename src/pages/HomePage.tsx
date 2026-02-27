@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { Game, Team } from '../engine/types'
-import { getAllTeams, getGamesForTeam, createGame, deleteGame } from '../db/gameService'
+import { getAllTeams, getGamesForTeam, createGame, deleteGame, createTeam, addPlayer } from '../db/gameService'
+import { db } from '../db/database'
 
 interface GameRowProps {
   game: Game
@@ -97,6 +98,46 @@ export function HomePage() {
     await deleteGame(id)
     setGames(prev => prev.filter(g => g.id !== id))
     setConfirmDeleteId(null)
+  }
+
+  const [seeding, setSeeding] = useState(false)
+
+  const handleSeedData = async () => {
+    setSeeding(true)
+    try {
+      const team = await createTeam('Mudcats')
+      await addPlayer(team.id!, 'Jake Rivera', 7, 'P')
+      await addPlayer(team.id!, 'Mateo Gonzalez', 23, 'C')
+      await addPlayer(team.id!, 'Connor Walsh', 11, '1B')
+      await addPlayer(team.id!, 'Dylan Park', 4, '2B')
+      await addPlayer(team.id!, 'Tyler Brooks', 15, 'SS')
+      await addPlayer(team.id!, 'Aiden Chen', 9, '3B')
+      await addPlayer(team.id!, 'Marcus Johnson', 17, 'LF')
+      await addPlayer(team.id!, 'Noah Patel', 3, 'CF')
+      await addPlayer(team.id!, 'Sam Torres', 21, 'RF')
+      await createGame(team.id!, 'Cardinals', 'home')
+      await createGame(team.id!, 'Eagles', 'away')
+      const teams = await getAllTeams()
+      if (teams.length > 0) {
+        setTeam(teams[0])
+        setGames(await getGamesForTeam(teams[0].id!))
+      }
+    } catch (err) {
+      console.error('Seed failed:', err)
+      alert(`Seed failed: ${err}`)
+    } finally {
+      setSeeding(false)
+    }
+  }
+
+  const handleClearData = async () => {
+    await db.plays.clear()
+    await db.lineups.clear()
+    await db.games.clear()
+    await db.players.clear()
+    await db.teams.clear()
+    setTeam(null)
+    setGames([])
   }
 
   const inProgressGames = games.filter(g => g.status === 'in_progress')
@@ -215,6 +256,26 @@ export function HomePage() {
           </div>
         </div>
       )}
+
+      {/* DEV: seed / clear test data — remove before shipping */}
+      <div className="mt-12 border border-dashed border-amber-400 rounded-lg p-4 bg-amber-50">
+        <div className="text-xs font-bold text-amber-700 mb-3">DEV TOOLS</div>
+        <div className="flex gap-2">
+          <button
+            onClick={handleSeedData}
+            disabled={seeding}
+            className="flex-1 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold"
+          >
+            {seeding ? 'Seeding…' : 'Seed test data'}
+          </button>
+          <button
+            onClick={handleClearData}
+            className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg text-sm font-semibold"
+          >
+            Clear all data
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

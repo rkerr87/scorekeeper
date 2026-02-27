@@ -5,6 +5,7 @@ interface CellPlayData {
   playType: string
   notation: string
   basesReached: number[]
+  continuationBases?: number[]
   runsScoredOnPlay: number
   pitches: PitchResult[]
 }
@@ -29,7 +30,8 @@ export function AtBatCell({ play, isCurrentBatter, onClick }: AtBatCellProps) {
       {play ? (
         <Diamond
           basesReached={play.basesReached}
-          runScored={play.runsScoredOnPlay > 0}
+          continuationBases={play.continuationBases}
+          runScored={play.runsScoredOnPlay > 0 || (play.continuationBases?.includes(4) ?? false)}
           notation={play.notation}
           pitches={play.pitches}
           size={56}
