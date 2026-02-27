@@ -59,6 +59,7 @@ export function GamePage() {
 
     // Switch to the now-batting team
     const nowBattingUs = snapshot.half === usBattingHalfLocal
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveTab(nowBattingUs ? 'us' : 'them')
 
     // Show toast for 3 seconds
