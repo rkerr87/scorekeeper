@@ -3,6 +3,19 @@ import { vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PlayEntryPanel } from '../PlayEntryPanel'
+import type { BaseRunners } from '../../engine/types'
+
+const runnersOnFirst: BaseRunners = {
+  first: { playerName: 'Alice', orderPosition: 1 },
+  second: null,
+  third: null,
+}
+
+const runnersOnFirstAndSecond: BaseRunners = {
+  first: { playerName: 'Alice', orderPosition: 1 },
+  second: { playerName: 'Bob', orderPosition: 2 },
+  third: null,
+}
 
 describe('PlayEntryPanel', () => {
   it('should render pitch tracker and common play buttons', () => {
@@ -73,5 +86,58 @@ describe('PlayEntryPanel', () => {
 
     expect(onPlayRecorded).not.toHaveBeenCalled()
     expect(screen.getByText(/unrecognized/i)).toBeInTheDocument()
+  })
+
+  it('should record SB immediately when only one runner on base', async () => {
+    const user = userEvent.setup()
+    const onPlayRecorded = vi.fn()
+    render(
+      <PlayEntryPanel
+        batterName="John"
+        baseRunners={runnersOnFirst}
+        onPlayRecorded={onPlayRecorded}
+        onClose={() => {}}
+      />
+    )
+    await user.click(screen.getByRole('button', { name: /^SB$/i }))
+    expect(onPlayRecorded).toHaveBeenCalledOnce()
+    expect(onPlayRecorded.mock.calls[0][0].playType).toBe('SB')
+  })
+
+  it('should show runner selection when multiple runners on base and SB tapped', async () => {
+    const user = userEvent.setup()
+    render(
+      <PlayEntryPanel
+        batterName="John"
+        baseRunners={runnersOnFirstAndSecond}
+        onPlayRecorded={() => {}}
+        onClose={() => {}}
+      />
+    )
+    await user.click(screen.getByRole('button', { name: /^SB$/i }))
+    expect(screen.getByText(/who is stealing/i)).toBeInTheDocument()
+  })
+
+  it('should record SB with runnerOverrides for the selected runner', async () => {
+    const user = userEvent.setup()
+    const onPlayRecorded = vi.fn()
+    render(
+      <PlayEntryPanel
+        batterName="John"
+        baseRunners={runnersOnFirstAndSecond}
+        onPlayRecorded={onPlayRecorded}
+        onClose={() => {}}
+      />
+    )
+    await user.click(screen.getByRole('button', { name: /^SB$/i }))
+    // Select Alice (on 1st) as the stealer
+    await user.click(screen.getByRole('button', { name: /alice/i }))
+
+    expect(onPlayRecorded).toHaveBeenCalledOnce()
+    const call = onPlayRecorded.mock.calls[0][0]
+    expect(call.playType).toBe('SB')
+    expect(call.runnerOverrides).toBeDefined()
+    // Alice moved from 1st to 2nd; Bob stays on 2nd
+    expect(call.runnerOverrides.second).toMatchObject({ playerName: 'Alice' })
   })
 })

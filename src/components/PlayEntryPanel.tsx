@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { PitchResult, PlayType } from '../engine/types'
+import type { PitchResult, PlayType, BaseRunner, BaseRunners } from '../engine/types'
 import { PitchTracker } from './PitchTracker'
 import { FieldDiagram } from './FieldDiagram'
 import { parseShorthand, generateNotation } from '../engine/notation'
@@ -11,15 +11,17 @@ interface PlayRecordedData {
   basesReached: number[]
   pitches: PitchResult[]
   isAtBat: boolean
+  runnerOverrides?: { first: BaseRunner | null; second: BaseRunner | null; third: BaseRunner | null }
 }
 
 interface PlayEntryPanelProps {
   batterName: string
+  baseRunners?: BaseRunners
   onPlayRecorded: (data: PlayRecordedData) => void
   onClose: () => void
 }
 
-type PanelMode = 'select' | 'fielding'
+type PanelMode = 'select' | 'fielding' | 'sb-runner-select'
 
 const COMMON_PLAYS: { label: string; playType: PlayType; basesReached: number[] }[] = [
   { label: 'K', playType: 'K', basesReached: [] },
@@ -50,7 +52,7 @@ const SPECIAL_PLAYS: { label: string; playType: PlayType; basesReached: number[]
   { label: 'BK', playType: 'BK', basesReached: [], isAtBat: false },
 ]
 
-export function PlayEntryPanel({ batterName, onPlayRecorded, onClose }: PlayEntryPanelProps) {
+export function PlayEntryPanel({ batterName, baseRunners, onPlayRecorded, onClose }: PlayEntryPanelProps) {
   const [pitches, setPitches] = useState<PitchResult[]>([])
   const [mode, setMode] = useState<PanelMode>('select')
   const [fieldingPlayType, setFieldingPlayType] = useState<PlayType>('GO')
@@ -114,6 +116,40 @@ export function PlayEntryPanel({ batterName, onPlayRecorded, onClose }: PlayEntr
     setShorthand('')
   }
 
+  const handleSbClick = () => {
+    const runners = baseRunners ?? { first: null, second: null, third: null }
+    const occupied = (['third', 'second', 'first'] as const).filter(b => runners[b] !== null)
+    if (occupied.length <= 1) {
+      recordSimplePlay('SB', [], false)
+    } else {
+      setMode('sb-runner-select')
+    }
+  }
+
+  const computeSbOverride = (stealing: 'first' | 'second' | 'third') => {
+    const runners = baseRunners ?? { first: null, second: null, third: null }
+    const result = { first: runners.first, second: runners.second, third: runners.third }
+    const runner = runners[stealing]
+    if (!runner) return result
+    result[stealing] = null
+    if (stealing === 'first') result.second = runner
+    else if (stealing === 'second') result.third = runner
+    else result.third = null  // stealing home — clear 3rd, RunnerConfirmation handles the score
+    return result
+  }
+
+  const handleSbRunnerSelect = (stealing: 'first' | 'second' | 'third') => {
+    onPlayRecorded({
+      playType: 'SB',
+      notation: 'SB',
+      fieldersInvolved: [],
+      basesReached: [],
+      pitches,
+      isAtBat: false,
+      runnerOverrides: computeSbOverride(stealing),
+    })
+  }
+
   return (
     <div className="fixed inset-x-0 bottom-0 bg-white border-t-2 border-slate-300 shadow-2xl max-h-[80vh] overflow-y-auto z-50 transition-transform duration-200">
       <div className="p-4">
@@ -172,7 +208,7 @@ export function PlayEntryPanel({ batterName, onPlayRecorded, onClose }: PlayEntr
                 {SPECIAL_PLAYS.map(play => (
                   <button
                     key={play.label}
-                    onClick={() => recordSimplePlay(play.playType, play.basesReached, play.isAtBat)}
+                    onClick={() => play.playType === 'SB' ? handleSbClick() : recordSimplePlay(play.playType, play.basesReached, play.isAtBat)}
                     className="bg-amber-600 hover:bg-amber-700 text-white py-2 rounded font-bold text-sm transition-all duration-150 ease-in-out active:scale-95"
                   >
                     {play.label}
@@ -226,6 +262,35 @@ export function PlayEntryPanel({ batterName, onPlayRecorded, onClose }: PlayEntr
                 Confirm
               </button>
             </div>
+          </div>
+        )}
+
+        {mode === 'sb-runner-select' && baseRunners && (
+          <div>
+            <div className="text-sm font-semibold text-slate-700 mb-3 text-center">Who is stealing?</div>
+            <div className="space-y-2">
+              {(['third', 'second', 'first'] as const).map(base => {
+                const runner = baseRunners[base]
+                if (!runner) return null
+                const baseLabel = base === 'first' ? '1st' : base === 'second' ? '2nd' : '3rd'
+                return (
+                  <button
+                    key={base}
+                    onClick={() => handleSbRunnerSelect(base)}
+                    aria-label={`${runner.playerName} on ${baseLabel}`}
+                    className="w-full bg-amber-600 hover:bg-amber-700 text-white py-2.5 rounded-lg font-bold text-sm transition-all duration-150 active:scale-95"
+                  >
+                    {runner.playerName} ({baseLabel})
+                  </button>
+                )
+              })}
+            </div>
+            <button
+              onClick={() => setMode('select')}
+              className="w-full mt-2 bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 rounded font-bold text-sm transition-all duration-150"
+            >
+              Cancel
+            </button>
           </div>
         )}
       </div>

@@ -5,7 +5,7 @@ import { ScoreSummary } from '../components/ScoreSummary'
 import { Scoresheet } from '../components/Scoresheet'
 import { PlayEntryPanel } from '../components/PlayEntryPanel'
 import { RunnerConfirmation } from '../components/RunnerConfirmation'
-import type { BaseRunners, HalfInning, PlayType, PitchResult } from '../engine/types'
+import type { BaseRunner, BaseRunners, HalfInning, PlayType, PitchResult } from '../engine/types'
 import { replayGame } from '../engine/engine'
 
 type ActiveTab = 'us' | 'them'
@@ -17,6 +17,7 @@ interface PendingPlay {
   basesReached: number[]
   pitches: PitchResult[]
   isAtBat: boolean
+  runnerOverrides?: { first: BaseRunner | null; second: BaseRunner | null; third: BaseRunner | null }
 }
 
 export function GamePage() {
@@ -79,6 +80,7 @@ export function GamePage() {
       half: snapshot.half,
       batterOrderPosition: batterPos,
       ...data,
+      runnerOverrides: data.runnerOverrides,
       runsScoredOnPlay: 0,
       rbis: 0,
       timestamp: new Date(),
@@ -230,6 +232,7 @@ export function GamePage() {
       {showPlayEntry && (
         <PlayEntryPanel
           batterName={currentBatterSlot?.playerName ?? 'Unknown'}
+          baseRunners={snapshot.baseRunners}
           onPlayRecorded={handlePlayRecorded}
           onClose={() => setShowPlayEntry(false)}
         />
