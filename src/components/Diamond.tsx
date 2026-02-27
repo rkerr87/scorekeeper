@@ -96,11 +96,10 @@ export function Diamond({
         {/* Notation text */}
         {notation && (
           notation === 'KL' ? (
-            <foreignObject x="30" y="40" width="40" height="20">
+            <foreignObject x="25" y="42" width="50" height="20">
               <span
-                xmlns="http://www.w3.org/1999/xhtml"
                 data-testid="backwards-k"
-                style={{ display: 'inline-block', transform: 'scaleX(-1)', fontSize: 11, fontWeight: 'bold', color: '#1e293b' }}
+                style={{ display: 'block', transform: 'scaleX(-1)', textAlign: 'center', width: '100%', fontSize: '11px', fontWeight: 'bold', color: '#1e293b' }}
               >
                 K
               </span>

@@ -40,5 +40,6 @@ describe('Diamond', () => {
     // Should contain a K inside a mirrored span
     const mirror = container.querySelector('[data-testid="backwards-k"]')
     expect(mirror).toBeInTheDocument()
+    expect(mirror?.textContent).toBe('K')
   })
 })
