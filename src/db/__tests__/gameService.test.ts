@@ -11,6 +11,7 @@ import {
   getGame,
   getGamesForTeam,
   updateGameStatus,
+  deleteGame,
   saveLineup,
   getLineupsForGame,
   addPlay,
@@ -104,6 +105,27 @@ describe('gameService', () => {
       await updateGameStatus(game.id!, 'completed')
       const updated = await getGame(game.id!)
       expect(updated?.status).toBe('completed')
+    })
+
+    it('should soft-delete a game (status = deleted, record still exists)', async () => {
+      const team = await createTeam('Mudcats')
+      const game = await createGame(team.id!, 'Tigers', 'home')
+
+      await deleteGame(game.id!)
+
+      const fetched = await getGame(game.id!)
+      expect(fetched?.status).toBe('deleted')
+    })
+
+    it('should exclude deleted games from getGamesForTeam', async () => {
+      const team = await createTeam('Mudcats')
+      await createGame(team.id!, 'Tigers', 'home')        // visible
+      const gone = await createGame(team.id!, 'Bears', 'away')  // will be deleted
+      await deleteGame(gone.id!)
+
+      const games = await getGamesForTeam(team.id!)
+      expect(games).toHaveLength(1)
+      expect(games[0].opponentName).toBe('Tigers')
     })
   })
 

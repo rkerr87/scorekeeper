@@ -69,11 +69,19 @@ export async function getGame(id: number): Promise<Game | undefined> {
 }
 
 export async function getGamesForTeam(teamId: number): Promise<Game[]> {
-  return db.games.where('teamId').equals(teamId).toArray()
+  return db.games
+    .where('teamId')
+    .equals(teamId)
+    .filter(g => g.status !== 'deleted')
+    .toArray()
 }
 
 export async function updateGameStatus(id: number, status: Game['status']): Promise<void> {
   await db.games.update(id, { status, updatedAt: new Date() })
+}
+
+export async function deleteGame(id: number): Promise<void> {
+  await updateGameStatus(id, 'deleted')
 }
 
 // --- Lineups ---
