@@ -26,7 +26,7 @@ export function RunnerConfirmation({ runners, onConfirm, onCancel }: RunnerConfi
             {current.third ? (
               <div className="flex items-center gap-2">
                 <span className="text-sm font-bold">{current.third.playerName}</span>
-                <button onClick={() => clearBase('third')} className="text-red-400 hover:text-red-600 text-xs">clear</button>
+                <button onClick={() => clearBase('third')} className="text-red-400 hover:text-red-600 text-xs transition-all duration-150 ease-in-out active:scale-95">clear</button>
               </div>
             ) : (
               <span className="text-xs text-slate-400">empty</span>
@@ -39,7 +39,7 @@ export function RunnerConfirmation({ runners, onConfirm, onCancel }: RunnerConfi
             {current.second ? (
               <div className="flex items-center gap-2">
                 <span className="text-sm font-bold">{current.second.playerName}</span>
-                <button onClick={() => clearBase('second')} className="text-red-400 hover:text-red-600 text-xs">clear</button>
+                <button onClick={() => clearBase('second')} className="text-red-400 hover:text-red-600 text-xs transition-all duration-150 ease-in-out active:scale-95">clear</button>
               </div>
             ) : (
               <span className="text-xs text-slate-400">empty</span>
@@ -52,7 +52,7 @@ export function RunnerConfirmation({ runners, onConfirm, onCancel }: RunnerConfi
             {current.first ? (
               <div className="flex items-center gap-2">
                 <span className="text-sm font-bold">{current.first.playerName}</span>
-                <button onClick={() => clearBase('first')} className="text-red-400 hover:text-red-600 text-xs">clear</button>
+                <button onClick={() => clearBase('first')} className="text-red-400 hover:text-red-600 text-xs transition-all duration-150 ease-in-out active:scale-95">clear</button>
               </div>
             ) : (
               <span className="text-xs text-slate-400">empty</span>
@@ -63,13 +63,13 @@ export function RunnerConfirmation({ runners, onConfirm, onCancel }: RunnerConfi
         <div className="flex gap-2">
           <button
             onClick={onCancel}
-            className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 py-2.5 rounded-lg font-semibold"
+            className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 py-2.5 rounded-lg font-semibold transition-all duration-150 ease-in-out active:scale-95"
           >
             Cancel
           </button>
           <button
             onClick={() => onConfirm(current)}
-            className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-lg font-semibold"
+            className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-lg font-semibold transition-all duration-150 ease-in-out active:scale-95"
           >
             Confirm
           </button>

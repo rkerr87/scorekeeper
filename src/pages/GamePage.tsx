@@ -178,7 +178,7 @@ export function GamePage() {
       <div className="flex border-b border-slate-200 bg-white">
         <button
           onClick={() => setActiveTab('us')}
-          className={`flex-1 py-2 text-sm font-bold text-center ${
+          className={`flex-1 py-2 text-sm font-bold text-center transition-all duration-150 ${
             activeTab === 'us' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500'
           }`}
         >
@@ -186,7 +186,7 @@ export function GamePage() {
         </button>
         <button
           onClick={() => setActiveTab('them')}
-          className={`flex-1 py-2 text-sm font-bold text-center ${
+          className={`flex-1 py-2 text-sm font-bold text-center transition-all duration-150 ${
             activeTab === 'them' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500'
           }`}
         >
@@ -212,14 +212,14 @@ export function GamePage() {
         <button
           onClick={() => setShowPlayEntry(true)}
           disabled={snapshot.isGameOver}
-          className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white py-2.5 rounded-lg font-bold"
+          className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white py-2.5 rounded-lg font-bold transition-all duration-150 ease-in-out active:scale-95"
         >
           Record Play
         </button>
         <button
           onClick={undoLastPlay}
           disabled={plays.length === 0}
-          className="bg-slate-200 hover:bg-slate-300 disabled:bg-slate-100 disabled:text-slate-400 text-slate-700 py-2.5 px-4 rounded-lg font-bold"
+          className="bg-slate-200 hover:bg-slate-300 disabled:bg-slate-100 disabled:text-slate-400 text-slate-700 py-2.5 px-4 rounded-lg font-bold transition-all duration-150 ease-in-out active:scale-95"
         >
           Undo
         </button>
