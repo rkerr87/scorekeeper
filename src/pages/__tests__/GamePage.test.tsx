@@ -155,6 +155,68 @@ describe('GamePage', () => {
     expect(screen.getByText(/strikeout/i)).toBeInTheDocument()
   })
 
+  it('should show game-over overlay when snapshot.isGameOver is true', async () => {
+    const gameId = await seedFullGame()
+    // Add 18 outs worth of plays (3 outs × 6 innings × 2 halves) to end the game
+    const plays = []
+    let seq = 1
+    for (let inning = 1; inning <= 6; inning++) {
+      for (const half of ['top', 'bottom'] as const) {
+        for (let out = 0; out < 3; out++) {
+          plays.push({
+            gameId, sequenceNumber: seq++, inning, half,
+            batterOrderPosition: ((seq - 1) % 9) + 1,
+            playType: 'K' as const, notation: 'K',
+            fieldersInvolved: [], basesReached: [], runsScoredOnPlay: 0,
+            rbis: 0, pitches: [], isAtBat: true, timestamp: new Date(),
+          })
+        }
+      }
+    }
+    await db.plays.bulkAdd(plays)
+
+    renderGame(gameId)
+
+    await waitFor(() => {
+      expect(screen.getByText('Game Over')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /view stats/i })).toBeInTheDocument()
+    })
+  })
+
+  it('should dismiss game-over overlay when Back to scoresheet is clicked', async () => {
+    const user = userEvent.setup()
+    const gameId = await seedFullGame()
+    // Add 18 outs worth of plays to end the game
+    const plays = []
+    let seq = 1
+    for (let inning = 1; inning <= 6; inning++) {
+      for (const half of ['top', 'bottom'] as const) {
+        for (let out = 0; out < 3; out++) {
+          plays.push({
+            gameId, sequenceNumber: seq++, inning, half,
+            batterOrderPosition: ((seq - 1) % 9) + 1,
+            playType: 'K' as const, notation: 'K',
+            fieldersInvolved: [], basesReached: [], runsScoredOnPlay: 0,
+            rbis: 0, pitches: [], isAtBat: true, timestamp: new Date(),
+          })
+        }
+      }
+    }
+    await db.plays.bulkAdd(plays)
+
+    renderGame(gameId)
+
+    await waitFor(() => {
+      expect(screen.getByText('Game Over')).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('button', { name: /back to scoresheet/i }))
+
+    await waitFor(() => {
+      expect(screen.queryByText('Game Over')).not.toBeInTheDocument()
+    })
+  })
+
   it('should show toast and auto-switch tab to Us after top half ends (home game)', async () => {
     const user = userEvent.setup()
     const gameId = await seedFullGame()

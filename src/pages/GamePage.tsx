@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useGame } from '../contexts/GameContext'
 import { ScoreSummary } from '../components/ScoreSummary'
 import { Scoresheet } from '../components/Scoresheet'
@@ -23,6 +23,7 @@ interface PendingPlay {
 
 export function GamePage() {
   const { gameId } = useParams()
+  const navigate = useNavigate()
   const {
     game, lineupUs, lineupThem, plays, snapshot,
     loadGame, recordPlay, undoLastPlay,
@@ -41,6 +42,7 @@ export function GamePage() {
   const [pendingPlay, setPendingPlay] = useState<PendingPlay | null>(null)
   const [pendingRunners, setPendingRunners] = useState<BaseRunners | null>(null)
   const [pendingPreRunsScored, setPendingPreRunsScored] = useState(0)
+  const [gameOverDismissed, setGameOverDismissed] = useState(false)
 
   const gId = parseInt(gameId ?? '0')
 
@@ -313,6 +315,37 @@ export function GamePage() {
       {pendingToast && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-5 py-2.5 rounded-full text-sm font-semibold shadow-lg z-50">
           {pendingToast}
+        </div>
+      )}
+
+      {/* Game-over overlay */}
+      {snapshot.isGameOver && !gameOverDismissed && (
+        <div className="fixed inset-0 bg-slate-900/80 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-8 max-w-sm w-full mx-4 text-center">
+            <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Game Over</div>
+            <div className="text-5xl font-bold text-slate-900 mb-1">
+              {snapshot.scoreUs} — {snapshot.scoreThem}
+            </div>
+            <div className="text-lg font-semibold text-slate-600 mb-8">
+              {snapshot.scoreUs > snapshot.scoreThem
+                ? 'We won!'
+                : snapshot.scoreUs < snapshot.scoreThem
+                  ? 'They won.'
+                  : 'Tie game.'}
+            </div>
+            <button
+              onClick={() => navigate(`/game/${gId}/stats`)}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold mb-3 transition-all duration-150 active:scale-95"
+            >
+              View Stats
+            </button>
+            <button
+              onClick={() => setGameOverDismissed(true)}
+              className="text-slate-500 hover:text-slate-700 text-sm font-semibold transition-colors"
+            >
+              Back to scoresheet
+            </button>
+          </div>
         </div>
       )}
     </div>
