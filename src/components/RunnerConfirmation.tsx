@@ -57,12 +57,24 @@ function computeResult(
 
 export function RunnerConfirmation({ runners, onConfirm, onCancel }: RunnerConfirmationProps) {
   const [assignments, setAssignments] = useState<Map<OrigBase, RunnerDest>>(() => initAssignments(runners))
+  const [error, setError] = useState<string | null>(null)
 
   const setDest = (orig: OrigBase, dest: RunnerDest) => {
+    setError(null)
     setAssignments(prev => new Map(prev).set(orig, dest))
   }
 
   const handleConfirm = () => {
+    // Check for base collisions (two runners assigned to same base)
+    const baseDests = Array.from(assignments.values()).filter(
+      d => d !== 'scored' && d !== 'out'
+    )
+    const uniqueBaseDests = new Set(baseDests)
+    if (baseDests.length !== uniqueBaseDests.size) {
+      setError('Two runners cannot share the same base')
+      return
+    }
+    setError(null)
     onConfirm(computeResult(runners, assignments))
   }
 
@@ -109,6 +121,10 @@ export function RunnerConfirmation({ runners, onConfirm, onCancel }: RunnerConfi
             <p className="text-sm text-slate-400 text-center py-2">No runners on base</p>
           )}
         </div>
+
+        {error && (
+          <p className="text-red-600 text-sm font-semibold mb-3">{error}</p>
+        )}
 
         <div className="flex gap-2">
           <button

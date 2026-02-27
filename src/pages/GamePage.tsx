@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { useGame } from '../contexts/GameContext'
 import { ScoreSummary } from '../components/ScoreSummary'
@@ -28,11 +28,16 @@ export function GamePage() {
   } = useGame()
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('us')
+  // trackedHalfKey records the snapshot half key that activeTab and pendingToast were last
+  // auto-synced to. Updated during render (not in an effect) to avoid the
+  // react-hooks/set-state-in-effect lint rule.
+  const [trackedHalfKey, setTrackedHalfKey] = useState<string>('')
+  // pendingToast is set during render when the half changes; derived directly as the
+  // visible toast message. The effect below schedules its clearance after 3 seconds.
+  const [pendingToast, setPendingToast] = useState<string | null>(null)
   const [showPlayEntry, setShowPlayEntry] = useState(false)
   const [pendingPlay, setPendingPlay] = useState<PendingPlay | null>(null)
   const [pendingRunners, setPendingRunners] = useState<BaseRunners | null>(null)
-  const [toastMessage, setToastMessage] = useState<string | null>(null)
-  const prevHalfRef = useRef<string | null>(null)
 
   const gId = parseInt(gameId ?? '0')
 
@@ -42,32 +47,12 @@ export function GamePage() {
     }
   }, [gId, game, loadGame])
 
+  // Auto-dismiss toast after 3 seconds (setPendingToast inside setTimeout is async — not flagged)
   useEffect(() => {
-    if (!snapshot || !game) return
-
-    const usBattingHalfLocal: HalfInning = game.homeOrAway === 'home' ? 'bottom' : 'top'
-    const prevKey = prevHalfRef.current
-    const currKey = `${snapshot.inning}-${snapshot.half}`
-    prevHalfRef.current = currKey
-
-    if (prevKey === null) return  // first render, skip
-
-    const [prevInningStr, prevHalfStr] = prevKey.split('-')
-    const halfChanged = snapshot.half !== prevHalfStr || snapshot.inning.toString() !== prevInningStr
-
-    if (!halfChanged) return
-
-    // Switch to the now-batting team
-    const nowBattingUs = snapshot.half === usBattingHalfLocal
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setActiveTab(nowBattingUs ? 'us' : 'them')
-
-    // Show toast for 3 seconds
-    const halfLabel = snapshot.half === 'top' ? 'Top' : 'Bot'
-    setToastMessage(`Side retired — ${halfLabel} ${snapshot.inning}`)
-    const timer = setTimeout(() => setToastMessage(null), 3000)
+    if (!pendingToast) return
+    const timer = setTimeout(() => setPendingToast(null), 3000)
     return () => clearTimeout(timer)
-  }, [snapshot, game])
+  }, [pendingToast])
 
   if (!game || !snapshot || !lineupUs || !lineupThem) {
     return <div className="p-6 text-slate-500">Loading game...</div>
@@ -76,6 +61,21 @@ export function GamePage() {
   // Determine which half "us" bats in
   const usBattingHalf: HalfInning = game.homeOrAway === 'home' ? 'bottom' : 'top'
   const themBattingHalf: HalfInning = usBattingHalf === 'top' ? 'bottom' : 'top'
+
+  // Auto-switch tab when the half changes (during render, not in an effect).
+  // React supports calling setState during render for derived-state updates — it discards
+  // the current render and immediately re-renders with the updated state.
+  const halfKey = `${snapshot.inning}-${snapshot.half}`
+  if (trackedHalfKey !== halfKey && trackedHalfKey !== '') {
+    // Half has changed — auto-follow the now-batting team, queue toast, and record the new half
+    const halfLabel = snapshot.half === 'top' ? 'Top' : 'Bot'
+    setTrackedHalfKey(halfKey)
+    setActiveTab(snapshot.half === usBattingHalf ? 'us' : 'them')
+    setPendingToast(`Side retired — ${halfLabel} ${snapshot.inning}`)
+  } else if (trackedHalfKey === '') {
+    // First render after game loads — record the initial half key without changing the tab
+    setTrackedHalfKey(halfKey)
+  }
 
   const activeLineup = activeTab === 'us' ? lineupUs : lineupThem
   const currentBatter = activeTab === 'us' ? snapshot.currentBatterUs : snapshot.currentBatterThem
@@ -277,9 +277,9 @@ export function GamePage() {
       )}
 
       {/* Toast notification */}
-      {toastMessage && (
+      {pendingToast && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-5 py-2.5 rounded-full text-sm font-semibold shadow-lg z-50">
-          {toastMessage}
+          {pendingToast}
         </div>
       )}
     </div>
