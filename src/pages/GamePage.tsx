@@ -59,8 +59,8 @@ export function GamePage() {
   const pitcherName = currentPitcher?.playerName ?? 'Unknown'
   const pitchCount = snapshot.pitchCountByPitcher.get(pitcherName) ?? 0
 
-  // Current batter slot for play entry panel
-  const currentBatterSlot = activeTab === 'us'
+  // Current batter slot for play entry panel — use snapshot.half, not activeTab
+  const currentBatterSlot = snapshot.half === usBattingHalf
     ? lineupUs.battingOrder.find(s => s.orderPosition === snapshot.currentBatterUs)
     : lineupThem.battingOrder.find(s => s.orderPosition === snapshot.currentBatterThem)
 
@@ -211,7 +211,8 @@ export function GamePage() {
       <div className="p-3 bg-white border-t border-slate-200 flex gap-2">
         <button
           onClick={() => setShowPlayEntry(true)}
-          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold"
+          disabled={snapshot.isGameOver}
+          className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white py-2.5 rounded-lg font-bold"
         >
           Record Play
         </button>
