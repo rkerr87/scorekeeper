@@ -7,6 +7,7 @@ import { PlayEntryPanel } from '../components/PlayEntryPanel'
 import { RunnerConfirmation } from '../components/RunnerConfirmation'
 import type { BaseRunner, BaseRunners, HalfInning, PlayType, PitchResult } from '../engine/types'
 import { replayGame } from '../engine/engine'
+import { BeginnerGuide } from '../components/BeginnerGuide'
 
 type ActiveTab = 'us' | 'them'
 
@@ -28,6 +29,7 @@ export function GamePage() {
   } = useGame()
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('us')
+  const [lastRecordedPlay, setLastRecordedPlay] = useState<{ playType: PlayType; notation: string } | null>(null)
   // trackedHalfKey records the snapshot half key that activeTab and pendingToast were last
   // auto-synced to. Updated during render (not in an effect) to avoid the
   // react-hooks/set-state-in-effect lint rule.
@@ -54,6 +56,13 @@ export function GamePage() {
     const timer = setTimeout(() => setPendingToast(null), 3000)
     return () => clearTimeout(timer)
   }, [pendingToast])
+
+  // Auto-dismiss beginner guide card after 5 seconds
+  useEffect(() => {
+    if (!lastRecordedPlay) return
+    const timer = setTimeout(() => setLastRecordedPlay(null), 5000)
+    return () => clearTimeout(timer)
+  }, [lastRecordedPlay])
 
   if (!game || !snapshot || !lineupUs || !lineupThem) {
     return <div className="p-6 text-slate-500">Loading game...</div>
@@ -183,6 +192,7 @@ export function GamePage() {
         : undefined,
     })
 
+    setLastRecordedPlay({ playType: data.playType, notation: data.notation })
     setShowPlayEntry(false)
     setPendingPlay(null)
     setPendingRunners(null)
@@ -246,6 +256,20 @@ export function GamePage() {
           runsMap={activeTab === 'us' ? snapshot.runsScoredByPositionUs : snapshot.runsScoredByPositionThem}
         />
       </div>
+
+      {/* Beginner guide card */}
+      {lastRecordedPlay && (
+        <div className="px-3 pt-2 bg-white border-t border-slate-100 relative">
+          <button
+            onClick={() => setLastRecordedPlay(null)}
+            aria-label="Dismiss guide"
+            className="absolute top-2 right-3 text-blue-300 hover:text-blue-500 text-xl leading-none z-10"
+          >
+            ×
+          </button>
+          <BeginnerGuide playType={lastRecordedPlay.playType} notation={lastRecordedPlay.notation} />
+        </div>
+      )}
 
       {/* Bottom action bar */}
       <div className="p-3 bg-white border-t border-slate-200 flex gap-2">

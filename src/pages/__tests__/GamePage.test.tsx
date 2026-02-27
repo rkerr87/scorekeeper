@@ -145,6 +145,16 @@ describe('GamePage', () => {
     })
   })
 
+  it('should show beginner guide card after a play is recorded', async () => {
+    const user = userEvent.setup()
+    const gameId = await seedFullGame()
+    renderGame(gameId)
+    await waitFor(() => expect(screen.queryByText('Loading game...')).not.toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: /record play/i }))
+    await user.click(screen.getByRole('button', { name: /^K$/i }))
+    expect(screen.getByText(/strikeout/i)).toBeInTheDocument()
+  })
+
   it('should show toast and auto-switch tab to Us after top half ends (home game)', async () => {
     const user = userEvent.setup()
     const gameId = await seedFullGame()
