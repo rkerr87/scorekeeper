@@ -33,4 +33,15 @@ describe('ScoreSummary', () => {
     expect(screen.getByText(/47/)).toBeInTheDocument()
     expect(screen.getByText(/smith/i)).toBeInTheDocument()
   })
+
+  it('should display pitch count with PC: label', () => {
+    render(
+      <ScoreSummary
+        inning={2} half="top" outs={1}
+        scoreUs={3} scoreThem={1}
+        pitchCount={47} pitcherName="Smith"
+      />
+    )
+    expect(screen.getByText('PC: 47')).toBeInTheDocument()
+  })
 })

@@ -59,7 +59,7 @@ export function ScoreSummary({
       {/* Pitcher + pitch count */}
       <div className="text-right">
         <div className="text-xs text-slate-400">{pitcherName}</div>
-        <div className="text-lg font-mono font-bold">{pitchCount}</div>
+        <div className="text-lg font-mono font-bold">PC: {pitchCount}</div>
       </div>
     </div>
   )
