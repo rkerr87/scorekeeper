@@ -108,8 +108,8 @@ export function GameSetupPage() {
     const { active, over } = event
     if (over && active.id !== over.id) {
       setBattingOrder(prev => {
-        const oldIndex = prev.indexOf(active.id as number)
-        const newIndex = prev.indexOf(over.id as number)
+        const oldIndex = prev.indexOf(Number(active.id))
+        const newIndex = prev.indexOf(Number(over.id))
         return arrayMove(prev, oldIndex, newIndex)
       })
     }
