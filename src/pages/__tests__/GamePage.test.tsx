@@ -144,4 +144,48 @@ describe('GamePage', () => {
       expect(screen.getByText('Opp1')).toBeInTheDocument()
     })
   })
+
+  it('should show toast and auto-switch tab to Us after top half ends (home game)', async () => {
+    const user = userEvent.setup()
+    const gameId = await seedFullGame()
+
+    // Seed 2 outs already in top half (them batting — game is 'home')
+    await db.plays.bulkAdd([
+      {
+        gameId, sequenceNumber: 1, inning: 1, half: 'top',
+        batterOrderPosition: 1,
+        playType: 'K', notation: 'K',
+        fieldersInvolved: [], basesReached: [], runsScoredOnPlay: 0,
+        rbis: 0, pitches: [], isAtBat: true, timestamp: new Date(),
+      },
+      {
+        gameId, sequenceNumber: 2, inning: 1, half: 'top',
+        batterOrderPosition: 2,
+        playType: 'K', notation: 'K',
+        fieldersInvolved: [], basesReached: [], runsScoredOnPlay: 0,
+        rbis: 0, pitches: [], isAtBat: true, timestamp: new Date(),
+      },
+    ])
+
+    renderGame(gameId)
+
+    // Wait for game to load (2 outs showing)
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /record play/i })).toBeInTheDocument()
+    })
+
+    // Record the 3rd out (K) via the play entry panel — no runners on base so no confirmation step
+    await user.click(screen.getByRole('button', { name: /record play/i }))
+    await waitFor(() => {
+      // Panel is open — K button visible
+      expect(screen.getByRole('button', { name: 'K' })).toBeInTheDocument()
+    })
+    await user.click(screen.getByRole('button', { name: 'K' }))
+
+    // After 3rd out: top half ends, game moves to Bot 1 (us bats — home team)
+    // Toast should appear (text includes both "Side retired" and "Bot 1")
+    await waitFor(() => {
+      expect(screen.getByText(/side retired — bot 1/i)).toBeInTheDocument()
+    })
+  })
 })
