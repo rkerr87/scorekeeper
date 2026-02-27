@@ -215,6 +215,17 @@ export function GamePage() {
 
   return (
     <div className="h-screen flex flex-col bg-slate-50">
+      {/* Persistent back button */}
+      <div className="bg-slate-800 px-3 pt-2 flex items-center">
+        <button
+          onClick={() => navigate('/')}
+          aria-label="Back to home"
+          className="text-slate-400 hover:text-white text-sm font-semibold transition-colors"
+        >
+          ← Home
+        </button>
+      </div>
+
       {/* Score summary */}
       <ScoreSummary
         inning={snapshot.inning}
@@ -338,6 +349,12 @@ export function GamePage() {
               className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold mb-3 transition-all duration-150 active:scale-95"
             >
               View Stats
+            </button>
+            <button
+              onClick={() => navigate('/')}
+              className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 py-3 rounded-xl font-bold mb-3 transition-all duration-150 active:scale-95"
+            >
+              Home
             </button>
             <button
               onClick={() => setGameOverDismissed(true)}

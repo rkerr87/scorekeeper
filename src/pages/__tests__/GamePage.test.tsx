@@ -217,6 +217,46 @@ describe('GamePage', () => {
     })
   })
 
+  it('should show a persistent back-to-home link in the header', async () => {
+    const gameId = await seedFullGame()
+    renderGame(gameId)
+
+    await waitFor(() => {
+      const backLink = screen.getByRole('button', { name: /back to home/i })
+      expect(backLink).toBeInTheDocument()
+      expect(backLink).toHaveTextContent('← Home')
+    })
+  })
+
+  it('should show a Home button on the game-over overlay', async () => {
+    const gameId = await seedFullGame()
+    // Add 18 outs worth of plays to end the game
+    const plays = []
+    let seq = 1
+    for (let inning = 1; inning <= 6; inning++) {
+      for (const half of ['top', 'bottom'] as const) {
+        for (let out = 0; out < 3; out++) {
+          plays.push({
+            gameId, sequenceNumber: seq++, inning, half,
+            batterOrderPosition: ((seq - 1) % 9) + 1,
+            playType: 'K' as const, notation: 'K',
+            fieldersInvolved: [], basesReached: [], runsScoredOnPlay: 0,
+            rbis: 0, pitches: [], isAtBat: true, timestamp: new Date(),
+          })
+        }
+      }
+    }
+    await db.plays.bulkAdd(plays)
+
+    renderGame(gameId)
+
+    await waitFor(() => {
+      expect(screen.getByText('Game Over')).toBeInTheDocument()
+      // Home button should exist between View Stats and Back to scoresheet
+      expect(screen.getByRole('button', { name: /^home$/i })).toBeInTheDocument()
+    })
+  })
+
   it('should show toast and auto-switch tab to Us after top half ends (home game)', async () => {
     const user = userEvent.setup()
     const gameId = await seedFullGame()
