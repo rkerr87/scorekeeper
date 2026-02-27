@@ -21,8 +21,11 @@ function renderPanel(overrides?: Partial<{
   batterName: string
   baseRunners: BaseRunners
   pitches: PitchResult[]
+  outs: number
   onAddPitch: (pitch: PitchResult) => void
   onRemovePitch: () => void
+  onClear: () => void
+  onRemoveAt: (index: number) => void
   onPlayRecorded: (data: unknown) => void
   onClose: () => void
 }>) {
@@ -31,6 +34,8 @@ function renderPanel(overrides?: Partial<{
     pitches: [] as PitchResult[],
     onAddPitch: vi.fn(),
     onRemovePitch: vi.fn(),
+    onClear: vi.fn(),
+    onRemoveAt: vi.fn(),
     onPlayRecorded: vi.fn(),
     onClose: vi.fn(),
     ...overrides,
@@ -156,5 +161,67 @@ describe('PlayEntryPanel', () => {
     expect(call.runnerOverrides).toBeDefined()
     // Alice moved from 1st to 2nd; Bob stays on 2nd
     expect(call.runnerOverrides.second).toMatchObject({ playerName: 'Alice' })
+  })
+
+  it('disables FC, SAC, DP, SB, WP, PB, BK when bases empty', () => {
+    renderPanel({
+      baseRunners: { first: null, second: null, third: null },
+    })
+    for (const label of ['FC', 'DP', 'SAC', 'SB', 'WP', 'PB', 'BK']) {
+      expect(screen.getByRole('button', { name: label })).toBeDisabled()
+    }
+  })
+
+  it('enables special plays when runners on base', () => {
+    renderPanel({
+      baseRunners: { first: { playerName: 'A', orderPosition: 1 }, second: null, third: null },
+    })
+    expect(screen.getByRole('button', { name: 'FC' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'SB' })).toBeEnabled()
+  })
+
+  it('disables SAC when 2 outs even with runners', () => {
+    renderPanel({
+      baseRunners: { first: { playerName: 'A', orderPosition: 1 }, second: null, third: null },
+      outs: 2,
+    })
+    expect(screen.getByRole('button', { name: 'SAC' })).toBeDisabled()
+  })
+
+  it('E button is NOT disabled when bases empty (errors can happen anytime)', () => {
+    renderPanel({
+      baseRunners: { first: null, second: null, third: null },
+    })
+    expect(screen.getByRole('button', { name: 'E' })).toBeEnabled()
+  })
+
+  it('E button opens field diagram for position selection', async () => {
+    const user = userEvent.setup()
+    const onPlayRecorded = vi.fn()
+    renderPanel({ onPlayRecorded })
+    await user.click(screen.getByRole('button', { name: 'E' }))
+    // Should show field diagram with error-specific prompt
+    expect(screen.getByText(/error by/i)).toBeInTheDocument()
+    // Should not have recorded a play yet
+    expect(onPlayRecorded).not.toHaveBeenCalled()
+  })
+
+  it('records error with position number via field diagram', async () => {
+    const user = userEvent.setup()
+    const onPlayRecorded = vi.fn()
+    renderPanel({ onPlayRecorded })
+    await user.click(screen.getByRole('button', { name: 'E' }))
+    // Select SS (position 6)
+    await user.click(screen.getByRole('button', { name: /6.*SS/i }))
+    await user.click(screen.getByRole('button', { name: /confirm/i }))
+    expect(onPlayRecorded).toHaveBeenCalledWith(
+      expect.objectContaining({
+        playType: 'E',
+        notation: 'E6',
+        fieldersInvolved: [6],
+        basesReached: [1],
+        isAtBat: true,
+      })
+    )
   })
 })

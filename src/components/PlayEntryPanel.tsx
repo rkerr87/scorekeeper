@@ -18,8 +18,11 @@ interface PlayEntryPanelProps {
   batterName: string
   baseRunners?: BaseRunners
   pitches: PitchResult[]
+  outs?: number
   onAddPitch: (pitch: PitchResult) => void
   onRemovePitch: () => void
+  onClear: () => void
+  onRemoveAt: (index: number) => void
   onPlayRecorded: (data: PlayRecordedData) => void
   onClose: () => void
 }
@@ -55,8 +58,11 @@ const SPECIAL_PLAYS: { label: string; playType: PlayType; basesReached: number[]
   { label: 'BK', playType: 'BK', basesReached: [], isAtBat: false },
 ]
 
-export function PlayEntryPanel({ batterName, baseRunners, pitches, onAddPitch, onRemovePitch, onPlayRecorded, onClose }: PlayEntryPanelProps) {
+const RUNNER_REQUIRED: PlayType[] = ['FC', 'DP', 'SAC', 'SB', 'WP', 'PB', 'BK']
+
+export function PlayEntryPanel({ batterName, baseRunners, pitches, outs, onAddPitch, onRemovePitch, onClear, onRemoveAt, onPlayRecorded, onClose }: PlayEntryPanelProps) {
   const [mode, setMode] = useState<PanelMode>('select')
+  const hasRunners = !!(baseRunners?.first || baseRunners?.second || baseRunners?.third)
   const [fieldingPlayType, setFieldingPlayType] = useState<PlayType>('GO')
   const [selectedPositions, setSelectedPositions] = useState<number[]>([])
   const [shorthand, setShorthand] = useState('')
@@ -89,14 +95,25 @@ export function PlayEntryPanel({ batterName, baseRunners, pitches, onAddPitch, o
 
   const handleConfirmFielding = () => {
     const notation = generateNotation(fieldingPlayType, selectedPositions)
-    onPlayRecorded({
-      playType: fieldingPlayType,
-      notation,
-      fieldersInvolved: selectedPositions,
-      basesReached: [],
-      pitches,
-      isAtBat: true,
-    })
+    if (fieldingPlayType === 'E') {
+      onPlayRecorded({
+        playType: 'E',
+        notation,
+        fieldersInvolved: selectedPositions,
+        basesReached: [1],
+        pitches,
+        isAtBat: true,
+      })
+    } else {
+      onPlayRecorded({
+        playType: fieldingPlayType,
+        notation,
+        fieldersInvolved: selectedPositions,
+        basesReached: [],
+        pitches,
+        isAtBat: true,
+      })
+    }
   }
 
   const handleShorthandSubmit = () => {
@@ -167,7 +184,7 @@ export function PlayEntryPanel({ batterName, baseRunners, pitches, onAddPitch, o
 
         {/* Pitch tracker */}
         <div className="mb-4">
-          <PitchTracker pitches={pitches} onAddPitch={onAddPitch} onRemovePitch={onRemovePitch} />
+          <PitchTracker pitches={pitches} onAddPitch={onAddPitch} onRemovePitch={onRemovePitch} onClear={onClear} onRemoveAt={onRemoveAt} />
         </div>
 
         {mode === 'select' && (
@@ -213,15 +230,37 @@ export function PlayEntryPanel({ batterName, baseRunners, pitches, onAddPitch, o
             <div className="mb-3">
               <div className="text-xs font-semibold text-slate-500 mb-1.5">SPECIAL</div>
               <div className="grid grid-cols-4 gap-1.5">
-                {SPECIAL_PLAYS.map(play => (
-                  <button
-                    key={play.label}
-                    onClick={() => play.playType === 'SB' ? handleSbClick() : recordSimplePlay(play.playType, play.basesReached, play.isAtBat)}
-                    className="bg-amber-600 hover:bg-amber-700 text-white py-2 rounded font-bold text-sm transition-all duration-150 ease-in-out active:scale-95"
-                  >
-                    {play.label}
-                  </button>
-                ))}
+                {SPECIAL_PLAYS.map(play => {
+                  const needsRunners = RUNNER_REQUIRED.includes(play.playType)
+                  const isSacWith2Outs = play.playType === 'SAC' && (outs ?? 0) >= 2
+                  const disabled = (needsRunners && !hasRunners) || isSacWith2Outs
+
+                  return (
+                    <button
+                      key={play.label}
+                      onClick={() => {
+                      if (disabled) return
+                      if (play.playType === 'E') {
+                        setFieldingPlayType('E' as PlayType)
+                        setSelectedPositions([])
+                        setMode('fielding')
+                      } else if (play.playType === 'SB') {
+                        handleSbClick()
+                      } else {
+                        recordSimplePlay(play.playType, play.basesReached, play.isAtBat)
+                      }
+                    }}
+                      disabled={disabled}
+                      className={`py-2 rounded font-bold text-sm transition-all duration-150 ease-in-out active:scale-95 ${
+                        disabled
+                          ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                          : 'bg-amber-600 hover:bg-amber-700 text-white'
+                      }`}
+                    >
+                      {play.label}
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
@@ -252,7 +291,10 @@ export function PlayEntryPanel({ batterName, baseRunners, pitches, onAddPitch, o
         {mode === 'fielding' && (
           <div>
             <div className="text-sm font-semibold text-slate-700 mb-2 text-center">
-              Tap fielders in order: {selectedPositions.join(' → ') || '(none selected)'}
+              {fieldingPlayType === 'E'
+                ? `Error by: ${selectedPositions.length > 0 ? selectedPositions[0] : '(tap a fielder)'}`
+                : `Tap fielders in order: ${selectedPositions.join(' → ') || '(none selected)'}`
+              }
             </div>
             <FieldDiagram selectedPositions={selectedPositions} onPositionClick={handlePositionClick} />
             <div className="flex gap-2 mt-3">

@@ -1,12 +1,17 @@
+import { useState } from 'react'
 import type { PitchResult } from '../engine/types'
 
 interface PitchTrackerProps {
   pitches: PitchResult[]
   onAddPitch: (pitch: PitchResult) => void
   onRemovePitch: () => void
+  onClear: () => void
+  onRemoveAt: (index: number) => void
 }
 
-export function PitchTracker({ pitches, onAddPitch, onRemovePitch }: PitchTrackerProps) {
+export function PitchTracker({ pitches, onAddPitch, onRemovePitch, onClear, onRemoveAt }: PitchTrackerProps) {
+  const [showClearConfirm, setShowClearConfirm] = useState(false)
+
   let b = 0
   let s = 0
   for (const p of pitches) {
@@ -24,14 +29,17 @@ export function PitchTracker({ pitches, onAddPitch, onRemovePitch }: PitchTracke
 
       <div className="flex items-center gap-1 mb-3">
         {pitches.map((p, i) => (
-          <div
+          <button
             key={i}
-            className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${
+            onClick={() => onRemoveAt(i)}
+            data-testid="pitch-dot"
+            title="Tap to remove"
+            className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white cursor-pointer hover:opacity-70 ${
               p === 'B' ? 'bg-blue-500' : p === 'S' ? 'bg-red-500' : 'bg-amber-500'
             }`}
           >
             {p}
-          </div>
+          </button>
         ))}
       </div>
 
@@ -63,6 +71,33 @@ export function PitchTracker({ pitches, onAddPitch, onRemovePitch }: PitchTracke
           </button>
         )}
       </div>
+
+      {showClearConfirm ? (
+        <div className="flex items-center gap-2 mt-2">
+          <span className="text-xs text-red-600 font-semibold">Clear {pitches.length} pitches?</span>
+          <button
+            onClick={() => { onClear(); setShowClearConfirm(false) }}
+            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-bold transition-all duration-150"
+          >
+            Confirm
+          </button>
+          <button
+            onClick={() => setShowClearConfirm(false)}
+            className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1 rounded text-xs font-bold transition-all duration-150"
+          >
+            Cancel
+          </button>
+        </div>
+      ) : (
+        pitches.length > 0 && (
+          <button
+            onClick={() => setShowClearConfirm(true)}
+            className="mt-2 bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1 rounded text-xs font-bold transition-all duration-150"
+          >
+            Clear
+          </button>
+        )
+      )}
     </div>
   )
 }

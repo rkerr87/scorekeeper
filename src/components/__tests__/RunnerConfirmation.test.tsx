@@ -101,6 +101,141 @@ describe('RunnerConfirmation', () => {
     })
   })
 
+  describe('pre-play runner positions', () => {
+    it('shows runner original base positions (pre-play) in labels and defaults to post-play positions', () => {
+      // Pre-play: runner on 1st. Post-play: engine moved them to 2nd
+      const prePlayRunners: BaseRunners = {
+        first: { playerName: 'Smith', orderPosition: 3 },
+        second: null,
+        third: null,
+      }
+      const postPlayRunners: BaseRunners = {
+        first: null,
+        second: { playerName: 'Smith', orderPosition: 3 },
+        third: null,
+      }
+      render(
+        <RunnerConfirmation
+          prePlayRunners={prePlayRunners}
+          runners={postPlayRunners}
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />
+      )
+      // Label should say "was on 1st" (pre-play position)
+      expect(screen.getByText(/was on 1st/)).toBeInTheDocument()
+      // Should NOT say "was on 2nd" since the runner was on 1st before the play
+      expect(screen.queryByText(/was on 2nd/)).not.toBeInTheDocument()
+    })
+
+    it('defaults selection to post-play positions when prePlayRunners provided', async () => {
+      const user = userEvent.setup()
+      const onConfirm = vi.fn()
+      // Pre-play: runner on 1st. Post-play: engine moved them to 2nd
+      const prePlayRunners: BaseRunners = {
+        first: { playerName: 'Smith', orderPosition: 3 },
+        second: null,
+        third: null,
+      }
+      const postPlayRunners: BaseRunners = {
+        first: null,
+        second: { playerName: 'Smith', orderPosition: 3 },
+        third: null,
+      }
+      render(
+        <RunnerConfirmation
+          prePlayRunners={prePlayRunners}
+          runners={postPlayRunners}
+          onConfirm={onConfirm}
+          onCancel={vi.fn()}
+        />
+      )
+      // Confirm without changes — should use post-play position as default
+      await user.click(screen.getByRole('button', { name: /confirm/i }))
+      expect(onConfirm).toHaveBeenCalledWith({
+        runners: {
+          first: null,
+          second: { playerName: 'Smith', orderPosition: 3 },
+          third: null,
+        },
+        runsScored: 0,
+      })
+    })
+
+    it('uses pre-play runner identity for multiple runners with post-play defaults', async () => {
+      const user = userEvent.setup()
+      const onConfirm = vi.fn()
+      // Pre-play: runners on 1st and 3rd
+      // Post-play: runner from 1st moved to 2nd, runner from 3rd scored
+      const prePlayRunners: BaseRunners = {
+        first: { playerName: 'Alice', orderPosition: 1 },
+        second: null,
+        third: { playerName: 'Bob', orderPosition: 2 },
+      }
+      const postPlayRunners: BaseRunners = {
+        first: null,
+        second: { playerName: 'Alice', orderPosition: 1 },
+        third: null,
+      }
+      render(
+        <RunnerConfirmation
+          prePlayRunners={prePlayRunners}
+          runners={postPlayRunners}
+          initialRunsScored={0}
+          onConfirm={onConfirm}
+          onCancel={vi.fn()}
+        />
+      )
+      // Labels should show pre-play positions
+      expect(screen.getByText(/was on 1st/)).toBeInTheDocument()
+      expect(screen.getByText(/was on 3rd/)).toBeInTheDocument()
+      // Confirm without changes — Bob should be scored (not found on any post-play base)
+      await user.click(screen.getByRole('button', { name: /confirm/i }))
+      expect(onConfirm).toHaveBeenCalledWith({
+        runners: {
+          first: null,
+          second: { playerName: 'Alice', orderPosition: 1 },
+          third: null,
+        },
+        runsScored: 1,
+      })
+    })
+
+    it('uses isValidDest based on pre-play base (not post-play)', () => {
+      // Pre-play: runner on 1st. Post-play: runner on 2nd.
+      // Backward prevention should use pre-play (1st) — so 1st base button should be disabled
+      const prePlayRunners: BaseRunners = {
+        first: { playerName: 'Smith', orderPosition: 3 },
+        second: null,
+        third: null,
+      }
+      const postPlayRunners: BaseRunners = {
+        first: null,
+        second: { playerName: 'Smith', orderPosition: 3 },
+        third: null,
+      }
+      render(
+        <RunnerConfirmation
+          prePlayRunners={prePlayRunners}
+          runners={postPlayRunners}
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />
+      )
+      // 1st should be disabled (can't go backward from 1st to 1st — same base, not forward)
+      // Actually for runner on 1st: 1st is same base not forward, so disabled per isValidDest
+      // Wait — isValidDest(first, first) = DEST_ORDER[first](1) > BASE_ORDER[first](1) = false
+      // So 1st button should be disabled
+      const firstButtons = screen.getAllByRole('button', { name: /^1st$/i })
+      expect(firstButtons[0]).toBeDisabled()
+      // 2nd and 3rd should be enabled (forward from 1st)
+      const secondButtons = screen.getAllByRole('button', { name: /^2nd$/i })
+      const thirdButtons = screen.getAllByRole('button', { name: /^3rd$/i })
+      expect(secondButtons[0]).toBeEnabled()
+      expect(thirdButtons[0]).toBeEnabled()
+    })
+  })
+
   describe('backward movement prevention', () => {
     it('should disable 1st base button for runner on 2nd', () => {
       const runnersOn2nd: BaseRunners = {

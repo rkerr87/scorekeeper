@@ -6,6 +6,7 @@ type RunnerDest = 'first' | 'second' | 'third' | 'scored' | 'out'
 
 interface RunnerConfirmationProps {
   runners: BaseRunners
+  prePlayRunners?: BaseRunners
   onConfirm: (result: { runners: BaseRunners; runsScored: number }) => void
   onCancel: () => void
   initialRunsScored?: number
@@ -34,16 +35,27 @@ function isValidDest(orig: OrigBase, dest: RunnerDest): boolean {
   return DEST_ORDER[dest] > BASE_ORDER[orig]
 }
 
-function initAssignments(runners: BaseRunners): Map<OrigBase, RunnerDest> {
+function initAssignments(preRunners: BaseRunners, postRunners: BaseRunners): Map<OrigBase, RunnerDest> {
   const m = new Map<OrigBase, RunnerDest>()
-  if (runners.first) m.set('first', 'first')
-  if (runners.second) m.set('second', 'second')
-  if (runners.third) m.set('third', 'third')
+  const BASES: OrigBase[] = ['first', 'second', 'third']
+  for (const orig of BASES) {
+    const runner = preRunners[orig]
+    if (!runner) continue
+    // Find where this runner ended up in post-play state
+    let dest: RunnerDest = 'scored' // default: not found on any base = scored
+    for (const base of BASES) {
+      if (postRunners[base]?.orderPosition === runner.orderPosition) {
+        dest = base
+        break
+      }
+    }
+    m.set(orig, dest)
+  }
   return m
 }
 
 function computeResult(
-  runners: BaseRunners,
+  sourceRunners: BaseRunners,
   assignments: Map<OrigBase, RunnerDest>,
   initialRunsScored: number,
 ): { runners: BaseRunners; runsScored: number } {
@@ -52,7 +64,7 @@ function computeResult(
 
   const ORIG_BASES: OrigBase[] = ['third', 'second', 'first']
   for (const orig of ORIG_BASES) {
-    const runner: BaseRunner | null = runners[orig]
+    const runner: BaseRunner | null = sourceRunners[orig]
     if (!runner) continue
     const dest = assignments.get(orig)
     if (!dest || dest === 'out') continue
@@ -66,8 +78,10 @@ function computeResult(
   return { runners: result, runsScored }
 }
 
-export function RunnerConfirmation({ runners, onConfirm, onCancel, initialRunsScored = 0 }: RunnerConfirmationProps) {
-  const [assignments, setAssignments] = useState<Map<OrigBase, RunnerDest>>(() => initAssignments(runners))
+export function RunnerConfirmation({ runners, prePlayRunners, onConfirm, onCancel, initialRunsScored = 0 }: RunnerConfirmationProps) {
+  // Use prePlayRunners for runner identity/labels; fall back to runners (post-play) for backward compat
+  const sourceRunners = prePlayRunners ?? runners
+  const [assignments, setAssignments] = useState<Map<OrigBase, RunnerDest>>(() => initAssignments(sourceRunners, runners))
   const [error, setError] = useState<string | null>(null)
 
   const setDest = (orig: OrigBase, dest: RunnerDest) => {
@@ -86,10 +100,10 @@ export function RunnerConfirmation({ runners, onConfirm, onCancel, initialRunsSc
       return
     }
     setError(null)
-    onConfirm(computeResult(runners, assignments, initialRunsScored))
+    onConfirm(computeResult(sourceRunners, assignments, initialRunsScored))
   }
 
-  const occupiedBases: OrigBase[] = (['third', 'second', 'first'] as OrigBase[]).filter(b => runners[b] !== null)
+  const occupiedBases: OrigBase[] = (['third', 'second', 'first'] as OrigBase[]).filter(b => sourceRunners[b] !== null)
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -101,7 +115,7 @@ export function RunnerConfirmation({ runners, onConfirm, onCancel, initialRunsSc
 
         <div className="space-y-4 mb-6">
           {occupiedBases.map(orig => {
-            const runner = runners[orig]!
+            const runner = sourceRunners[orig]!
             const currentDest = assignments.get(orig) ?? orig
             return (
               <div key={orig} className="bg-slate-50 rounded-lg p-3">
