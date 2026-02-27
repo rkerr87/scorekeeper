@@ -12,6 +12,84 @@ interface ScoresheetProps {
   runsMap?: Map<number, number>
 }
 
+// --- Pass computation for batting-around-the-order ---
+
+interface InningColumn {
+  inning: number
+  pass: number
+  label: string
+}
+
+function computePassMap(plays: Play[]): Map<number, number> {
+  const passMap = new Map<number, number>()
+  const byInning = new Map<number, Play[]>()
+
+  for (const p of plays) {
+    if (!p.isAtBat || p.id === undefined) continue
+    if (!byInning.has(p.inning)) byInning.set(p.inning, [])
+    byInning.get(p.inning)!.push(p)
+  }
+
+  for (const [, inningPlays] of byInning) {
+    const sorted = [...inningPlays].sort((a, b) => a.sequenceNumber - b.sequenceNumber)
+    let pass = 1
+    const seenInPass = new Set<number>()
+    for (const play of sorted) {
+      if (seenInPass.has(play.batterOrderPosition)) {
+        pass++
+        seenInPass.clear()
+      }
+      seenInPass.add(play.batterOrderPosition)
+      passMap.set(play.id!, pass)
+    }
+  }
+
+  return passMap
+}
+
+function buildColumns(
+  plays: Play[],
+  passMap: Map<number, number>,
+  maxInnings: number,
+  currentInning: number,
+): InningColumn[] {
+  const maxPassByInning = new Map<number, number>()
+  for (const play of plays) {
+    if (!play.isAtBat || play.id === undefined) continue
+    const pass = passMap.get(play.id) ?? 1
+    const cur = maxPassByInning.get(play.inning) ?? 0
+    if (pass > cur) maxPassByInning.set(play.inning, pass)
+  }
+
+  const highestInning = Math.max(maxInnings, currentInning)
+  const cols: InningColumn[] = []
+  for (let inn = 1; inn <= highestInning; inn++) {
+    const maxPass = maxPassByInning.get(inn) ?? 1
+    for (let p = 1; p <= maxPass; p++) {
+      const suffix = p === 1 ? '' : String.fromCharCode(96 + p) // '', 'b', 'c', ...
+      cols.push({ inning: inn, pass: p, label: `${inn}${suffix}` })
+    }
+  }
+  return cols
+}
+
+function getCurrentPass(
+  plays: Play[],
+  passMap: Map<number, number>,
+  currentInning: number,
+  currentBatterPosition: number,
+): number {
+  const inningPlays = plays.filter(p => p.isAtBat && p.inning === currentInning && p.id !== undefined)
+  if (inningPlays.length === 0) return 1
+
+  const sorted = [...inningPlays].sort((a, b) => b.sequenceNumber - a.sequenceNumber)
+  const lastPass = passMap.get(sorted[0].id!) ?? 1
+  const lastPassPlays = inningPlays.filter(p => (passMap.get(p.id!) ?? 1) === lastPass)
+  const seenInLastPass = new Set(lastPassPlays.map(p => p.batterOrderPosition))
+
+  return seenInLastPass.has(currentBatterPosition) ? lastPass + 1 : lastPass
+}
+
 export function Scoresheet({
   lineup,
   plays,
@@ -21,11 +99,18 @@ export function Scoresheet({
   onCellClick,
   runsMap,
 }: ScoresheetProps) {
-  const innings = Array.from({ length: Math.max(maxInnings, currentInning) }, (_, i) => i + 1)
+  const passMap = computePassMap(plays)
+  const columns = buildColumns(plays, passMap, maxInnings, currentInning)
+  const currentPass = getCurrentPass(plays, passMap, currentInning, currentBatterPosition)
 
-  const getPlayForCell = (batterPosition: number, inning: number): Play | undefined => {
-    const candidates = plays.filter(p => p.batterOrderPosition === batterPosition && p.inning === inning && p.isAtBat)
-    return candidates.reduce<Play | undefined>((last, p) => (last === undefined || p.sequenceNumber > last.sequenceNumber) ? p : last, undefined)
+  const getPlayForCell = (batterPosition: number, inning: number, pass: number): Play | undefined => {
+    return plays.find(
+      p => p.isAtBat &&
+        p.batterOrderPosition === batterPosition &&
+        p.inning === inning &&
+        p.id !== undefined &&
+        (passMap.get(p.id) ?? 1) === pass
+    )
   }
 
   return (
@@ -36,9 +121,9 @@ export function Scoresheet({
             <th className="sticky left-0 z-10 bg-slate-100 border border-slate-200 px-2 py-1.5 text-left min-w-[140px]">
               Batter
             </th>
-            {innings.map(inn => (
-              <th key={inn} className="border border-slate-200 px-1 py-1.5 text-center min-w-[76px] font-bold">
-                {inn}
+            {columns.map(col => (
+              <th key={`${col.inning}-${col.pass}`} className="border border-slate-200 px-1 py-1.5 text-center min-w-[76px] font-bold">
+                {col.label}
               </th>
             ))}
             <th className="border border-slate-200 px-2 py-1.5 text-center w-10 text-xs font-semibold text-slate-500">AB</th>
@@ -56,7 +141,6 @@ export function Scoresheet({
 
             return (
               <tr key={slot.orderPosition}>
-                {/* Player info — sticky left column */}
                 <td className="sticky left-0 z-10 bg-white border border-slate-200 px-2 py-1">
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-slate-400 font-mono w-4">{slot.orderPosition}.</span>
@@ -64,7 +148,6 @@ export function Scoresheet({
                     <span className="text-xs text-slate-500 w-6">{slot.position}</span>
                     <span className="font-semibold text-slate-800 truncate">{slot.playerName}</span>
                   </div>
-                  {/* Substitution rows */}
                   {slot.substitutions.map((sub, si) => (
                     <div key={si} className="flex items-center gap-2 mt-0.5 text-xs text-slate-400 border-t border-dashed border-slate-200 pt-0.5">
                       <span className="w-4"></span>
@@ -76,11 +159,14 @@ export function Scoresheet({
                   ))}
                 </td>
 
-                {/* At-bat cells per inning */}
-                {innings.map(inn => {
-                  const play = getPlayForCell(slot.orderPosition, inn)
+                {columns.map(col => {
+                  const play = getPlayForCell(slot.orderPosition, col.inning, col.pass)
+                  const isCurrentBatter =
+                    slot.orderPosition === currentBatterPosition &&
+                    col.inning === currentInning &&
+                    col.pass === currentPass
                   return (
-                    <td key={inn} className="border border-slate-200 p-0">
+                    <td key={`${col.inning}-${col.pass}`} className="border border-slate-200 p-0">
                       <AtBatCell
                         play={play ? {
                           playType: play.playType,
@@ -89,14 +175,13 @@ export function Scoresheet({
                           runsScoredOnPlay: play.runsScoredOnPlay,
                           pitches: play.pitches,
                         } : null}
-                        isCurrentBatter={slot.orderPosition === currentBatterPosition && inn === currentInning}
-                        onClick={() => onCellClick(slot.orderPosition, inn)}
+                        isCurrentBatter={isCurrentBatter}
+                        onClick={() => onCellClick(slot.orderPosition, col.inning)}
                       />
                     </td>
                   )
                 })}
 
-                {/* Summary stats */}
                 <td className="border border-slate-200 px-2 py-1 text-center text-xs font-mono">{stats.atBats}</td>
                 <td className="border border-slate-200 px-2 py-1 text-center text-xs font-mono">{stats.runs}</td>
                 <td className="border border-slate-200 px-2 py-1 text-center text-xs font-mono">{stats.hits}</td>
