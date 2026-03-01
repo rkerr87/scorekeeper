@@ -168,7 +168,9 @@ describe('GamePage', () => {
     renderGame(gameId)
     await waitFor(() => expect(screen.queryByText('Loading game...')).not.toBeInTheDocument())
     await user.click(screen.getByRole('button', { name: /record play/i }))
-    await user.click(screen.getByRole('button', { name: /^K$/i }))
+    // Use shorthand to record a strikeout (K button removed from outcome grid)
+    await user.type(screen.getByPlaceholderText(/shorthand/i), 'K')
+    await user.click(screen.getByRole('button', { name: /^enter$/i }))
     expect(screen.getByText(/strikeout/i)).toBeInTheDocument()
   })
 
@@ -544,13 +546,13 @@ describe('GamePage', () => {
       expect(screen.getByRole('button', { name: /record play/i })).toBeInTheDocument()
     })
 
-    // Record the 3rd out (K) via the play entry panel — no runners on base so no confirmation step
+    // Record the 3rd out (K) via shorthand — K button removed from outcome grid
     await user.click(screen.getByRole('button', { name: /record play/i }))
     await waitFor(() => {
-      // Panel is open — K button visible
-      expect(screen.getByRole('button', { name: 'K' })).toBeInTheDocument()
+      expect(screen.getByPlaceholderText(/shorthand/i)).toBeInTheDocument()
     })
-    await user.click(screen.getByRole('button', { name: 'K' }))
+    await user.type(screen.getByPlaceholderText(/shorthand/i), 'K')
+    await user.click(screen.getByRole('button', { name: /^enter$/i }))
 
     // After 3rd out: top half ends, game moves to Bot 1 (us bats — home team)
     // Toast should appear (text includes both "Side retired" and "Bot 1")

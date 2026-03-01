@@ -48,8 +48,8 @@ describe('PlayEntryPanel', () => {
     renderPanel({ batterName: 'John Doe' })
     expect(screen.getByText(/john doe/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /ball/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /^K$/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^1B$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^HR$/i })).toBeInTheDocument()
   })
 
   it('should call onAddPitch when pitch buttons are clicked', async () => {
@@ -65,15 +65,15 @@ describe('PlayEntryPanel', () => {
 
   it('should include pitches prop in onPlayRecorded call', async () => {
     const user = userEvent.setup()
-    const { props } = renderPanel({ pitches: ['S', 'S'] })
+    const { props } = renderPanel({ pitches: ['B', 'S'] })
 
-    // Record a strikeout — pitches from props should be included
-    await user.click(screen.getByRole('button', { name: /^K$/i }))
+    // Record a single — pitches from props should be included
+    await user.click(screen.getByRole('button', { name: /^1B$/i }))
 
     expect(props.onPlayRecorded).toHaveBeenCalledOnce()
     const call = (props.onPlayRecorded as ReturnType<typeof vi.fn>).mock.calls[0][0]
-    expect(call.playType).toBe('K')
-    expect(call.pitches).toEqual(['S', 'S'])
+    expect(call.playType).toBe('1B')
+    expect(call.pitches).toEqual(['B', 'S'])
   })
 
   it('should show field diagram when fielding play selected', async () => {
@@ -133,18 +133,6 @@ describe('PlayEntryPanel', () => {
 
     await user.click(screen.getByRole('button', { name: /^SB$/i }))
     expect(screen.getByText(/who is stealing/i)).toBeInTheDocument()
-  })
-
-  it('should render KL button as a backwards K with correct aria-label and data-testid', () => {
-    renderPanel()
-
-    const backwardsK = screen.getByTestId('backwards-k-button')
-    expect(backwardsK).toBeInTheDocument()
-    expect(backwardsK.textContent).toBe('K')
-    expect(backwardsK.style.transform).toBe('scaleX(-1)')
-
-    const button = backwardsK.closest('button')
-    expect(button).toHaveAttribute('aria-label', 'Strikeout looking')
   })
 
   it('should record SB with runnerOverrides for the selected runner', async () => {

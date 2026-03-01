@@ -30,9 +30,6 @@ interface PlayEntryPanelProps {
 type PanelMode = 'select' | 'fielding' | 'sb-runner-select'
 
 const COMMON_PLAYS: { label: string; playType: PlayType; basesReached: number[] }[] = [
-  { label: 'K', playType: 'K', basesReached: [] },
-  { label: 'KL', playType: 'KL', basesReached: [] },
-  { label: 'BB', playType: 'BB', basesReached: [1] },
   { label: 'HBP', playType: 'HBP', basesReached: [1] },
   { label: '1B', playType: '1B', basesReached: [1] },
   { label: '2B', playType: '2B', basesReached: [1, 2] },
@@ -198,13 +195,8 @@ export function PlayEntryPanel({ batterName, baseRunners, pitches, outs, onAddPi
                     key={play.label}
                     onClick={() => recordSimplePlay(play.playType, play.basesReached)}
                     className="bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-bold text-sm transition-all duration-150 ease-in-out active:scale-95"
-                    {...(play.playType === 'KL' ? { 'aria-label': 'Strikeout looking' } : {})}
                   >
-                    {play.playType === 'KL' ? (
-                      <span data-testid="backwards-k-button" style={{ display: 'inline-block', transform: 'scaleX(-1)' }}>K</span>
-                    ) : (
-                      play.label
-                    )}
+                    {play.label}
                   </button>
                 ))}
               </div>
