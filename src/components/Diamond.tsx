@@ -101,7 +101,7 @@ export function Diamond({
           />
         ))}
 
-        {/* Continuation paths (dashed lines for subsequent advancement) */}
+        {/* Continuation paths (solid lines for subsequent advancement) */}
         {continuationSegments.map((d, i) => (
           <path
             key={`cont-${i}`}
@@ -109,10 +109,8 @@ export function Diamond({
             d={d}
             fill="none"
             stroke="#1e40af"
-            strokeWidth="2"
-            strokeDasharray="4 3"
+            strokeWidth="2.5"
             strokeLinecap="round"
-            opacity="0.6"
           />
         ))}
 

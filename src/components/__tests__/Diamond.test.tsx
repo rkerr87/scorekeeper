@@ -44,7 +44,7 @@ describe('Diamond', () => {
   })
 
   describe('continuation lines', () => {
-    it('renders dashed continuation lines for runner advancement', () => {
+    it('renders solid continuation lines for runner advancement', () => {
       const { container } = render(
         <Diamond basesReached={[1]} continuationBases={[2, 3]} />
       )
@@ -52,10 +52,10 @@ describe('Diamond', () => {
       const paths = container.querySelectorAll('[data-testid="base-path"]')
       expect(paths.length).toBe(1)
 
-      // Continuation paths: dashed lines 1st->2nd, 2nd->3rd
+      // Continuation paths: solid lines 1st->2nd, 2nd->3rd
       const contPaths = container.querySelectorAll('[data-testid="continuation-path"]')
       expect(contPaths.length).toBe(2)
-      expect(contPaths[0].getAttribute('stroke-dasharray')).toBeTruthy()
+      expect(contPaths[0].getAttribute('stroke-dasharray')).toBeNull()
     })
 
     it('fills diamond when runner eventually scores via continuation', () => {
