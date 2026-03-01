@@ -31,7 +31,7 @@ export function AtBatCell({ play, isCurrentBatter, onClick }: AtBatCellProps) {
         <Diamond
           basesReached={play.basesReached}
           continuationBases={play.continuationBases}
-          runScored={play.runsScoredOnPlay > 0 || (play.continuationBases?.includes(4) ?? false)}
+          runScored={play.basesReached.includes(4) || (play.continuationBases?.includes(4) ?? false)}
           notation={play.notation}
           pitches={play.pitches}
           size={56}
