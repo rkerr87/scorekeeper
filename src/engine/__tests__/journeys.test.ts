@@ -234,8 +234,8 @@ describe('computeRunnerJourneys', () => {
     ]
     // "us" is home => us bats bottom
     const journeys = computeRunnerJourneys(plays, lineupUs, lineupThem, 'home')
-    // Player 1 (home, bottom): singled to 1st, then advanced to 3rd on Player 2's double
-    expect(journeys.get(4)).toEqual([1, 3])
+    // Player 1 (home, bottom): singled to 1st, then advanced through 2nd to 3rd on Player 2's double
+    expect(journeys.get(4)).toEqual([1, 2, 3])
     // Player 2 (home, bottom): doubled to 2nd
     expect(journeys.get(5)).toEqual([1, 2])
   })
@@ -250,6 +250,32 @@ describe('computeRunnerJourneys', () => {
     expect(journeys.get(1)).toEqual([1])
     // Player 2 reaches 1st via FC
     expect(journeys.get(2)).toEqual([1])
+  })
+
+  it('includes intermediate bases when runner advances 2+ bases in one play', () => {
+    // Runner on 1st, next batter doubles → runner goes from 1st to 3rd
+    // Journey should include 2nd base as intermediate so Diamond draws
+    // the line along the base paths (1st → 2nd → 3rd), not a straight line
+    const plays = [
+      makePlay({ sequenceNumber: 1, batterOrderPosition: 1, playType: '1B', basesReached: [1], notation: '1B' }),
+      makePlay({ sequenceNumber: 2, batterOrderPosition: 2, playType: '2B', basesReached: [1, 2], notation: '2B' }),
+    ]
+    const journeys = computeRunnerJourneys(plays, lineupUs, lineupThem, 'away')
+    // Player 1: singled to 1st, then advanced through 2nd to 3rd
+    expect(journeys.get(1)).toEqual([1, 2, 3])
+    // Player 2: doubled
+    expect(journeys.get(2)).toEqual([1, 2])
+  })
+
+  it('includes intermediate bases when runner scores from 1st', () => {
+    // Runner on 1st, next batter hits HR → runner goes from 1st through 2nd, 3rd, home
+    const plays = [
+      makePlay({ sequenceNumber: 1, batterOrderPosition: 1, playType: '1B', basesReached: [1], notation: '1B' }),
+      makePlay({ sequenceNumber: 2, batterOrderPosition: 2, playType: 'HR', basesReached: [1, 2, 3, 4], notation: 'HR', runsScoredOnPlay: 2 }),
+    ]
+    const journeys = computeRunnerJourneys(plays, lineupUs, lineupThem, 'away')
+    // Player 1: singled to 1st, scored via 2nd, 3rd, home
+    expect(journeys.get(1)).toEqual([1, 2, 3, 4])
   })
 
   it('handles runner overrides from scorekeeper', () => {
@@ -270,8 +296,8 @@ describe('computeRunnerJourneys', () => {
       }),
     ]
     const journeys = computeRunnerJourneys(plays, lineupUs, lineupThem, 'away')
-    // Player 1 overridden to 3rd (skipped 2nd due to scorekeeper adjustment)
-    expect(journeys.get(1)).toEqual([1, 3])
+    // Player 1 overridden to 3rd — journey includes intermediate base 2 for Diamond path rendering
+    expect(journeys.get(1)).toEqual([1, 2, 3])
     // Player 2 reaches 1st
     expect(journeys.get(2)).toEqual([1])
   })

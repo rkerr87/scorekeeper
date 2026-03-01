@@ -84,10 +84,14 @@ export function computeRunnerJourneys(
       }
 
       if (currentBase !== null) {
-        // Runner is still on base — extend journey if they advanced
+        // Runner is still on base — extend journey if they advanced,
+        // filling in intermediate bases so Diamond draws along the base paths
         const journey = result.get(playId)
         if (journey && (journey.length === 0 || journey[journey.length - 1] < currentBase)) {
-          journey.push(currentBase)
+          const lastBase = journey.length > 0 ? journey[journey.length - 1] : 0
+          for (let b = lastBase + 1; b <= currentBase; b++) {
+            journey.push(b)
+          }
         }
       } else {
         // Runner is no longer on any base — scored or put out
