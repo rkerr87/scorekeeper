@@ -128,13 +128,23 @@ export function HomePage() {
         substitutions: [],
       }))
 
-      const oppPositions = ['P', 'C', '1B', '2B', 'SS', '3B', 'LF', 'CF', 'RF']
-      const oppSlots: LineupSlot[] = oppPositions.map((pos, i) => ({
+      const oppPlayers = [
+        { name: 'Ethan Cruz', num: 12, pos: 'P' },
+        { name: 'Liam Foster', num: 8, pos: 'C' },
+        { name: 'Ryan Sato', num: 22, pos: '1B' },
+        { name: 'Caleb Morales', num: 5, pos: '2B' },
+        { name: 'Jayden Okafor', num: 14, pos: 'SS' },
+        { name: 'Owen Duffy', num: 6, pos: '3B' },
+        { name: 'Lucas Tran', num: 19, pos: 'LF' },
+        { name: 'Mason Wright', num: 2, pos: 'CF' },
+        { name: 'Eli Hoffman', num: 10, pos: 'RF' },
+      ]
+      const oppSlots: LineupSlot[] = oppPlayers.map((p, i) => ({
         orderPosition: i + 1,
         playerId: null,
-        playerName: `Opp ${i + 1}`,
-        jerseyNumber: i + 1,
-        position: pos,
+        playerName: p.name,
+        jerseyNumber: p.num,
+        position: p.pos,
         substitutions: [],
       }))
 
