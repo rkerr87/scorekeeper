@@ -92,11 +92,19 @@ function applyBaseRunning(
   const runners = snapshot.baseRunners
 
   // If play has runner overrides from scorekeeper confirmation, use those
+  // for existing runners, then also place the batter on their reached base
   if (play.runnerOverrides) {
     snapshot.baseRunners = {
       first: play.runnerOverrides.first,
       second: play.runnerOverrides.second,
       third: play.runnerOverrides.third,
+    }
+    if (play.basesReached.length > 0) {
+      const maxBase = Math.max(...play.basesReached)
+      if (maxBase === 1) snapshot.baseRunners.first = batter
+      else if (maxBase === 2) snapshot.baseRunners.second = batter
+      else if (maxBase === 3) snapshot.baseRunners.third = batter
+      // maxBase === 4: batter scored (HR), not placed on base
     }
     return { runsScored: play.runsScoredOnPlay, scorers }
   }
@@ -249,13 +257,21 @@ export function replayGame(
     if (snapshot.isGameOver) break
 
     // Track pitch count — pitcher is the fielding team's position 'P'
-    if (play.pitches.length > 0) {
+    // Ball-in-play outcomes (1B, GO, HBP, etc.) imply a final pitch that isn't
+    // in the pitches array (user only tracks B/S/F via buttons). K/KL/BB have
+    // their final pitch auto-tracked; SB/WP/PB/BK don't consume a pitch.
+    const BALL_IN_PLAY: Set<string> = new Set([
+      '1B', '2B', '3B', 'HR', 'GO', 'FO', 'LO', 'PO', 'E', 'FC', 'DP', 'SAC', 'HBP',
+    ])
+    const implicitPitch = BALL_IN_PLAY.has(play.playType) ? 1 : 0
+    const totalPitches = play.pitches.length + implicitPitch
+    if (totalPitches > 0) {
       const pitcherLineup = isUsBattingHalf(play.half, homeOrAway) ? lineupThem : lineupUs
       const pitcher = pitcherLineup.battingOrder.find(s => s.position === 'P')
       if (pitcher) {
         const key = pitcher.playerName
         const current = snapshot.pitchCountByPitcher.get(key) ?? 0
-        snapshot.pitchCountByPitcher.set(key, current + play.pitches.length)
+        snapshot.pitchCountByPitcher.set(key, current + totalPitches)
       }
     }
 

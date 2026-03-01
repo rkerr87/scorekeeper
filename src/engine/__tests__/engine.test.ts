@@ -275,6 +275,67 @@ describe('replayGame — scoring', () => {
   })
 })
 
+describe('replayGame — runnerOverrides must also place the batter', () => {
+  it('should place batter on reached base when runnerOverrides is used', () => {
+    // Batter 1 singles to 1st. Batter 2 singles, runner confirmation confirms
+    // batter 1 to 2nd. The override only has existing runners — batter 2 should
+    // still end up on 1st.
+    const plays: Play[] = [
+      makePlay({ sequenceNumber: 1, half: 'top', batterOrderPosition: 1, playType: '1B', basesReached: [1] }),
+      makePlay({
+        sequenceNumber: 2, half: 'top', batterOrderPosition: 2,
+        playType: '1B', basesReached: [1],
+        runnerOverrides: {
+          first: null,
+          second: { playerName: 'us-Player1', orderPosition: 1 },
+          third: null,
+        },
+        runsScoredOnPlay: 0,
+      }),
+    ]
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'away')
+    // Batter 2 should be on 1st (from basesReached), batter 1 on 2nd (from override)
+    expect(snapshot.baseRunners.first).toEqual(expect.objectContaining({ orderPosition: 2 }))
+    expect(snapshot.baseRunners.second).toEqual(expect.objectContaining({ orderPosition: 1 }))
+    expect(snapshot.baseRunners.third).toBeNull()
+  })
+
+  it('should handle 3 consecutive singles with overrides — bases loaded', () => {
+    // Exact reproduction of the reported bug:
+    // Batter 1 singles (on 1st)
+    // Batter 2 singles, batter 1 confirmed to 2nd
+    // Batter 3 singles, batter 1 confirmed to 3rd, batter 2 confirmed to 2nd
+    const plays: Play[] = [
+      makePlay({ sequenceNumber: 1, half: 'top', batterOrderPosition: 1, playType: '1B', basesReached: [1] }),
+      makePlay({
+        sequenceNumber: 2, half: 'top', batterOrderPosition: 2,
+        playType: '1B', basesReached: [1],
+        runnerOverrides: {
+          first: null,
+          second: { playerName: 'us-Player1', orderPosition: 1 },
+          third: null,
+        },
+        runsScoredOnPlay: 0,
+      }),
+      makePlay({
+        sequenceNumber: 3, half: 'top', batterOrderPosition: 3,
+        playType: '1B', basesReached: [1],
+        runnerOverrides: {
+          first: null,
+          second: { playerName: 'us-Player2', orderPosition: 2 },
+          third: { playerName: 'us-Player1', orderPosition: 1 },
+        },
+        runsScoredOnPlay: 0,
+      }),
+    ]
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'away')
+    // Bases loaded: batter 3 on 1st, batter 2 on 2nd, batter 1 on 3rd
+    expect(snapshot.baseRunners.first).toEqual(expect.objectContaining({ orderPosition: 3 }))
+    expect(snapshot.baseRunners.second).toEqual(expect.objectContaining({ orderPosition: 2 }))
+    expect(snapshot.baseRunners.third).toEqual(expect.objectContaining({ orderPosition: 1 }))
+  })
+})
+
 describe('replayGame — pitch count', () => {
   it('should track cumulative pitch count per pitcher', () => {
     const plays: Play[] = [
@@ -301,6 +362,60 @@ describe('replayGame — pitch count', () => {
     const snapshot = replayGame(plays, lineupUs, lineupThem, 'away')
     expect(snapshot.pitchCountByPitcher.get('them-Player1')).toBe(9)
     expect(snapshot.pitchCountByPitcher.get('us-Player1')).toBe(4)
+  })
+
+  it('should count an implicit pitch for ball-in-play outcomes', () => {
+    // User tracks B, S via pitch buttons, then records a single.
+    // The pitch that was hit into play (3rd pitch) is not in the pitches array
+    // but should still be counted.
+    const plays: Play[] = [
+      makePlay({
+        sequenceNumber: 1, half: 'top', batterOrderPosition: 1,
+        playType: '1B', basesReached: [1], pitches: ['B', 'S'],
+      }),
+    ]
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'away')
+    // 2 tracked pitches + 1 implicit ball-in-play = 3 total
+    expect(snapshot.pitchCountByPitcher.get('them-Player1')).toBe(3)
+  })
+
+  it('should count implicit pitch for all ball-in-play types', () => {
+    const plays: Play[] = [
+      // GO with 1 tracked pitch → 2 total
+      makePlay({
+        sequenceNumber: 1, half: 'top', batterOrderPosition: 1,
+        playType: 'GO', pitches: ['S'],
+      }),
+      // FO with 0 tracked pitches → 1 total
+      makePlay({
+        sequenceNumber: 2, half: 'top', batterOrderPosition: 2,
+        playType: 'FO', pitches: [],
+      }),
+      // HBP with 2 tracked pitches → 3 total
+      makePlay({
+        sequenceNumber: 3, half: 'top', batterOrderPosition: 3,
+        playType: 'HBP', basesReached: [1], pitches: ['B', 'S'],
+      }),
+    ]
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'away')
+    // 1 + 1 + 2 tracked = 4; + 3 implicit = 6 total
+    expect(snapshot.pitchCountByPitcher.get('them-Player1')).toBe(6)
+  })
+
+  it('should NOT count implicit pitch for K, KL, or BB (already tracked)', () => {
+    const plays: Play[] = [
+      makePlay({
+        sequenceNumber: 1, half: 'top', batterOrderPosition: 1,
+        playType: 'K', pitches: ['S', 'S', 'S'],
+      }),
+      makePlay({
+        sequenceNumber: 2, half: 'top', batterOrderPosition: 2,
+        playType: 'BB', pitches: ['B', 'B', 'B', 'B'],
+      }),
+    ]
+    const snapshot = replayGame(plays, lineupUs, lineupThem, 'away')
+    // 3 + 4 = 7, no implicit pitches added
+    expect(snapshot.pitchCountByPitcher.get('them-Player1')).toBe(7)
   })
 })
 
