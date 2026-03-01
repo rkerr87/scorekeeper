@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { Game, Team } from '../engine/types'
-import { getAllTeams, getGamesForTeam, createGame, deleteGame, createTeam, addPlayer } from '../db/gameService'
+import { getAllTeams, getGamesForTeam, createGame, deleteGame, createTeam, addPlayer, saveLineup } from '../db/gameService'
+import type { LineupSlot } from '../engine/types'
 import { db } from '../db/database'
 
 interface GameRowProps {
@@ -106,17 +107,43 @@ export function HomePage() {
     setSeeding(true)
     try {
       const team = await createTeam('Mudcats')
-      await addPlayer(team.id!, 'Jake Rivera', 7, 'P')
-      await addPlayer(team.id!, 'Mateo Gonzalez', 23, 'C')
-      await addPlayer(team.id!, 'Connor Walsh', 11, '1B')
-      await addPlayer(team.id!, 'Dylan Park', 4, '2B')
-      await addPlayer(team.id!, 'Tyler Brooks', 15, 'SS')
-      await addPlayer(team.id!, 'Aiden Chen', 9, '3B')
-      await addPlayer(team.id!, 'Marcus Johnson', 17, 'LF')
-      await addPlayer(team.id!, 'Noah Patel', 3, 'CF')
-      await addPlayer(team.id!, 'Sam Torres', 21, 'RF')
-      await createGame(team.id!, 'Cardinals', 'home')
-      await createGame(team.id!, 'Eagles', 'away')
+      const ourPlayers = [
+        await addPlayer(team.id!, 'Jake Rivera', 7, 'P'),
+        await addPlayer(team.id!, 'Mateo Gonzalez', 23, 'C'),
+        await addPlayer(team.id!, 'Connor Walsh', 11, '1B'),
+        await addPlayer(team.id!, 'Dylan Park', 4, '2B'),
+        await addPlayer(team.id!, 'Tyler Brooks', 15, 'SS'),
+        await addPlayer(team.id!, 'Aiden Chen', 9, '3B'),
+        await addPlayer(team.id!, 'Marcus Johnson', 17, 'LF'),
+        await addPlayer(team.id!, 'Noah Patel', 3, 'CF'),
+        await addPlayer(team.id!, 'Sam Torres', 21, 'RF'),
+      ]
+
+      const ourSlots: LineupSlot[] = ourPlayers.map((p, i) => ({
+        orderPosition: i + 1,
+        playerId: p.id!,
+        playerName: p.name,
+        jerseyNumber: p.jerseyNumber,
+        position: p.defaultPosition,
+        substitutions: [],
+      }))
+
+      const oppPositions = ['P', 'C', '1B', '2B', 'SS', '3B', 'LF', 'CF', 'RF']
+      const oppSlots: LineupSlot[] = oppPositions.map((pos, i) => ({
+        orderPosition: i + 1,
+        playerId: null,
+        playerName: `Opp ${i + 1}`,
+        jerseyNumber: i + 1,
+        position: pos,
+        substitutions: [],
+      }))
+
+      for (const opponent of ['Cardinals', 'Eagles'] as const) {
+        const game = await createGame(team.id!, opponent, opponent === 'Cardinals' ? 'home' : 'away')
+        await saveLineup(game.id!, 'us', ourSlots)
+        await saveLineup(game.id!, 'them', oppSlots)
+      }
+
       const teams = await getAllTeams()
       if (teams.length > 0) {
         setTeam(teams[0])
