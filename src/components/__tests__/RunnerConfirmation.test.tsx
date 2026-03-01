@@ -222,12 +222,9 @@ describe('RunnerConfirmation', () => {
           onCancel={vi.fn()}
         />
       )
-      // 1st should be disabled (can't go backward from 1st to 1st — same base, not forward)
-      // Actually for runner on 1st: 1st is same base not forward, so disabled per isValidDest
-      // Wait — isValidDest(first, first) = DEST_ORDER[first](1) > BASE_ORDER[first](1) = false
-      // So 1st button should be disabled
+      // 1st should be enabled (runner can stay on current base)
       const firstButtons = screen.getAllByRole('button', { name: /^1st$/i })
-      expect(firstButtons[0]).toBeDisabled()
+      expect(firstButtons[0]).toBeEnabled()
       // 2nd and 3rd should be enabled (forward from 1st)
       const secondButtons = screen.getAllByRole('button', { name: /^2nd$/i })
       const thirdButtons = screen.getAllByRole('button', { name: /^3rd$/i })
@@ -237,7 +234,7 @@ describe('RunnerConfirmation', () => {
   })
 
   describe('backward movement prevention', () => {
-    it('should disable 1st base button for runner on 2nd', () => {
+    it('should disable backward bases but enable current base for runner on 2nd', () => {
       const runnersOn2nd: BaseRunners = {
         first: null,
         second: { playerName: 'Carol', orderPosition: 3 },
@@ -245,10 +242,12 @@ describe('RunnerConfirmation', () => {
       }
       render(<RunnerConfirmation runners={runnersOn2nd} onConfirm={() => {}} onCancel={() => {}} />)
       const firstButtons = screen.getAllByRole('button', { name: /^1st$/i })
+      const secondButtons = screen.getAllByRole('button', { name: /^2nd$/i })
       expect(firstButtons[0]).toBeDisabled()
+      expect(secondButtons[0]).toBeEnabled() // can stay
     })
 
-    it('should disable 1st and 2nd base buttons for runner on 3rd', () => {
+    it('should disable backward bases but enable current base for runner on 3rd', () => {
       const runnersOn3rd: BaseRunners = {
         first: null,
         second: null,
@@ -257,8 +256,10 @@ describe('RunnerConfirmation', () => {
       render(<RunnerConfirmation runners={runnersOn3rd} onConfirm={() => {}} onCancel={() => {}} />)
       const firstButtons = screen.getAllByRole('button', { name: /^1st$/i })
       const secondButtons = screen.getAllByRole('button', { name: /^2nd$/i })
+      const thirdButtons = screen.getAllByRole('button', { name: /^3rd$/i })
       expect(firstButtons[0]).toBeDisabled()
       expect(secondButtons[0]).toBeDisabled()
+      expect(thirdButtons[0]).toBeEnabled() // can stay
     })
 
     it('should enable all forward destinations for runner on 1st', () => {
@@ -276,6 +277,27 @@ describe('RunnerConfirmation', () => {
       expect(thirdButtons[0]).toBeEnabled()
       expect(scoredButtons[0]).toBeEnabled()
       expect(outButtons[0]).toBeEnabled()
+    })
+
+    it('should allow runner on 3rd to stay at 3rd (hold up)', async () => {
+      const user = userEvent.setup()
+      const onConfirm = vi.fn()
+      const runnersOn3rd: BaseRunners = {
+        first: null,
+        second: null,
+        third: { playerName: 'Bob', orderPosition: 2 },
+      }
+      render(<RunnerConfirmation runners={runnersOn3rd} onConfirm={onConfirm} onCancel={() => {}} />)
+      // 3rd base button should be enabled (stay option)
+      const thirdButtons = screen.getAllByRole('button', { name: /^3rd$/i })
+      expect(thirdButtons[0]).toBeEnabled()
+      // Select 3rd and confirm — runner stays at 3rd
+      await user.click(thirdButtons[0])
+      await user.click(screen.getByRole('button', { name: /confirm/i }))
+      expect(onConfirm).toHaveBeenCalledWith({
+        runners: { first: null, second: null, third: { playerName: 'Bob', orderPosition: 2 } },
+        runsScored: 0,
+      })
     })
 
     it('should always enable Scored and Out buttons regardless of starting base', () => {

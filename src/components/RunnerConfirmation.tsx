@@ -32,7 +32,7 @@ const DEST_ORDER: Record<RunnerDest, number> = { first: 1, second: 2, third: 3, 
 function isValidDest(orig: OrigBase, dest: RunnerDest): boolean {
   if (dest === 'out') return true
   if (dest === 'scored') return true
-  return DEST_ORDER[dest] > BASE_ORDER[orig]
+  return DEST_ORDER[dest] >= BASE_ORDER[orig]
 }
 
 function initAssignments(preRunners: BaseRunners, postRunners: BaseRunners): Map<OrigBase, RunnerDest> {
