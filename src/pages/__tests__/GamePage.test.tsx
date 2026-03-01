@@ -59,10 +59,10 @@ describe('GamePage', () => {
     const gameId = await seedFullGame()
     renderGame(gameId)
 
+    // Home game defaults to "Them" tab (top 1 = visitors batting)
     await waitFor(() => {
-      // getAllByText: Player1 may appear in both ScoreSummary (as pitcher) and Scoresheet
-      expect(screen.getAllByText('Player1').length).toBeGreaterThan(0)
-      expect(screen.getByText('Player9')).toBeInTheDocument()
+      expect(screen.getByText('Opp1')).toBeInTheDocument()
+      expect(screen.getByText('Opp9')).toBeInTheDocument()
     })
   })
 
@@ -75,6 +75,20 @@ describe('GamePage', () => {
     })
   })
 
+  it('should default to batting team tab on initial load (them for top of 1st in home game)', async () => {
+    const gameId = await seedFullGame() // homeOrAway: 'home', so top 1 = them batting
+    renderGame(gameId)
+
+    await waitFor(() => {
+      // "Them" tab should be active — opponent players visible in scoresheet
+      expect(screen.getByText('Opp1')).toBeInTheDocument()
+    })
+
+    // "Us" tab should NOT be active — our players should not be in the scoresheet
+    // (Player1 may appear in ScoreSummary as pitcher, so check Player2 which is unique)
+    expect(screen.queryByText('Player2')).not.toBeInTheDocument()
+  })
+
   it('should show record play and undo buttons', async () => {
     const gameId = await seedFullGame()
     renderGame(gameId)
@@ -85,13 +99,16 @@ describe('GamePage', () => {
     })
   })
 
-  it('should show home/away tabs', async () => {
-    const gameId = await seedFullGame()
+  it('should show home/away tabs with away on left and home on right', async () => {
+    const gameId = await seedFullGame() // homeOrAway: 'home', opponent: 'Tigers'
     renderGame(gameId)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /us/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /them/i })).toBeInTheDocument()
+      // Away tab (opponent) on left, home tab (us) on right
+      const awayBtn = screen.getByRole('button', { name: /tigers \(away\)/i })
+      const homeBtn = screen.getByRole('button', { name: /us \(home\)/i })
+      expect(awayBtn).toBeInTheDocument()
+      expect(homeBtn).toBeInTheDocument()
     })
   })
 
@@ -133,8 +150,8 @@ describe('GamePage', () => {
     })
 
     // Game starts with top half (opponents batting, game is 'home')
-    // Switch to "Us" tab (viewing our scoresheet)
-    await user.click(screen.getByRole('button', { name: /us/i }))
+    // Switch to "Us (Home)" tab (viewing our scoresheet)
+    await user.click(screen.getByRole('button', { name: /us \(home\)/i }))
 
     // Open play entry panel — should show the actual current batter (Opp1, opponent batting top)
     await user.click(screen.getByRole('button', { name: /record play/i }))
@@ -467,12 +484,12 @@ describe('GamePage', () => {
 
     renderGame(gameId)
 
-    // Wait for game to load — game is 'home', so top half = "Them" batting
-    // Switch to "Them" tab to see the play
+    // Wait for game to load — game is 'home', so top half = opponent batting
+    // The tab auto-defaults to the batting team now, but click opponent tab to be explicit
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /them/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /tigers/i })).toBeInTheDocument()
     })
-    await user.click(screen.getByRole('button', { name: /them/i }))
+    await user.click(screen.getByRole('button', { name: /tigers/i }))
 
     // Find cells with plays — the filled cell will contain the Diamond SVG
     await waitFor(() => {

@@ -93,8 +93,9 @@ export function GamePage() {
     setCurrentAtBatPitches([])
     setPendingToast(`Side retired — ${halfLabel} ${snapshot.inning}`)
   } else if (trackedHalfKey === '') {
-    // First render after game loads — record the initial half key without changing the tab
+    // First render after game loads — sync tab to the currently batting team
     setTrackedHalfKey(halfKey)
+    setActiveTab(snapshot.half === usBattingHalf ? 'us' : 'them')
   }
 
   const activeLineup = activeTab === 'us' ? lineupUs : lineupThem
@@ -311,24 +312,34 @@ export function GamePage() {
         pitcherName={pitcherName}
       />
 
-      {/* Home/Away tabs */}
+      {/* Home/Away tabs — away always left, home always right */}
       <div className="flex border-b border-slate-200 bg-white">
-        <button
-          onClick={() => setActiveTab('us')}
-          className={`flex-1 py-2 text-sm font-bold text-center transition-all duration-150 ${
-            activeTab === 'us' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500'
-          }`}
-        >
-          Us ({game.homeOrAway === 'home' ? 'Home' : 'Away'})
-        </button>
-        <button
-          onClick={() => setActiveTab('them')}
-          className={`flex-1 py-2 text-sm font-bold text-center transition-all duration-150 ${
-            activeTab === 'them' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500'
-          }`}
-        >
-          Them ({game.opponentName})
-        </button>
+        {(() => {
+          const awayTab: ActiveTab = game.homeOrAway === 'home' ? 'them' : 'us'
+          const homeTab: ActiveTab = game.homeOrAway === 'home' ? 'us' : 'them'
+          const awayLabel = awayTab === 'us' ? 'Us (Away)' : `${game.opponentName} (Away)`
+          const homeLabel = homeTab === 'us' ? 'Us (Home)' : `${game.opponentName} (Home)`
+          return (
+            <>
+              <button
+                onClick={() => setActiveTab(awayTab)}
+                className={`flex-1 py-2 text-sm font-bold text-center transition-all duration-150 ${
+                  activeTab === awayTab ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500'
+                }`}
+              >
+                {awayLabel}
+              </button>
+              <button
+                onClick={() => setActiveTab(homeTab)}
+                className={`flex-1 py-2 text-sm font-bold text-center transition-all duration-150 ${
+                  activeTab === homeTab ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500'
+                }`}
+              >
+                {homeLabel}
+              </button>
+            </>
+          )
+        })()}
       </div>
 
       {/* Scoresheet */}
