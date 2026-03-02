@@ -156,12 +156,12 @@ export function Diamond({
 
       {/* Pitch tracking dots below diamond */}
       {pitches.length > 0 && (
-        <div className="flex gap-0.5 mt-0.5">
+        <div className="flex gap-0.5 mt-0.5 overflow-hidden" style={{ maxWidth: size }}>
           {pitches.map((p, i) => (
             <div
               key={i}
               data-testid="pitch-dot"
-              className="rounded-full"
+              className="rounded-full shrink-0"
               style={{
                 width: 4,
                 height: 4,
