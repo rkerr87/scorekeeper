@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import type { Game, Team } from '../engine/types'
-import { getAllTeams, getGamesForTeam, createGame, deleteGame, createTeam, addPlayer, saveLineup } from '../db/gameService'
-import type { LineupSlot } from '../engine/types'
+import type { Game, Team, LineupSlot } from '../engine/types'
+import { getAllTeams, getAllGames, createGame, deleteGame, createTeam, addPlayer, saveLineup } from '../db/gameService'
 import { db } from '../db/database'
 
 interface GameRowProps {
   game: Game
+  teams: Map<number, Team>
   linkTo: string
   confirmDeleteId: number | null
   onRequestDelete: (id: number) => void
@@ -14,17 +14,19 @@ interface GameRowProps {
   onConfirmDelete: (id: number) => void
 }
 
-function GameRow({ game, linkTo, confirmDeleteId, onRequestDelete, onCancelDelete, onConfirmDelete }: GameRowProps) {
+function GameRow({ game, teams, linkTo, confirmDeleteId, onRequestDelete, onCancelDelete, onConfirmDelete }: GameRowProps) {
   const isConfirming = confirmDeleteId === game.id
-  const label = `${game.homeOrAway === 'home' ? 'Home' : 'Away'} \u00b7 ${game.code}`
-
-  const prefix = game.homeOrAway === 'home' ? 'vs' : '@'
+  const homeTeam = teams.get(game.homeTeamId)
+  const awayId = game.team1Id === game.homeTeamId ? game.team2Id : game.team1Id
+  const awayTeam = teams.get(awayId)
+  const title = `${awayTeam?.name ?? 'Away'} @ ${homeTeam?.name ?? 'Home'}`
+  const label = game.code
 
   if (isConfirming) {
     return (
       <div className="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-4 py-3">
         <div>
-          <div className="font-semibold text-slate-900">{prefix} {game.opponentName}</div>
+          <div className="font-semibold text-slate-900">{title}</div>
           <div className="text-xs text-slate-500">{label}</div>
         </div>
         <div className="flex gap-2">
@@ -48,12 +50,12 @@ function GameRow({ game, linkTo, confirmDeleteId, onRequestDelete, onCancelDelet
   return (
     <div className="flex items-stretch bg-white border border-slate-200 rounded-lg hover:bg-slate-50">
       <Link to={linkTo} className="flex-1 px-4 py-3">
-        <div className="font-semibold text-slate-900">{prefix} {game.opponentName}</div>
+        <div className="font-semibold text-slate-900">{title}</div>
         <div className="text-xs text-slate-500">{label}</div>
       </Link>
       <button
         onClick={() => onRequestDelete(game.id!)}
-        aria-label={`Delete game vs ${game.opponentName}`}
+        aria-label={`Delete game ${title}`}
         className="px-3 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-r-lg transition-colors"
       >
         ✕
@@ -64,36 +66,41 @@ function GameRow({ game, linkTo, confirmDeleteId, onRequestDelete, onCancelDelet
 
 export function HomePage() {
   const navigate = useNavigate()
-  const [team, setTeam] = useState<Team | null>(null)
+  const [teamsList, setTeamsList] = useState<Team[]>([])
+  const [teamsMap, setTeamsMap] = useState<Map<number, Team>>(new Map())
   const [games, setGames] = useState<Game[]>([])
   const [showNewGame, setShowNewGame] = useState(false)
-  const [opponentName, setOpponentName] = useState('')
-  const [homeOrAway, setHomeOrAway] = useState<'home' | 'away'>('home')
+  const [newAwayTeamId, setNewAwayTeamId] = useState<number | null>(null)
+  const [newHomeTeamId, setNewHomeTeamId] = useState<number | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
 
   useEffect(() => {
     async function load() {
       const teams = await getAllTeams()
-      if (teams.length > 0) {
-        setTeam(teams[0])
-        const g = await getGamesForTeam(teams[0].id!)
-        setGames(g)
+      setTeamsList(teams)
+      const map = new Map<number, Team>()
+      for (const t of teams) {
+        if (t.id !== undefined) map.set(t.id, t)
       }
+      setTeamsMap(map)
+
+      const allGames = await getAllGames()
+      setGames(allGames)
     }
     load()
   }, [])
 
   const handleStartNewGame = () => {
-    if (!team) {
-      navigate('/team')
+    if (teamsList.length < 2) {
+      navigate('/teams')
       return
     }
     setShowNewGame(true)
   }
 
   const handleCreateGame = async () => {
-    if (!team?.id || !opponentName.trim()) return
-    const game = await createGame(team.id, opponentName.trim(), homeOrAway)
+    if (!newAwayTeamId || !newHomeTeamId) return
+    const game = await createGame(newAwayTeamId, newHomeTeamId, newHomeTeamId)
     navigate(`/game/${game.id}/setup`)
   }
 
@@ -130,37 +137,69 @@ export function HomePage() {
         substitutions: [],
       }))
 
+      // Create opponent team with real players
+      const oppTeam = await createTeam('Cardinals')
       const oppPlayers = [
-        { name: 'Ethan Cruz', num: 12, pos: 'P' },
-        { name: 'Liam Foster', num: 8, pos: 'C' },
-        { name: 'Ryan Sato', num: 22, pos: '1B' },
-        { name: 'Caleb Morales', num: 5, pos: '2B' },
-        { name: 'Jayden Okafor', num: 14, pos: 'SS' },
-        { name: 'Owen Duffy', num: 6, pos: '3B' },
-        { name: 'Lucas Tran', num: 19, pos: 'LF' },
-        { name: 'Mason Wright', num: 2, pos: 'CF' },
-        { name: 'Eli Hoffman', num: 10, pos: 'RF' },
+        await addPlayer(oppTeam.id!, 'Ethan Cruz', 12, 'P'),
+        await addPlayer(oppTeam.id!, 'Liam Foster', 8, 'C'),
+        await addPlayer(oppTeam.id!, 'Ryan Sato', 22, '1B'),
+        await addPlayer(oppTeam.id!, 'Caleb Morales', 5, '2B'),
+        await addPlayer(oppTeam.id!, 'Jayden Okafor', 14, 'SS'),
+        await addPlayer(oppTeam.id!, 'Owen Duffy', 6, '3B'),
+        await addPlayer(oppTeam.id!, 'Lucas Tran', 19, 'LF'),
+        await addPlayer(oppTeam.id!, 'Mason Wright', 2, 'CF'),
+        await addPlayer(oppTeam.id!, 'Eli Hoffman', 10, 'RF'),
       ]
       const oppSlots: LineupSlot[] = oppPlayers.map((p, i) => ({
         orderPosition: i + 1,
-        playerId: null,
+        playerId: p.id!,
         playerName: p.name,
-        jerseyNumber: p.num,
-        position: p.pos,
+        jerseyNumber: p.jerseyNumber,
+        position: p.defaultPosition,
         substitutions: [],
       }))
 
-      for (const opponent of ['Cardinals', 'Eagles'] as const) {
-        const game = await createGame(team.id!, opponent, opponent === 'Cardinals' ? 'home' : 'away')
-        await saveLineup(game.id!, 'us', ourSlots)
-        await saveLineup(game.id!, 'them', oppSlots)
-      }
+      // Create a second opponent team
+      const oppTeam2 = await createTeam('Eagles')
+      const oppPlayers2 = [
+        await addPlayer(oppTeam2.id!, 'Jake Rivera', 1, 'P'),
+        await addPlayer(oppTeam2.id!, 'Bryce Kim', 18, 'C'),
+        await addPlayer(oppTeam2.id!, 'Devon Scott', 33, '1B'),
+        await addPlayer(oppTeam2.id!, 'Nate Lopez', 7, '2B'),
+        await addPlayer(oppTeam2.id!, 'Kai Williams', 25, 'SS'),
+        await addPlayer(oppTeam2.id!, 'Leo Davis', 13, '3B'),
+        await addPlayer(oppTeam2.id!, 'Finn Murphy', 20, 'LF'),
+        await addPlayer(oppTeam2.id!, 'Oscar Bell', 16, 'CF'),
+        await addPlayer(oppTeam2.id!, 'Zane Cooper', 9, 'RF'),
+      ]
+      const oppSlots2: LineupSlot[] = oppPlayers2.map((p, i) => ({
+        orderPosition: i + 1,
+        playerId: p.id!,
+        playerName: p.name,
+        jerseyNumber: p.jerseyNumber,
+        position: p.defaultPosition,
+        substitutions: [],
+      }))
 
+      // Game 1: Mudcats (home) vs Cardinals (away)
+      const game1 = await createGame(team.id!, oppTeam.id!, team.id!)
+      await saveLineup(game1.id!, 'home', ourSlots)
+      await saveLineup(game1.id!, 'away', oppSlots)
+
+      // Game 2: Mudcats (away) vs Eagles (home)
+      const game2 = await createGame(team.id!, oppTeam2.id!, oppTeam2.id!)
+      await saveLineup(game2.id!, 'away', ourSlots)
+      await saveLineup(game2.id!, 'home', oppSlots2)
+
+      // Reload everything
       const teams = await getAllTeams()
-      if (teams.length > 0) {
-        setTeam(teams[0])
-        setGames(await getGamesForTeam(teams[0].id!))
+      setTeamsList(teams)
+      const map = new Map<number, Team>()
+      for (const t of teams) {
+        if (t.id !== undefined) map.set(t.id, t)
       }
+      setTeamsMap(map)
+      setGames(await getAllGames())
     } catch (err) {
       console.error('Seed failed:', err)
       alert(`Seed failed: ${err}`)
@@ -175,9 +214,14 @@ export function HomePage() {
     await db.games.clear()
     await db.players.clear()
     await db.teams.clear()
-    setTeam(null)
+    setTeamsList([])
+    setTeamsMap(new Map())
     setGames([])
   }
+
+  // Filter available teams for away/home dropdowns (prevent same team in both)
+  const availableHomeTeams = teamsList.filter(t => t.id !== newAwayTeamId)
+  const availableAwayTeams = teamsList.filter(t => t.id !== newHomeTeamId)
 
   const inProgressGames = games.filter(g => g.status === 'in_progress')
   const completedGames = games.filter(g => g.status === 'completed')
@@ -188,10 +232,10 @@ export function HomePage() {
 
       <div className="space-y-4 mb-8">
         <Link
-          to="/team"
+          to="/teams"
           className="block w-full text-center bg-slate-700 hover:bg-slate-800 text-white py-3 px-4 rounded-lg font-semibold"
         >
-          Manage Team Roster
+          Manage Teams
         </Link>
         <button
           onClick={handleStartNewGame}
@@ -201,46 +245,79 @@ export function HomePage() {
         </button>
       </div>
 
+      {/* No teams message */}
+      {teamsList.length < 2 && (
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 text-sm">
+          {teamsList.length === 0
+            ? 'Create at least two teams to start a game.'
+            : 'Create at least one more team to start a game.'}
+          {' '}
+          <Link to="/teams" className="underline font-semibold">Manage Teams</Link>
+        </div>
+      )}
+
       {/* New game dialog */}
       {showNewGame && (
         <div className="border border-slate-200 rounded-lg p-4 mb-6 bg-white">
           <h2 className="text-lg font-semibold mb-3">New Game</h2>
           <div className="space-y-3">
-            <input
-              type="text"
-              placeholder="Opponent name"
-              value={opponentName}
-              onChange={e => setOpponentName(e.target.value)}
-              className="w-full border border-slate-300 rounded-lg px-3 py-2"
-            />
-            <div className="flex gap-2">
-              <button
-                onClick={() => setHomeOrAway('home')}
-                className={`flex-1 py-2 rounded-lg font-semibold text-sm ${
-                  homeOrAway === 'home' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'
-                }`}
+            <div>
+              <label htmlFor="away-team-select" className="block text-sm font-medium text-slate-700 mb-1">
+                Away Team
+              </label>
+              <select
+                id="away-team-select"
+                value={newAwayTeamId ?? ''}
+                onChange={e => {
+                  const val = e.target.value ? Number(e.target.value) : null
+                  setNewAwayTeamId(val)
+                  // Clear home if it matches the newly selected away
+                  if (val && val === newHomeTeamId) setNewHomeTeamId(null)
+                }}
+                className="w-full border border-slate-300 rounded-lg px-3 py-2"
               >
-                Home
-              </button>
-              <button
-                onClick={() => setHomeOrAway('away')}
-                className={`flex-1 py-2 rounded-lg font-semibold text-sm ${
-                  homeOrAway === 'away' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'
-                }`}
+                <option value="">Select away team...</option>
+                {availableAwayTeams.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="home-team-select" className="block text-sm font-medium text-slate-700 mb-1">
+                Home Team
+              </label>
+              <select
+                id="home-team-select"
+                value={newHomeTeamId ?? ''}
+                onChange={e => {
+                  const val = e.target.value ? Number(e.target.value) : null
+                  setNewHomeTeamId(val)
+                  // Clear away if it matches the newly selected home
+                  if (val && val === newAwayTeamId) setNewAwayTeamId(null)
+                }}
+                className="w-full border border-slate-300 rounded-lg px-3 py-2"
               >
-                Away
-              </button>
+                <option value="">Select home team...</option>
+                {availableHomeTeams.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() => setShowNewGame(false)}
+                onClick={() => {
+                  setShowNewGame(false)
+                  setNewAwayTeamId(null)
+                  setNewHomeTeamId(null)
+                }}
                 className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 rounded-lg font-semibold"
               >
                 Cancel
               </button>
               <button
                 onClick={handleCreateGame}
-                className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-semibold"
+                disabled={!newAwayTeamId || !newHomeTeamId}
+                className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white py-2 rounded-lg font-semibold"
               >
                 Create Game
               </button>
@@ -258,6 +335,7 @@ export function HomePage() {
               <GameRow
                 key={g.id}
                 game={g}
+                teams={teamsMap}
                 linkTo={`/game/${g.id}`}
                 confirmDeleteId={confirmDeleteId}
                 onRequestDelete={id => setConfirmDeleteId(id)}
@@ -285,6 +363,7 @@ export function HomePage() {
               <GameRow
                 key={g.id}
                 game={g}
+                teams={teamsMap}
                 linkTo={`/game/${g.id}/stats`}
                 confirmDeleteId={confirmDeleteId}
                 onRequestDelete={id => setConfirmDeleteId(id)}
@@ -305,7 +384,7 @@ export function HomePage() {
             disabled={seeding}
             className="flex-1 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold"
           >
-            {seeding ? 'Seeding…' : 'Seed test data'}
+            {seeding ? 'Seeding...' : 'Seed test data'}
           </button>
           <button
             onClick={handleClearData}
