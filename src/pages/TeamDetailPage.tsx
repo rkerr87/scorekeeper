@@ -1,40 +1,31 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import type { Team, Player } from '../engine/types'
-import { createTeam, getAllTeams, addPlayer, getPlayersForTeam, deletePlayer } from '../db/gameService'
+import { getTeam, getPlayersForTeam, addPlayer, deletePlayer } from '../db/gameService'
 
-export function TeamPage() {
+export function TeamDetailPage() {
+  const { teamId } = useParams()
   const [team, setTeam] = useState<Team | null>(null)
   const [players, setPlayers] = useState<Player[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Create team form
-  const [teamName, setTeamName] = useState('')
-
-  // Add player form
   const [playerName, setPlayerName] = useState('')
   const [jerseyNumber, setJerseyNumber] = useState('')
   const [position, setPosition] = useState('')
 
+  const tId = parseInt(teamId ?? '0')
+
   useEffect(() => {
     async function load() {
-      const teams = await getAllTeams()
-      if (teams.length > 0) {
-        setTeam(teams[0])
-        const p = await getPlayersForTeam(teams[0].id!)
-        setPlayers(p)
+      const t = await getTeam(tId)
+      if (t) {
+        setTeam(t)
+        setPlayers(await getPlayersForTeam(tId))
       }
       setLoading(false)
     }
     load()
-  }, [])
-
-  const handleCreateTeam = async () => {
-    if (!teamName.trim()) return
-    const t = await createTeam(teamName.trim())
-    setTeam(t)
-    setTeamName('')
-  }
+  }, [tId])
 
   const handleAddPlayer = async () => {
     if (!team?.id || !playerName.trim() || !jerseyNumber.trim()) return
@@ -51,35 +42,11 @@ export function TeamPage() {
   }
 
   if (loading) return <div className="p-6">Loading...</div>
-
-  if (!team) {
-    return (
-      <div className="max-w-lg mx-auto p-6">
-        <Link to="/" className="text-blue-600 hover:underline text-sm">&larr; Back</Link>
-        <h1 className="text-2xl font-bold text-slate-900 mt-4 mb-6">Create Team</h1>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            placeholder="Team name"
-            value={teamName}
-            onChange={e => setTeamName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleCreateTeam()}
-            className="flex-1 border border-slate-300 rounded-lg px-3 py-2"
-          />
-          <button
-            onClick={handleCreateTeam}
-            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold"
-          >
-            Create Team
-          </button>
-        </div>
-      </div>
-    )
-  }
+  if (!team) return <div className="p-6">Team not found.</div>
 
   return (
     <div className="max-w-2xl mx-auto p-6">
-      <Link to="/" className="text-blue-600 hover:underline text-sm">&larr; Back</Link>
+      <Link to="/teams" className="text-blue-600 hover:underline text-sm">&larr; Teams</Link>
       <h1 className="text-2xl font-bold text-slate-900 mt-4 mb-2">{team.name}</h1>
       <p className="text-slate-500 mb-6">{players.length} player{players.length !== 1 ? 's' : ''}</p>
 
@@ -87,32 +54,17 @@ export function TeamPage() {
       <div className="border border-slate-200 rounded-lg p-4 mb-6 bg-white">
         <h2 className="text-lg font-semibold text-slate-800 mb-3">Add Player</h2>
         <div className="flex gap-2">
-          <input
-            type="text"
-            placeholder="Player name"
-            value={playerName}
+          <input type="text" placeholder="Player name" value={playerName}
             onChange={e => setPlayerName(e.target.value)}
-            className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm"
-          />
-          <input
-            type="text"
-            inputMode="numeric"
-            placeholder="Jersey #"
-            value={jerseyNumber}
+            className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+          <input type="text" inputMode="numeric" placeholder="Jersey #" value={jerseyNumber}
             onChange={e => setJerseyNumber(e.target.value)}
-            className="w-20 border border-slate-300 rounded-lg px-3 py-2 text-sm"
-          />
-          <input
-            type="text"
-            placeholder="Position"
-            value={position}
+            className="w-20 border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+          <input type="text" placeholder="Position" value={position}
             onChange={e => setPosition(e.target.value)}
-            className="w-20 border border-slate-300 rounded-lg px-3 py-2 text-sm"
-          />
-          <button
-            onClick={handleAddPlayer}
-            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold text-sm"
-          >
+            className="w-20 border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+          <button onClick={handleAddPlayer}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold text-sm">
             Add Player
           </button>
         </div>
@@ -136,10 +88,8 @@ export function TeamPage() {
                 <td className="px-4 py-2 text-sm font-semibold">{p.name}</td>
                 <td className="px-4 py-2 text-sm text-slate-600">{p.defaultPosition}</td>
                 <td className="px-4 py-2">
-                  <button
-                    onClick={() => handleDeletePlayer(p.id!)}
-                    className="text-red-500 hover:text-red-700 text-sm"
-                  >
+                  <button onClick={() => handleDeletePlayer(p.id!)}
+                    className="text-red-500 hover:text-red-700 text-sm">
                     Delete
                   </button>
                 </td>

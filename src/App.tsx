@@ -3,7 +3,8 @@ import { PreferencesProvider } from './contexts/PreferencesContext'
 import { GameProvider } from './contexts/GameContext'
 import { AppLayout } from './layouts/AppLayout'
 import { HomePage } from './pages/HomePage'
-import { TeamPage } from './pages/TeamPage'
+import { TeamsPage } from './pages/TeamsPage'
+import { TeamDetailPage } from './pages/TeamDetailPage'
 import { GameSetupPage } from './pages/GameSetupPage'
 import { GamePage } from './pages/GamePage'
 import { GameStatsPage } from './pages/GameStatsPage'
@@ -16,7 +17,8 @@ const router = createBrowserRouter([
     element: <AppLayout />,
     children: [
       { index: true, element: <HomePage /> },
-      { path: 'team', element: <TeamPage /> },
+      { path: 'teams', element: <TeamsPage /> },
+      { path: 'teams/:teamId', element: <TeamDetailPage /> },
       { path: 'stats', element: <SeasonStatsPage /> },
       { path: 'game/:gameId/setup', element: <GameSetupPage /> },
       { path: 'game/:gameId', element: <GamePage /> },
