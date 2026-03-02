@@ -5,7 +5,7 @@ import type { Play, Lineup, LineupSlot } from '../types'
 function makeSlot(pos: number, side: string): LineupSlot {
   return {
     orderPosition: pos,
-    playerId: side === 'us' ? pos : null,
+    playerId: pos,
     playerName: `${side}Player${pos}`,
     jerseyNumber: pos * 10,
     position: ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'][pos - 1] ?? 'DH',
@@ -13,7 +13,7 @@ function makeSlot(pos: number, side: string): LineupSlot {
   }
 }
 
-function makeLineup(side: 'us' | 'them'): Lineup {
+function makeLineup(side: 'home' | 'away'): Lineup {
   return {
     gameId: 1,
     side,
@@ -42,14 +42,14 @@ function makePlay(overrides: Partial<Play> & { sequenceNumber: number }): Play {
 }
 
 describe('computeRunnerJourneys', () => {
-  const lineupUs = makeLineup('us')
-  const lineupThem = makeLineup('them')
+  const lineupHome = makeLineup('home')
+  const lineupAway = makeLineup('away')
 
   it('returns batter bases when no subsequent advancement', () => {
     const plays = [
       makePlay({ sequenceNumber: 1, batterOrderPosition: 1, playType: '1B', basesReached: [1], notation: '1B' }),
     ]
-    const journeys = computeRunnerJourneys(plays, lineupUs, lineupThem, 'away')
+    const journeys = computeRunnerJourneys(plays, lineupHome, lineupAway)
     expect(journeys.get(1)).toEqual([1])
   })
 
@@ -59,7 +59,7 @@ describe('computeRunnerJourneys', () => {
       makePlay({ sequenceNumber: 2, batterOrderPosition: 2, playType: '1B', basesReached: [1], notation: '1B' }),
     ]
     // Player 1 singles, then Player 2 singles -> Player 1 advances to 2nd
-    const journeys = computeRunnerJourneys(plays, lineupUs, lineupThem, 'away')
+    const journeys = computeRunnerJourneys(plays, lineupHome, lineupAway)
     expect(journeys.get(1)).toEqual([1, 2])
     expect(journeys.get(2)).toEqual([1])
   })
@@ -71,7 +71,7 @@ describe('computeRunnerJourneys', () => {
       // Player 1 now on 2nd. HR by Player 3 scores everyone
       makePlay({ sequenceNumber: 3, batterOrderPosition: 3, playType: 'HR', basesReached: [1, 2, 3, 4], notation: 'HR' }),
     ]
-    const journeys = computeRunnerJourneys(plays, lineupUs, lineupThem, 'away')
+    const journeys = computeRunnerJourneys(plays, lineupHome, lineupAway)
     expect(journeys.get(1)).toEqual([1, 2, 3, 4]) // scored
     expect(journeys.get(2)).toEqual([1, 2, 3, 4]) // scored
     expect(journeys.get(3)).toEqual([1, 2, 3, 4]) // HR batter also scores
@@ -81,7 +81,7 @@ describe('computeRunnerJourneys', () => {
     const plays = [
       makePlay({ sequenceNumber: 1, batterOrderPosition: 1, playType: 'K', basesReached: [], notation: 'K' }),
     ]
-    const journeys = computeRunnerJourneys(plays, lineupUs, lineupThem, 'away')
+    const journeys = computeRunnerJourneys(plays, lineupHome, lineupAway)
     expect(journeys.get(1)).toEqual([])
   })
 
@@ -90,7 +90,7 @@ describe('computeRunnerJourneys', () => {
       makePlay({ sequenceNumber: 1, batterOrderPosition: 1, playType: '1B', basesReached: [1], notation: '1B' }),
       makePlay({ sequenceNumber: 2, batterOrderPosition: 2, playType: 'SB', basesReached: [], notation: 'SB', isAtBat: false }),
     ]
-    const journeys = computeRunnerJourneys(plays, lineupUs, lineupThem, 'away')
+    const journeys = computeRunnerJourneys(plays, lineupHome, lineupAway)
     // Player 1 singled to 1st, then SB advances them to 2nd
     expect(journeys.get(1)).toEqual([1, 2])
     // SB is non-at-bat, has no journey of its own in terms of batter reaching base
@@ -102,7 +102,7 @@ describe('computeRunnerJourneys', () => {
       makePlay({ sequenceNumber: 1, batterOrderPosition: 1, playType: '2B', basesReached: [1, 2], notation: '2B' }),
       makePlay({ sequenceNumber: 2, batterOrderPosition: 2, playType: 'WP', basesReached: [], notation: 'WP', isAtBat: false }),
     ]
-    const journeys = computeRunnerJourneys(plays, lineupUs, lineupThem, 'away')
+    const journeys = computeRunnerJourneys(plays, lineupHome, lineupAway)
     // Player 1 doubled to 2nd, then WP advances them to 3rd
     expect(journeys.get(1)).toEqual([1, 2, 3])
   })
@@ -117,7 +117,7 @@ describe('computeRunnerJourneys', () => {
       // Bottom of 1st: opponent plays
       makePlay({ sequenceNumber: 5, half: 'bottom', batterOrderPosition: 1, playType: '1B', basesReached: [1], notation: '1B' }),
     ]
-    const journeys = computeRunnerJourneys(plays, lineupUs, lineupThem, 'away')
+    const journeys = computeRunnerJourneys(plays, lineupHome, lineupAway)
     // Player 1 (top) was stranded on 1st when 3 outs occurred
     // Journey should NOT extend beyond 1st — they didn't score
     expect(journeys.get(1)).toEqual([1])
@@ -127,15 +127,15 @@ describe('computeRunnerJourneys', () => {
 
   it('tracks runners per-half independently', () => {
     const plays = [
-      // Top of 1st: us batting (away team)
+      // Top of 1st: away team batting
       makePlay({ sequenceNumber: 1, half: 'top', batterOrderPosition: 1, playType: '1B', basesReached: [1], notation: '1B' }),
       makePlay({ sequenceNumber: 2, half: 'top', batterOrderPosition: 2, playType: 'K', basesReached: [], notation: 'K' }),
       makePlay({ sequenceNumber: 3, half: 'top', batterOrderPosition: 3, playType: 'K', basesReached: [], notation: 'K' }),
       makePlay({ sequenceNumber: 4, half: 'top', batterOrderPosition: 4, playType: 'K', basesReached: [], notation: 'K' }),
-      // Bottom of 1st: them batting — same orderPosition 1 but different half
+      // Bottom of 1st: home team batting — same orderPosition 1 but different half
       makePlay({ sequenceNumber: 5, half: 'bottom', batterOrderPosition: 1, playType: '2B', basesReached: [1, 2], notation: '2B' }),
     ]
-    const journeys = computeRunnerJourneys(plays, lineupUs, lineupThem, 'away')
+    const journeys = computeRunnerJourneys(plays, lineupHome, lineupAway)
     // Top Player 1: stranded on 1st
     expect(journeys.get(1)).toEqual([1])
     // Bottom Player 1: reached 2nd
@@ -146,7 +146,7 @@ describe('computeRunnerJourneys', () => {
     const plays = [
       makePlay({ sequenceNumber: 1, batterOrderPosition: 1, playType: '2B', basesReached: [1, 2], notation: '2B' }),
     ]
-    const journeys = computeRunnerJourneys(plays, lineupUs, lineupThem, 'away')
+    const journeys = computeRunnerJourneys(plays, lineupHome, lineupAway)
     expect(journeys.get(1)).toEqual([1, 2])
   })
 
@@ -154,7 +154,7 @@ describe('computeRunnerJourneys', () => {
     const plays = [
       makePlay({ sequenceNumber: 1, batterOrderPosition: 1, playType: '3B', basesReached: [1, 2, 3], notation: '3B' }),
     ]
-    const journeys = computeRunnerJourneys(plays, lineupUs, lineupThem, 'away')
+    const journeys = computeRunnerJourneys(plays, lineupHome, lineupAway)
     expect(journeys.get(1)).toEqual([1, 2, 3])
   })
 
@@ -162,7 +162,7 @@ describe('computeRunnerJourneys', () => {
     const plays = [
       makePlay({ sequenceNumber: 1, batterOrderPosition: 1, playType: 'HR', basesReached: [1, 2, 3, 4], notation: 'HR' }),
     ]
-    const journeys = computeRunnerJourneys(plays, lineupUs, lineupThem, 'away')
+    const journeys = computeRunnerJourneys(plays, lineupHome, lineupAway)
     expect(journeys.get(1)).toEqual([1, 2, 3, 4])
   })
 
@@ -170,7 +170,7 @@ describe('computeRunnerJourneys', () => {
     const plays = [
       makePlay({ sequenceNumber: 1, batterOrderPosition: 1, playType: 'BB', basesReached: [1], notation: 'BB' }),
     ]
-    const journeys = computeRunnerJourneys(plays, lineupUs, lineupThem, 'away')
+    const journeys = computeRunnerJourneys(plays, lineupHome, lineupAway)
     expect(journeys.get(1)).toEqual([1])
   })
 
@@ -194,7 +194,7 @@ describe('computeRunnerJourneys', () => {
         // id is undefined
       },
     ]
-    const journeys = computeRunnerJourneys(plays, lineupUs, lineupThem, 'away')
+    const journeys = computeRunnerJourneys(plays, lineupHome, lineupAway)
     // Should not have any entries since play has no id
     expect(journeys.size).toBe(0)
   })
@@ -203,7 +203,7 @@ describe('computeRunnerJourneys', () => {
     const plays = [
       makePlay({ sequenceNumber: 1, batterOrderPosition: 1, playType: 'GO', basesReached: [], notation: '6-3' }),
     ]
-    const journeys = computeRunnerJourneys(plays, lineupUs, lineupThem, 'away')
+    const journeys = computeRunnerJourneys(plays, lineupHome, lineupAway)
     expect(journeys.get(1)).toEqual([])
   })
 
@@ -215,7 +215,7 @@ describe('computeRunnerJourneys', () => {
       makePlay({ sequenceNumber: 3, batterOrderPosition: 2, playType: 'WP', basesReached: [], notation: 'WP', isAtBat: false }),
       makePlay({ sequenceNumber: 4, batterOrderPosition: 2, playType: '1B', basesReached: [1], notation: '1B' }),
     ]
-    const journeys = computeRunnerJourneys(plays, lineupUs, lineupThem, 'away')
+    const journeys = computeRunnerJourneys(plays, lineupHome, lineupAway)
     // Player 1: 1st -> SB 2nd -> WP 3rd -> scored on Player 2's hit
     expect(journeys.get(1)).toEqual([1, 2, 3, 4])
     // Player 2: reached 1st on single
@@ -224,16 +224,15 @@ describe('computeRunnerJourneys', () => {
 
   it('handles home team batting in bottom half', () => {
     const plays = [
-      // Top: away (them) bats — 3 quick outs
+      // Top: away bats — 3 quick outs
       makePlay({ sequenceNumber: 1, half: 'top', batterOrderPosition: 1, playType: 'K', basesReached: [], notation: 'K' }),
       makePlay({ sequenceNumber: 2, half: 'top', batterOrderPosition: 2, playType: 'K', basesReached: [], notation: 'K' }),
       makePlay({ sequenceNumber: 3, half: 'top', batterOrderPosition: 3, playType: 'K', basesReached: [], notation: 'K' }),
-      // Bottom: home (us) bats
+      // Bottom: home bats
       makePlay({ sequenceNumber: 4, half: 'bottom', batterOrderPosition: 1, playType: '1B', basesReached: [1], notation: '1B' }),
       makePlay({ sequenceNumber: 5, half: 'bottom', batterOrderPosition: 2, playType: '2B', basesReached: [1, 2], notation: '2B' }),
     ]
-    // "us" is home => us bats bottom
-    const journeys = computeRunnerJourneys(plays, lineupUs, lineupThem, 'home')
+    const journeys = computeRunnerJourneys(plays, lineupHome, lineupAway)
     // Player 1 (home, bottom): singled to 1st, then advanced through 2nd to 3rd on Player 2's double
     expect(journeys.get(4)).toEqual([1, 2, 3])
     // Player 2 (home, bottom): doubled to 2nd
@@ -245,7 +244,7 @@ describe('computeRunnerJourneys', () => {
       makePlay({ sequenceNumber: 1, batterOrderPosition: 1, playType: '1B', basesReached: [1], notation: '1B' }),
       makePlay({ sequenceNumber: 2, batterOrderPosition: 2, playType: 'FC', basesReached: [1], notation: 'FC' }),
     ]
-    const journeys = computeRunnerJourneys(plays, lineupUs, lineupThem, 'away')
+    const journeys = computeRunnerJourneys(plays, lineupHome, lineupAway)
     // Player 1 was on 1st, got out on FC — journey stays at [1]
     expect(journeys.get(1)).toEqual([1])
     // Player 2 reaches 1st via FC
@@ -260,7 +259,7 @@ describe('computeRunnerJourneys', () => {
       makePlay({ sequenceNumber: 1, batterOrderPosition: 1, playType: '1B', basesReached: [1], notation: '1B' }),
       makePlay({ sequenceNumber: 2, batterOrderPosition: 2, playType: '2B', basesReached: [1, 2], notation: '2B' }),
     ]
-    const journeys = computeRunnerJourneys(plays, lineupUs, lineupThem, 'away')
+    const journeys = computeRunnerJourneys(plays, lineupHome, lineupAway)
     // Player 1: singled to 1st, then advanced through 2nd to 3rd
     expect(journeys.get(1)).toEqual([1, 2, 3])
     // Player 2: doubled
@@ -273,7 +272,7 @@ describe('computeRunnerJourneys', () => {
       makePlay({ sequenceNumber: 1, batterOrderPosition: 1, playType: '1B', basesReached: [1], notation: '1B' }),
       makePlay({ sequenceNumber: 2, batterOrderPosition: 2, playType: 'HR', basesReached: [1, 2, 3, 4], notation: 'HR', runsScoredOnPlay: 2 }),
     ]
-    const journeys = computeRunnerJourneys(plays, lineupUs, lineupThem, 'away')
+    const journeys = computeRunnerJourneys(plays, lineupHome, lineupAway)
     // Player 1: singled to 1st, scored via 2nd, 3rd, home
     expect(journeys.get(1)).toEqual([1, 2, 3, 4])
   })
@@ -288,14 +287,14 @@ describe('computeRunnerJourneys', () => {
         basesReached: [1],
         notation: '1B',
         runnerOverrides: {
-          first: { playerName: 'usPlayer2', orderPosition: 2 },
+          first: { playerName: 'awayPlayer2', orderPosition: 2 },
           second: null,
-          third: { playerName: 'usPlayer1', orderPosition: 1 },
+          third: { playerName: 'awayPlayer1', orderPosition: 1 },
         },
         runsScoredOnPlay: 0,
       }),
     ]
-    const journeys = computeRunnerJourneys(plays, lineupUs, lineupThem, 'away')
+    const journeys = computeRunnerJourneys(plays, lineupHome, lineupAway)
     // Player 1 overridden to 3rd — journey includes intermediate base 2 for Diamond path rendering
     expect(journeys.get(1)).toEqual([1, 2, 3])
     // Player 2 reaches 1st

@@ -1,4 +1,4 @@
-import type { Play, Lineup, HomeOrAway, BaseRunners } from './types'
+import type { Play, Lineup, BaseRunners } from './types'
 import { replayGame } from './engine'
 
 /**
@@ -12,9 +12,8 @@ import { replayGame } from './engine'
  */
 export function computeRunnerJourneys(
   plays: Play[],
-  lineupUs: Lineup,
-  lineupThem: Lineup,
-  homeOrAway: HomeOrAway,
+  lineupHome: Lineup,
+  lineupAway: Lineup,
 ): Map<number, number[]> {
   const result = new Map<number, number[]>()
 
@@ -35,7 +34,7 @@ export function computeRunnerJourneys(
     const playSlice = sorted.slice(0, i + 1)
 
     // Replay to get snapshot after this play
-    const snapshot = replayGame(playSlice, lineupUs, lineupThem, homeOrAway)
+    const snapshot = replayGame(playSlice, lineupHome, lineupAway)
 
     // Detect half-inning transition: when the half changes, bases are cleared.
     // Remove active runners from the half that just ended.
@@ -101,11 +100,11 @@ export function computeRunnerJourneys(
           if (lastBase < 4) {
             // Check if runs were scored on this play
             const prevSnapshot = i > 0
-              ? replayGame(sorted.slice(0, i), lineupUs, lineupThem, homeOrAway)
+              ? replayGame(sorted.slice(0, i), lineupHome, lineupAway)
               : null
-            const runsNow = getRunsForHalf(snapshot, half, homeOrAway)
+            const runsNow = getRunsForHalf(snapshot, half)
             const runsBefore = prevSnapshot
-              ? getRunsForHalf(prevSnapshot, half, homeOrAway)
+              ? getRunsForHalf(prevSnapshot, half)
               : 0
 
             if (runsNow - runsBefore > 0) {
@@ -144,8 +143,8 @@ function getBaseOccupants(baseRunners: BaseRunners): Map<number, { orderPosition
 
 /**
  * Get the total runs for a specific half from the snapshot.
+ * Bottom half = home team batting, top half = away team batting.
  */
-function getRunsForHalf(snapshot: { scoreUs: number; scoreThem: number }, half: string, homeOrAway: HomeOrAway): number {
-  const isUs = (homeOrAway === 'away' && half === 'top') || (homeOrAway === 'home' && half === 'bottom')
-  return isUs ? snapshot.scoreUs : snapshot.scoreThem
+function getRunsForHalf(snapshot: { scoreHome: number; scoreAway: number }, half: string): number {
+  return half === 'bottom' ? snapshot.scoreHome : snapshot.scoreAway
 }

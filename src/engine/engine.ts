@@ -1,20 +1,20 @@
-import type { Play, Lineup, GameSnapshot, HalfInning, BaseRunner, HomeOrAway } from './types'
+import type { Play, Lineup, GameSnapshot, HalfInning, BaseRunner } from './types'
 
 function initialSnapshot(): GameSnapshot {
   return {
     inning: 1,
     half: 'top',
     outs: 0,
-    scoreUs: 0,
-    scoreThem: 0,
-    currentBatterUs: 1,
-    currentBatterThem: 1,
+    scoreHome: 0,
+    scoreAway: 0,
+    currentBatterHome: 1,
+    currentBatterAway: 1,
     baseRunners: { first: null, second: null, third: null },
     pitchCountByPitcher: new Map(),
-    runsPerInningUs: [],
-    runsPerInningThem: [],
-    runsScoredByPositionUs: new Map(),
-    runsScoredByPositionThem: new Map(),
+    runsPerInningHome: [],
+    runsPerInningAway: [],
+    runsScoredByPositionHome: new Map(),
+    runsScoredByPositionAway: new Map(),
     isGameOver: false,
   }
 }
@@ -59,19 +59,13 @@ function ensureInningArray(arr: number[], inning: number): void {
   }
 }
 
-// Away team bats in the top half; home team bats in the bottom half.
-function isUsBattingHalf(half: HalfInning, homeOrAway: HomeOrAway): boolean {
-  return homeOrAway === 'away' ? half === 'top' : half === 'bottom'
-}
-
 function getBaseRunnerForBatter(
   batterOrderPosition: number,
   half: HalfInning,
-  homeOrAway: HomeOrAway,
-  lineupUs: Lineup,
-  lineupThem: Lineup,
+  lineupHome: Lineup,
+  lineupAway: Lineup,
 ): BaseRunner {
-  const lineup = isUsBattingHalf(half, homeOrAway) ? lineupUs : lineupThem
+  const lineup = half === 'bottom' ? lineupHome : lineupAway
   const slot = lineup.battingOrder.find(s => s.orderPosition === batterOrderPosition)
   return {
     playerName: slot?.playerName ?? `Player${batterOrderPosition}`,
@@ -82,13 +76,12 @@ function getBaseRunnerForBatter(
 function applyBaseRunning(
   snapshot: GameSnapshot,
   play: Play,
-  homeOrAway: HomeOrAway,
-  lineupUs: Lineup,
-  lineupThem: Lineup,
+  lineupHome: Lineup,
+  lineupAway: Lineup,
 ): { runsScored: number; scorers: number[] } {
   let runsScored = 0
   const scorers: number[] = []
-  const batter = getBaseRunnerForBatter(play.batterOrderPosition, play.half, homeOrAway, lineupUs, lineupThem)
+  const batter = getBaseRunnerForBatter(play.batterOrderPosition, play.half, lineupHome, lineupAway)
   const runners = snapshot.baseRunners
 
   // If play has runner overrides from scorekeeper confirmation, use those
@@ -243,13 +236,12 @@ function applyBaseRunning(
 
 export function replayGame(
   plays: Play[],
-  lineupUs: Lineup,
-  lineupThem: Lineup,
-  homeOrAway: HomeOrAway,
+  lineupHome: Lineup,
+  lineupAway: Lineup,
 ): GameSnapshot {
   const snapshot = initialSnapshot()
-  const lineupSizeUs = lineupUs.battingOrder.length
-  const lineupSizeThem = lineupThem.battingOrder.length
+  const lineupSizeHome = lineupHome.battingOrder.length
+  const lineupSizeAway = lineupAway.battingOrder.length
 
   const sorted = [...plays].sort((a, b) => a.sequenceNumber - b.sequenceNumber)
 
@@ -266,7 +258,7 @@ export function replayGame(
     const implicitPitch = BALL_IN_PLAY.has(play.playType) ? 1 : 0
     const totalPitches = play.pitches.length + implicitPitch
     if (totalPitches > 0) {
-      const pitcherLineup = isUsBattingHalf(play.half, homeOrAway) ? lineupThem : lineupUs
+      const pitcherLineup = play.half === 'bottom' ? lineupAway : lineupHome
       const pitcher = pitcherLineup.battingOrder.find(s => s.position === 'P')
       if (pitcher) {
         const key = pitcher.playerName
@@ -277,44 +269,42 @@ export function replayGame(
 
     // Apply base running and scoring
     const outsOnPlay = getOutsForPlay(play)
-    const { runsScored, scorers } = applyBaseRunning(snapshot, play, homeOrAway, lineupUs, lineupThem)
+    const { runsScored, scorers } = applyBaseRunning(snapshot, play, lineupHome, lineupAway)
 
     // Apply outs
     snapshot.outs += outsOnPlay
 
     // Apply runs
-    const isUsBatting = isUsBattingHalf(play.half, homeOrAway)
-    if (isUsBatting) {
-      snapshot.scoreUs += runsScored
-      ensureInningArray(snapshot.runsPerInningUs, play.inning)
-      snapshot.runsPerInningUs[play.inning - 1] += runsScored
+    const isHomeBatting = play.half === 'bottom'
+    if (isHomeBatting) {
+      snapshot.scoreHome += runsScored
+      ensureInningArray(snapshot.runsPerInningHome, play.inning)
+      snapshot.runsPerInningHome[play.inning - 1] += runsScored
       for (const pos of scorers) {
-        snapshot.runsScoredByPositionUs.set(pos, (snapshot.runsScoredByPositionUs.get(pos) ?? 0) + 1)
+        snapshot.runsScoredByPositionHome.set(pos, (snapshot.runsScoredByPositionHome.get(pos) ?? 0) + 1)
       }
     } else {
-      snapshot.scoreThem += runsScored
-      ensureInningArray(snapshot.runsPerInningThem, play.inning)
-      snapshot.runsPerInningThem[play.inning - 1] += runsScored
+      snapshot.scoreAway += runsScored
+      ensureInningArray(snapshot.runsPerInningAway, play.inning)
+      snapshot.runsPerInningAway[play.inning - 1] += runsScored
       for (const pos of scorers) {
-        snapshot.runsScoredByPositionThem.set(pos, (snapshot.runsScoredByPositionThem.get(pos) ?? 0) + 1)
+        snapshot.runsScoredByPositionAway.set(pos, (snapshot.runsScoredByPositionAway.get(pos) ?? 0) + 1)
       }
     }
 
     // Advance batter
     if (play.isAtBat) {
-      if (isUsBatting) {
-        snapshot.currentBatterUs = advanceBatter(snapshot.currentBatterUs, lineupSizeUs)
+      if (isHomeBatting) {
+        snapshot.currentBatterHome = advanceBatter(snapshot.currentBatterHome, lineupSizeHome)
       } else {
-        snapshot.currentBatterThem = advanceBatter(snapshot.currentBatterThem, lineupSizeThem)
+        snapshot.currentBatterAway = advanceBatter(snapshot.currentBatterAway, lineupSizeAway)
       }
     }
 
     // Walk-off: home team takes lead in bottom of 6th or later
     // Check BEFORE the outs check which might advance the half-inning
     if (snapshot.inning >= 6 && snapshot.half === 'bottom' && runsScored > 0) {
-      const homeScore = homeOrAway === 'home' ? snapshot.scoreUs : snapshot.scoreThem
-      const awayScore = homeOrAway === 'home' ? snapshot.scoreThem : snapshot.scoreUs
-      if (homeScore > awayScore) {
+      if (snapshot.scoreHome > snapshot.scoreAway) {
         snapshot.isGameOver = true
       }
     }
@@ -331,9 +321,7 @@ export function replayGame(
       // After advanceHalfInning, if we're now in the bottom of inning 6+
       // and the home team leads, game is over
       else if (snapshot.half === 'bottom' && snapshot.inning >= 6) {
-        const homeScore = homeOrAway === 'home' ? snapshot.scoreUs : snapshot.scoreThem
-        const awayScore = homeOrAway === 'home' ? snapshot.scoreThem : snapshot.scoreUs
-        if (homeScore > awayScore) {
+        if (snapshot.scoreHome > snapshot.scoreAway) {
           snapshot.isGameOver = true
         }
       }
