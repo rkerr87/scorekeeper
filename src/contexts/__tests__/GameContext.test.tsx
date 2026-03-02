@@ -23,18 +23,23 @@ describe('GameContext', () => {
     const { result } = renderHook(() => useGame(), { wrapper })
     expect(result.current.game).toBeNull()
     expect(result.current.snapshot).toBeNull()
+    expect(result.current.homeTeam).toBeNull()
+    expect(result.current.awayTeam).toBeNull()
   })
 
   it('should load a game and compute snapshot', async () => {
-    // Set up test data
-    const team = await createTeam('Mudcats')
-    await addPlayer(team.id!, 'Player 1', 1, 'P')
-    const game = await createGame(team.id!, 'Tigers', 'home')
-    await saveLineup(game.id!, 'us', [
-      { orderPosition: 1, playerId: 1, playerName: 'Player 1', jerseyNumber: 1, position: 'P', substitutions: [] },
+    // Set up test data — two real teams
+    const team1 = await createTeam('Mudcats')
+    const team2 = await createTeam('Tigers')
+    const p1 = await addPlayer(team1.id!, 'Player 1', 1, 'P')
+    const p2 = await addPlayer(team2.id!, 'Opp 1', 10, 'P')
+    // team1 is home
+    const game = await createGame(team1.id!, team2.id!, team1.id!)
+    await saveLineup(game.id!, 'home', [
+      { orderPosition: 1, playerId: p1.id!, playerName: 'Player 1', jerseyNumber: 1, position: 'P', substitutions: [] },
     ])
-    await saveLineup(game.id!, 'them', [
-      { orderPosition: 1, playerId: null, playerName: 'Opp 1', jerseyNumber: 10, position: 'P', substitutions: [] },
+    await saveLineup(game.id!, 'away', [
+      { orderPosition: 1, playerId: p2.id!, playerName: 'Opp 1', jerseyNumber: 10, position: 'P', substitutions: [] },
     ])
 
     const { result } = renderHook(() => useGame(), { wrapper })
@@ -45,20 +50,29 @@ describe('GameContext', () => {
 
     expect(result.current.game).not.toBeNull()
     expect(result.current.game?.id).toBe(game.id)
+    expect(result.current.homeTeam).not.toBeNull()
+    expect(result.current.homeTeam?.name).toBe('Mudcats')
+    expect(result.current.awayTeam).not.toBeNull()
+    expect(result.current.awayTeam?.name).toBe('Tigers')
     expect(result.current.snapshot).not.toBeNull()
     expect(result.current.snapshot?.inning).toBe(1)
     expect(result.current.snapshot?.half).toBe('top')
   })
 
   it('should record a play and update snapshot', async () => {
-    const team = await createTeam('Mudcats')
-    const game = await createGame(team.id!, 'Tigers', 'away')
-    await saveLineup(game.id!, 'us', [
-      { orderPosition: 1, playerId: 1, playerName: 'P1', jerseyNumber: 1, position: 'P', substitutions: [] },
-      { orderPosition: 2, playerId: 2, playerName: 'P2', jerseyNumber: 2, position: 'C', substitutions: [] },
+    const team1 = await createTeam('Mudcats')
+    const team2 = await createTeam('Tigers')
+    const p1 = await addPlayer(team2.id!, 'P1', 1, 'P')
+    const p2 = await addPlayer(team2.id!, 'P2', 2, 'C')
+    const p3 = await addPlayer(team1.id!, 'O1', 10, 'P')
+    // team1 is home, team2 is away — away bats in top half
+    const game = await createGame(team1.id!, team2.id!, team1.id!)
+    await saveLineup(game.id!, 'away', [
+      { orderPosition: 1, playerId: p1.id!, playerName: 'P1', jerseyNumber: 1, position: 'P', substitutions: [] },
+      { orderPosition: 2, playerId: p2.id!, playerName: 'P2', jerseyNumber: 2, position: 'C', substitutions: [] },
     ])
-    await saveLineup(game.id!, 'them', [
-      { orderPosition: 1, playerId: null, playerName: 'O1', jerseyNumber: 10, position: 'P', substitutions: [] },
+    await saveLineup(game.id!, 'home', [
+      { orderPosition: 1, playerId: p3.id!, playerName: 'O1', jerseyNumber: 10, position: 'P', substitutions: [] },
     ])
 
     const { result } = renderHook(() => useGame(), { wrapper })
@@ -84,18 +98,23 @@ describe('GameContext', () => {
     })
 
     expect(result.current.snapshot?.outs).toBe(1)
-    expect(result.current.snapshot?.currentBatterUs).toBe(2)
+    // Away team bats in top — next batter is position 2
+    expect(result.current.snapshot?.currentBatterAway).toBe(2)
     expect(result.current.plays).toHaveLength(1)
   })
 
   it('should undo the last play', async () => {
-    const team = await createTeam('Mudcats')
-    const game = await createGame(team.id!, 'Tigers', 'away')
-    await saveLineup(game.id!, 'us', [
-      { orderPosition: 1, playerId: 1, playerName: 'P1', jerseyNumber: 1, position: 'P', substitutions: [] },
+    const team1 = await createTeam('Mudcats')
+    const team2 = await createTeam('Tigers')
+    const p1 = await addPlayer(team2.id!, 'P1', 1, 'P')
+    const p2 = await addPlayer(team1.id!, 'O1', 10, 'P')
+    // team1 is home, team2 is away — away bats top
+    const game = await createGame(team1.id!, team2.id!, team1.id!)
+    await saveLineup(game.id!, 'away', [
+      { orderPosition: 1, playerId: p1.id!, playerName: 'P1', jerseyNumber: 1, position: 'P', substitutions: [] },
     ])
-    await saveLineup(game.id!, 'them', [
-      { orderPosition: 1, playerId: null, playerName: 'O1', jerseyNumber: 10, position: 'P', substitutions: [] },
+    await saveLineup(game.id!, 'home', [
+      { orderPosition: 1, playerId: p2.id!, playerName: 'O1', jerseyNumber: 10, position: 'P', substitutions: [] },
     ])
 
     const { result } = renderHook(() => useGame(), { wrapper })
@@ -123,16 +142,23 @@ describe('GameContext', () => {
   })
 
   it('should undo from a specific play (undoFromPlay)', async () => {
-    const team = await createTeam('Mudcats')
-    const game = await createGame(team.id!, 'Tigers', 'away')
-    await saveLineup(game.id!, 'us', [
-      { orderPosition: 1, playerId: 1, playerName: 'P1', jerseyNumber: 1, position: 'P', substitutions: [] },
-      { orderPosition: 2, playerId: 2, playerName: 'P2', jerseyNumber: 2, position: 'C', substitutions: [] },
-      { orderPosition: 3, playerId: 3, playerName: 'P3', jerseyNumber: 3, position: '1B', substitutions: [] },
-      { orderPosition: 4, playerId: 4, playerName: 'P4', jerseyNumber: 4, position: '2B', substitutions: [] },
+    const team1 = await createTeam('Mudcats')
+    const team2 = await createTeam('Tigers')
+    const p1 = await addPlayer(team2.id!, 'P1', 1, 'P')
+    const p2 = await addPlayer(team2.id!, 'P2', 2, 'C')
+    const p3 = await addPlayer(team2.id!, 'P3', 3, '1B')
+    const p4 = await addPlayer(team2.id!, 'P4', 4, '2B')
+    const p5 = await addPlayer(team1.id!, 'O1', 10, 'P')
+    // team1 is home, team2 is away — away bats top
+    const game = await createGame(team1.id!, team2.id!, team1.id!)
+    await saveLineup(game.id!, 'away', [
+      { orderPosition: 1, playerId: p1.id!, playerName: 'P1', jerseyNumber: 1, position: 'P', substitutions: [] },
+      { orderPosition: 2, playerId: p2.id!, playerName: 'P2', jerseyNumber: 2, position: 'C', substitutions: [] },
+      { orderPosition: 3, playerId: p3.id!, playerName: 'P3', jerseyNumber: 3, position: '1B', substitutions: [] },
+      { orderPosition: 4, playerId: p4.id!, playerName: 'P4', jerseyNumber: 4, position: '2B', substitutions: [] },
     ])
-    await saveLineup(game.id!, 'them', [
-      { orderPosition: 1, playerId: null, playerName: 'O1', jerseyNumber: 10, position: 'P', substitutions: [] },
+    await saveLineup(game.id!, 'home', [
+      { orderPosition: 1, playerId: p5.id!, playerName: 'O1', jerseyNumber: 10, position: 'P', substitutions: [] },
     ])
 
     const { result } = renderHook(() => useGame(), { wrapper })
@@ -183,6 +209,7 @@ describe('GameContext', () => {
     expect(result.current.plays).toHaveLength(1)
     expect(result.current.plays[0].batterOrderPosition).toBe(1)
     expect(result.current.snapshot?.outs).toBe(1)
-    expect(result.current.snapshot?.currentBatterUs).toBe(2)
+    // Away team bats top — next batter after play 1 undo is position 2
+    expect(result.current.snapshot?.currentBatterAway).toBe(2)
   })
 })
