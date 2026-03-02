@@ -1,4 +1,4 @@
-import type { LineupSlot, Play, Lineup, HomeOrAway } from '../engine/types'
+import type { LineupSlot, Play, Lineup } from '../engine/types'
 import { AtBatCell } from './AtBatCell'
 import { computePlayerStats } from '../engine/stats'
 import { computeRunnerJourneys } from '../engine/journeys'
@@ -7,9 +7,8 @@ interface ScoresheetProps {
   lineup: LineupSlot[]
   plays: Play[]
   allPlays?: Play[]
-  lineupUs?: Lineup
-  lineupThem?: Lineup
-  homeOrAway?: HomeOrAway
+  lineupHome?: Lineup
+  lineupAway?: Lineup
   currentInning: number
   currentBatterPosition: number
   maxInnings: number
@@ -103,17 +102,16 @@ export function Scoresheet({
   lineup,
   plays,
   allPlays,
-  lineupUs,
-  lineupThem,
-  homeOrAway,
+  lineupHome,
+  lineupAway,
   currentInning,
   currentBatterPosition,
   maxInnings,
   onCellClick,
   runsMap,
 }: ScoresheetProps) {
-  const journeys = allPlays && lineupUs && lineupThem && homeOrAway
-    ? computeRunnerJourneys(allPlays, lineupUs, lineupThem, homeOrAway)
+  const journeys = allPlays && lineupHome && lineupAway
+    ? computeRunnerJourneys(allPlays, lineupHome, lineupAway)
     : new Map<number, number[]>()
 
   const passMap = computePassMap(plays)

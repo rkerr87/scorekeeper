@@ -1,14 +1,13 @@
-import type { HalfInning, HomeOrAway } from '../engine/types'
+import type { HalfInning } from '../engine/types'
 
 interface ScoreSummaryProps {
   inning: number
   half: HalfInning
   outs: number
-  scoreUs: number
-  scoreThem: number
-  homeOrAway: HomeOrAway
-  teamName: string
-  opponentName: string
+  scoreHome: number
+  scoreAway: number
+  homeTeamName: string
+  awayTeamName: string
   pitchCount: number
   pitcherName: string
 }
@@ -17,11 +16,10 @@ export function ScoreSummary({
   inning,
   half,
   outs,
-  scoreUs,
-  scoreThem,
-  homeOrAway,
-  teamName,
-  opponentName,
+  scoreHome,
+  scoreAway,
+  homeTeamName,
+  awayTeamName,
   pitchCount,
   pitcherName,
 }: ScoreSummaryProps) {
@@ -52,13 +50,13 @@ export function ScoreSummary({
       {/* Score — away first, home second (sports convention) */}
       <div className="flex items-center gap-2">
         <div className="text-center">
-          <div className="text-xs text-slate-400 uppercase truncate max-w-[60px]">{homeOrAway === 'away' ? (teamName || 'US') : opponentName}</div>
-          <div className="text-2xl font-bold">{homeOrAway === 'away' ? scoreUs : scoreThem}</div>
+          <div className="text-xs text-slate-400 uppercase truncate max-w-[60px]">{awayTeamName}</div>
+          <div className="text-2xl font-bold">{scoreAway}</div>
         </div>
         <div className="text-slate-500">-</div>
         <div className="text-center">
-          <div className="text-xs text-slate-400 uppercase truncate max-w-[60px]">{homeOrAway === 'away' ? opponentName : (teamName || 'US')}</div>
-          <div className="text-2xl font-bold">{homeOrAway === 'away' ? scoreThem : scoreUs}</div>
+          <div className="text-xs text-slate-400 uppercase truncate max-w-[60px]">{homeTeamName}</div>
+          <div className="text-2xl font-bold">{scoreHome}</div>
         </div>
       </div>
 
