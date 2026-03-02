@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom'
 import { GameProvider } from '../../contexts/GameContext'
 import { GamePage } from '../GamePage'
 import { db } from '../../db/database'
@@ -87,6 +87,69 @@ describe('GamePage', () => {
     // "Us" tab should NOT be active — our players should not be in the scoresheet
     // (Player1 may appear in ScoreSummary as pitcher, so check Player2 which is unique)
     expect(screen.queryByText('Player2')).not.toBeInTheDocument()
+  })
+
+  it('should default to correct batting team when switching between games with different homeOrAway', async () => {
+    // Game 1: home game (us = home, top 1 = them batting)
+    const homeGameId = await seedFullGame() // homeOrAway: 'home', opponent: 'Tigers'
+
+    // Game 2: away game (us = away, top 1 = us batting)
+    const awayTeamId = await db.teams.add({ name: 'Mudcats2', createdAt: new Date() })
+    const awayGameId = await db.games.add({
+      teamId: awayTeamId, code: 'TEST02', date: new Date(), opponentName: 'Eagles',
+      homeOrAway: 'away', status: 'in_progress', createdAt: new Date(), updatedAt: new Date(),
+    })
+    await db.lineups.add({
+      gameId: awayGameId, side: 'us',
+      battingOrder: Array.from({ length: 9 }, (_, i) => ({
+        orderPosition: i + 1, playerId: i + 100,
+        playerName: `Away${i + 1}`, jerseyNumber: (i + 1) * 10,
+        position: ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'][i],
+        substitutions: [],
+      })),
+    })
+    await db.lineups.add({
+      gameId: awayGameId, side: 'them',
+      battingOrder: Array.from({ length: 9 }, (_, i) => ({
+        orderPosition: i + 1, playerId: null,
+        playerName: `Home${i + 1}`, jerseyNumber: (i + 1) * 10,
+        position: ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'][i],
+        substitutions: [],
+      })),
+    })
+
+    // Nav helper to switch games within the same GameProvider
+    function NavButton({ to, label }: { to: string; label: string }) {
+      const navigate = useNavigate()
+      return <button onClick={() => navigate(to)}>{label}</button>
+    }
+
+    render(
+      <MemoryRouter initialEntries={[`/game/${homeGameId}`]}>
+        <GameProvider>
+          <Routes>
+            <Route path="/game/:gameId" element={<GamePage />} />
+          </Routes>
+          <NavButton to={`/game/${awayGameId}`} label="Go to away game" />
+        </GameProvider>
+      </MemoryRouter>
+    )
+
+    // Verify home game defaults to "them" tab (opponents batting in top 1)
+    await waitFor(() => {
+      expect(screen.getByText('Opp1')).toBeInTheDocument()
+    })
+
+    // Navigate to away game (same GameProvider persists, context retains stale data)
+    const user = userEvent.setup()
+    await user.click(screen.getByText('Go to away game'))
+
+    // Away game: us bats top, so top 1 = us batting → should show "us" tab
+    await waitFor(() => {
+      expect(screen.getByText('Away2')).toBeInTheDocument()
+    })
+    // Opponent scoresheet should NOT be visible
+    expect(screen.queryByText('Home2')).not.toBeInTheDocument()
   })
 
   it('should show record play and undo buttons', async () => {

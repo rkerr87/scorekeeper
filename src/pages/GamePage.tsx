@@ -89,17 +89,23 @@ export function GamePage() {
   const usBattingHalf: HalfInning = game.homeOrAway === 'home' ? 'bottom' : 'top'
   const themBattingHalf: HalfInning = usBattingHalf === 'top' ? 'bottom' : 'top'
 
-  // Auto-switch tab when the half changes (during render, not in an effect).
+  // Auto-switch tab when the half or game changes (during render, not in an effect).
   // React supports calling setState during render for derived-state updates — it discards
   // the current render and immediately re-renders with the updated state.
-  const halfKey = `${snapshot.inning}-${snapshot.half}`
+  // Include game.id so switching between games (which may share the same inning/half)
+  // forces re-evaluation of which team is batting.
+  const halfKey = `${game.id}-${snapshot.inning}-${snapshot.half}`
   if (trackedHalfKey !== halfKey && trackedHalfKey !== '') {
-    // Half has changed — auto-follow the now-batting team, queue toast, and record the new half
-    const halfLabel = snapshot.half === 'top' ? 'Top' : 'Bot'
+    const prevGameId = trackedHalfKey.split('-')[0]
+    const gameChanged = prevGameId !== String(game.id)
     setTrackedHalfKey(halfKey)
     setActiveTab(snapshot.half === usBattingHalf ? 'us' : 'them')
     setCurrentAtBatPitches([])
-    setPendingToast(`Side retired — ${halfLabel} ${snapshot.inning}`)
+    // Only show "Side retired" toast for half changes within the same game
+    if (!gameChanged) {
+      const halfLabel = snapshot.half === 'top' ? 'Top' : 'Bot'
+      setPendingToast(`Side retired — ${halfLabel} ${snapshot.inning}`)
+    }
   } else if (trackedHalfKey === '') {
     // First render after game loads — sync tab to the currently batting team
     setTrackedHalfKey(halfKey)
