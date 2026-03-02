@@ -25,9 +25,10 @@ describe('SyncService', () => {
   })
 
   it('should export game data as JSON', async () => {
-    const team = await createTeam('Mudcats')
-    const game = await createGame(team.id!, 'Tigers', 'home')
-    await saveLineup(game.id!, 'us', [
+    const team1 = await createTeam('Mudcats')
+    const team2 = await createTeam('Tigers')
+    const game = await createGame(team1.id!, team2.id!, team1.id!)
+    await saveLineup(game.id!, 'home', [
       { orderPosition: 1, playerId: 1, playerName: 'Alice', jerseyNumber: 1, position: 'P', substitutions: [] },
     ])
     await addPlay(game.id!, {
@@ -39,7 +40,9 @@ describe('SyncService', () => {
     const exported = await SyncService.exportGame(game.id!)
     expect(exported).not.toBeNull()
     const parsed = JSON.parse(exported!)
-    expect(parsed.game.opponentName).toBe('Tigers')
+    expect(parsed.game.team1Id).toBe(team1.id!)
+    expect(parsed.game.team2Id).toBe(team2.id!)
+    expect(parsed.game.homeTeamId).toBe(team1.id!)
     expect(parsed.lineups).toHaveLength(1)
     expect(parsed.plays).toHaveLength(1)
   })
@@ -47,8 +50,9 @@ describe('SyncService', () => {
   it('should import game data from JSON', async () => {
     const json = JSON.stringify({
       game: {
-        teamId: 1, code: 'IMPORT', date: new Date().toISOString(),
-        opponentName: 'Bears', homeOrAway: 'away', status: 'in_progress',
+        team1Id: 1, team2Id: 2, homeTeamId: 1,
+        code: 'IMPORT', date: new Date().toISOString(),
+        status: 'in_progress',
         createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
       },
       lineups: [],
@@ -59,6 +63,8 @@ describe('SyncService', () => {
     expect(gameId).toBeGreaterThan(0)
 
     const game = await db.games.get(gameId)
-    expect(game?.opponentName).toBe('Bears')
+    expect(game?.team1Id).toBe(1)
+    expect(game?.team2Id).toBe(2)
+    expect(game?.homeTeamId).toBe(1)
   })
 })

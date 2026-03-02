@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import type { Team, Player, Play, HalfInning } from '../engine/types'
 import { getAllTeams, getPlayersForTeam, getGamesForTeam } from '../db/gameService'
@@ -30,66 +30,71 @@ export function SeasonStatsPage() {
     loadTeams()
   }, [])
 
-  const loadStats = useCallback(async (teamId: number) => {
-    setLoading(true)
-    const players = await getPlayersForTeam(teamId)
-    const games = await getGamesForTeam(teamId)
-
-    const allPlays: Play[] = []
-    const playerOrderMap = new Map<number, number>() // playerId -> orderPosition
-    const runsPerPlayer = new Map<number, number>()  // playerId -> total runs scored
-
-    for (const game of games) {
-      const lineups = await db.lineups.where('gameId').equals(game.id!).toArray()
-      const homeLineup = lineups.find(l => l.side === 'home')
-      const awayLineup = lineups.find(l => l.side === 'away')
-      if (!homeLineup || !awayLineup) continue
-
-      const isHome = game.homeTeamId === teamId
-      const teamLineup = isHome ? homeLineup : awayLineup
-      const teamBattingHalf: HalfInning = isHome ? 'bottom' : 'top'
-
-      // Map player IDs to order positions for this game
-      for (const slot of teamLineup.battingOrder) {
-        if (slot.playerId) {
-          playerOrderMap.set(slot.playerId, slot.orderPosition)
-        }
-      }
-
-      const plays = await db.plays.where('gameId').equals(game.id!).toArray()
-      const teamPlays = plays.filter(p => p.half === teamBattingHalf)
-      allPlays.push(...teamPlays)
-
-      // Accumulate per-player runs from this game's snapshot
-      const gameSnapshot = replayGame(plays, homeLineup, awayLineup)
-      const runsMap = isHome
-        ? gameSnapshot.runsScoredByPositionHome
-        : gameSnapshot.runsScoredByPositionAway
-      for (const slot of teamLineup.battingOrder) {
-        if (slot.playerId) {
-          const slotRuns = runsMap.get(slot.orderPosition) ?? 0
-          runsPerPlayer.set(slot.playerId, (runsPerPlayer.get(slot.playerId) ?? 0) + slotRuns)
-        }
-      }
-    }
-
-    // Compute stats per player
-    const results: PlayerSeasonStats[] = players.map(player => {
-      const orderPos = playerOrderMap.get(player.id!) ?? 0
-      const playerRuns = runsPerPlayer.get(player.id!) ?? 0
-      const stats = computePlayerStats(allPlays, orderPos, playerRuns)
-      return { player, stats }
-    })
-
-    setPlayerStats(results.filter(r => r.stats.games > 0))
-    setLoading(false)
-  }, [])
-
   useEffect(() => {
-    if (selectedTeamId !== null) {
-      loadStats(selectedTeamId)
+    if (selectedTeamId === null) return
+
+    let cancelled = false
+
+    async function loadStats() {
+      setLoading(true)
+      const players = await getPlayersForTeam(selectedTeamId!)
+      const games = await getGamesForTeam(selectedTeamId!)
+
+      const allPlays: Play[] = []
+      const playerOrderMap = new Map<number, number>() // playerId -> orderPosition
+      const runsPerPlayer = new Map<number, number>()  // playerId -> total runs scored
+
+      for (const game of games) {
+        const lineups = await db.lineups.where('gameId').equals(game.id!).toArray()
+        const homeLineup = lineups.find(l => l.side === 'home')
+        const awayLineup = lineups.find(l => l.side === 'away')
+        if (!homeLineup || !awayLineup) continue
+
+        const isHome = game.homeTeamId === selectedTeamId
+        const teamLineup = isHome ? homeLineup : awayLineup
+        const teamBattingHalf: HalfInning = isHome ? 'bottom' : 'top'
+
+        // Map player IDs to order positions for this game
+        for (const slot of teamLineup.battingOrder) {
+          if (slot.playerId) {
+            playerOrderMap.set(slot.playerId, slot.orderPosition)
+          }
+        }
+
+        const plays = await db.plays.where('gameId').equals(game.id!).toArray()
+        const teamPlays = plays.filter(p => p.half === teamBattingHalf)
+        allPlays.push(...teamPlays)
+
+        // Accumulate per-player runs from this game's snapshot
+        const gameSnapshot = replayGame(plays, homeLineup, awayLineup)
+        const runsMap = isHome
+          ? gameSnapshot.runsScoredByPositionHome
+          : gameSnapshot.runsScoredByPositionAway
+        for (const slot of teamLineup.battingOrder) {
+          if (slot.playerId) {
+            const slotRuns = runsMap.get(slot.orderPosition) ?? 0
+            runsPerPlayer.set(slot.playerId, (runsPerPlayer.get(slot.playerId) ?? 0) + slotRuns)
+          }
+        }
+      }
+
+      if (cancelled) return
+
+      // Compute stats per player
+      const results: PlayerSeasonStats[] = players.map(player => {
+        const orderPos = playerOrderMap.get(player.id!) ?? 0
+        const playerRuns = runsPerPlayer.get(player.id!) ?? 0
+        const stats = computePlayerStats(allPlays, orderPos, playerRuns)
+        return { player, stats }
+      })
+
+      setPlayerStats(results.filter(r => r.stats.games > 0))
+      setLoading(false)
     }
-  }, [selectedTeamId, loadStats])
+
+    loadStats()
+    return () => { cancelled = true }
+  }, [selectedTeamId])
 
   if (loading && teams.length === 0) return <div className="p-6">Loading...</div>
 

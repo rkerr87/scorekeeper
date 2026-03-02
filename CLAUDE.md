@@ -40,23 +40,26 @@ Use the `superpowers` skills for all development work:
 
 - **Design doc:** `docs/plans/2026-02-22-scorekeeper-design-v2.md` — contains the canonical data model (all entity fields), UI layout details, and play entry flows
 - **Implementation plan:** `docs/plans/2026-02-22-scorekeeper-implementation.md` (26 tasks, 10 phases)
+- **Multi-team design:** `docs/plans/2026-03-02-multi-team-design.md` — symmetric two-team model design
+- **Multi-team plan:** `docs/plans/2026-03-02-multi-team-implementation.md` (12 tasks, 7 phases)
 - **Scoresheet reference:** `docs/scoresheet_layout.jpeg` — Glover's scorebook layout; use as the visual target for the Scoresheet, AtBatCell, and Diamond components
 - **Scoring symbols:** `docs/scoring_guide.jpeg` — Glover's notation symbols; use as reference for play notation rendering
 
 ## Current Status
 
-- **Phase:** All phases complete + post-review bug fixes + 17 UX feedback fixes merged
-- **Next step:** None — MVP complete
-- **Test runner:** vitest configured and passing (234 tests across 26 test files)
+- **Phase:** All phases complete + post-review bug fixes + 17 UX feedback fixes + multi-team support
+- **Next step:** None — multi-team support complete
+- **Test runner:** vitest configured and passing (268 tests across 27 test files)
 - **UX feedback design:** `docs/plans/2026-02-26-ux-feedback-design.md`
 - **UX feedback plan:** `docs/plans/2026-02-26-ux-feedback-implementation.md` (15 tasks, all complete)
+- **Multi-team support:** `docs/plans/2026-03-02-multi-team-implementation.md` (12 tasks, all complete)
 
 ## Architecture
 
 **Pattern: Pure Game Engine + Event Log (A+C Hybrid)**
 
 - All game logic lives in a pure game engine module — no React, no Dexie, no UI
-- `replayGame(plays, lineupUs, lineupThem, homeOrAway) → GameSnapshot`
+- `replayGame(plays, lineupHome, lineupAway) → GameSnapshot`
 - Plays stored as an ordered event log; current state always computed by replay
 - Undo = pop last play and recompute. Edit = replace play and recompute
 - A 6-inning LL game has ~60-80 plays max — replay is instant
@@ -108,15 +111,15 @@ Tailwind v4 uses CSS-native configuration:
 
 ## Data Model
 
-> **Source of truth:** See the design doc (`docs/plans/2026-02-22-scorekeeper-design-v2.md`) for complete field definitions. Note: `GameSnapshot` field names in the design doc are superseded by the implementation plan — use `currentBatterUs`/`currentBatterThem` and `runsPerInningUs`/`runsPerInningThem` (see `src/engine/types.ts`).
+> **Source of truth:** See `src/engine/types.ts` for complete field definitions. Multi-team design: `docs/plans/2026-03-02-multi-team-design.md`.
 
-- **Team** — roster container
+- **Team** — roster container (multiple teams supported)
 - **Player** — belongs to a team, has default position
-- **Game** — single game instance with status lifecycle (draft → in_progress → completed)
-- **Lineup** — per-game batting order for "us" or "them", contains LineupSlots
-- **LineupSlot** — one spot in the batting order, with substitution history
-- **Play** — single event in the game log (at-bat result or baserunning event)
-- **GameSnapshot** — computed by replaying plays, never stored
+- **Game** — `team1Id`, `team2Id`, `homeTeamId` (symmetric — neither team is privileged). Status lifecycle: draft → in_progress → completed
+- **Lineup** — per-game batting order with `side: 'home' | 'away'`, contains LineupSlots. Both teams have real rosters.
+- **LineupSlot** — one spot in the batting order, `playerId` always populated (both teams have real players)
+- **Play** — single event in the game log (at-bat result or baserunning event), uses `half: 'top' | 'bottom'`
+- **GameSnapshot** — computed by `replayGame(plays, lineupHome, lineupAway)`, never stored. Fields use Home/Away naming: `scoreHome`, `scoreAway`, `currentBatterHome`, `currentBatterAway`, `runsPerInningHome`, `runsPerInningAway`, `runsScoredByPositionHome`, `runsScoredByPositionAway`
 
 ## Project Structure (Target)
 
@@ -150,7 +153,8 @@ src/
     AppLayout.tsx  # Shared layout wrapper
   pages/
     HomePage.tsx
-    TeamPage.tsx
+    TeamsPage.tsx           # Multi-team list (/teams)
+    TeamDetailPage.tsx      # Single team roster (/teams/:teamId)
     GameSetupPage.tsx
     GamePage.tsx       # Manages pitch state, auto-walk/strikeout, popover, pos change
     GameStatsPage.tsx
@@ -161,8 +165,9 @@ src/
 
 ## Key Design Decisions
 
+- **Symmetric multi-team model.** All teams are equal — no "my team" vs "opponent" distinction. Games reference two team IDs (`team1Id`, `team2Id`) plus `homeTeamId`. Both sides have real rosters.
+- **Home/Away, not Us/Them.** `Lineup.side` is `'home' | 'away'`. Home always bats bottom, away always bats top. Engine takes 3 args: `replayGame(plays, lineupHome, lineupAway)`.
 - **Lineup is separate from Roster.** Batting order set per-game, not on the player record.
-- **Opponent players are inline.** No separate opponent table — name/number/position stored directly in lineup slots. Opponent stats not tracked across seasons.
 - **Per-pitch tracking.** Each at-bat stores a `pitches: PitchResult[]` array of `'B' | 'S' | 'F'`. Pitcher totals derived by summing across plays.
 - **`isAtBat` flag** on Play records distinguishes batting order plays (K, 1B, BB, etc.) from mid-at-bat events (SB, WP, PB, BK).
 - **Baserunner confirmation step.** Engine applies default advancement, scorekeeper can adjust before finalizing. Shows pre-play positions with post-play defaults.
@@ -188,16 +193,17 @@ src/
 ## Routes
 
 ```
-/                   → Home (start game, resume game, enter game code, manage roster)
-/team               → Team roster management
-/game/:gameId/setup     → Pre-game setup (batting order, positions, opponent lineup)
-/game/:gameId       → Main scoresheet (primary view during a game)
-/game/:gameId/stats → Post-game stats view
-/stats              → Season cumulative stats
+/                       → Home (all games, team management entry)
+/teams                  → Team list (multi-team management)
+/teams/:teamId          → Single team roster management
+/game/:gameId/setup     → Game setup (pick teams, build lineups)
+/game/:gameId           → Main scoresheet (primary view during a game)
+/game/:gameId/stats     → Post-game stats view
+/stats                  → Season stats (with team selector)
 ```
 
 ## MVP Scope Boundaries
 
-**Included:** Single-team roster, full play-by-play scoring for both teams, Glover's-style scoresheet (SVG diamonds, paths, pitch dots, notation), field diagram, per-pitch tracking, full substitutions, baserunner tracking with confirmation, undo/edit via event-log replay, beginner mode, game code sync (stubbed transport), offline-first PWA, season stats.
+**Included:** Multi-team roster management, symmetric two-team game model, full play-by-play scoring for both teams, Glover's-style scoresheet (SVG diamonds, paths, pitch dots, notation), field diagram, per-pitch tracking, full substitutions, baserunner tracking with confirmation, undo/edit via event-log replay, beginner mode, game code sync (stubbed transport), offline-first PWA, per-team season stats.
 
-**Not included:** Multiple teams, Supabase backend, real-time multi-user scoring, chat, photos, PDF export, LL rule enforcement (pitch limits, rest days).
+**Not included:** Supabase backend, real-time multi-user scoring, chat, photos, PDF export, LL rule enforcement (pitch limits, rest days).
