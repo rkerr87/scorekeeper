@@ -10,6 +10,7 @@ import {
   createGame,
   getGame,
   getGamesForTeam,
+  getAllGames,
   updateGameStatus,
   deleteGame,
   saveLineup,
@@ -73,34 +74,62 @@ describe('gameService', () => {
 
   describe('games', () => {
     it('should create a game with auto-generated code', async () => {
-      const team = await createTeam('Mudcats')
-      const game = await createGame(team.id!, 'Tigers', 'home')
+      const team1 = await createTeam('Mudcats')
+      const team2 = await createTeam('Tigers')
+      const game = await createGame(team1.id!, team2.id!, team1.id!)
       expect(game.code).toHaveLength(6)
       expect(game.status).toBe('in_progress')
-      expect(game.opponentName).toBe('Tigers')
+      expect(game.team1Id).toBe(team1.id)
+      expect(game.team2Id).toBe(team2.id)
+      expect(game.homeTeamId).toBe(team1.id)
     })
 
     it('should retrieve a game by id', async () => {
-      const team = await createTeam('Mudcats')
-      const game = await createGame(team.id!, 'Tigers', 'home')
+      const team1 = await createTeam('Mudcats')
+      const team2 = await createTeam('Tigers')
+      const game = await createGame(team1.id!, team2.id!, team1.id!)
 
       const fetched = await getGame(game.id!)
-      expect(fetched?.opponentName).toBe('Tigers')
-      expect(fetched?.homeOrAway).toBe('home')
+      expect(fetched?.team1Id).toBe(team1.id)
+      expect(fetched?.team2Id).toBe(team2.id)
+      expect(fetched?.homeTeamId).toBe(team1.id)
     })
 
-    it('should list games for a team', async () => {
-      const team = await createTeam('Mudcats')
-      await createGame(team.id!, 'Tigers', 'home')
-      await createGame(team.id!, 'Bears', 'away')
+    it('should list games for a team as team1', async () => {
+      const team1 = await createTeam('Mudcats')
+      const team2 = await createTeam('Tigers')
+      const team3 = await createTeam('Bears')
+      await createGame(team1.id!, team2.id!, team1.id!)
+      await createGame(team1.id!, team3.id!, team3.id!)
 
-      const games = await getGamesForTeam(team.id!)
+      const games = await getGamesForTeam(team1.id!)
       expect(games).toHaveLength(2)
     })
 
+    it('should list games for a team as team2', async () => {
+      const team1 = await createTeam('Mudcats')
+      const team2 = await createTeam('Tigers')
+      await createGame(team1.id!, team2.id!, team1.id!)
+
+      const games = await getGamesForTeam(team2.id!)
+      expect(games).toHaveLength(1)
+    })
+
+    it('should not duplicate games when team is both team1 and team2 query match', async () => {
+      const team1 = await createTeam('Mudcats')
+      const team2 = await createTeam('Tigers')
+      await createGame(team1.id!, team2.id!, team1.id!)
+
+      // team1 appears only as team1, so no duplication risk here
+      // but the dedup logic should handle it regardless
+      const games = await getGamesForTeam(team1.id!)
+      expect(games).toHaveLength(1)
+    })
+
     it('should update game status', async () => {
-      const team = await createTeam('Mudcats')
-      const game = await createGame(team.id!, 'Tigers', 'home')
+      const team1 = await createTeam('Mudcats')
+      const team2 = await createTeam('Tigers')
+      const game = await createGame(team1.id!, team2.id!, team1.id!)
       expect(game.status).toBe('in_progress')
 
       await updateGameStatus(game.id!, 'completed')
@@ -109,8 +138,9 @@ describe('gameService', () => {
     })
 
     it('should soft-delete a game (status = deleted, record still exists)', async () => {
-      const team = await createTeam('Mudcats')
-      const game = await createGame(team.id!, 'Tigers', 'home')
+      const team1 = await createTeam('Mudcats')
+      const team2 = await createTeam('Tigers')
+      const game = await createGame(team1.id!, team2.id!, team1.id!)
 
       await deleteGame(game.id!)
 
@@ -119,37 +149,54 @@ describe('gameService', () => {
     })
 
     it('should exclude deleted games from getGamesForTeam', async () => {
-      const team = await createTeam('Mudcats')
-      await createGame(team.id!, 'Tigers', 'home')        // visible
-      const gone = await createGame(team.id!, 'Bears', 'away')  // will be deleted
+      const team1 = await createTeam('Mudcats')
+      const team2 = await createTeam('Tigers')
+      const team3 = await createTeam('Bears')
+      await createGame(team1.id!, team2.id!, team1.id!)          // visible
+      const gone = await createGame(team1.id!, team3.id!, team1.id!)  // will be deleted
       await deleteGame(gone.id!)
 
-      const games = await getGamesForTeam(team.id!)
+      const games = await getGamesForTeam(team1.id!)
       expect(games).toHaveLength(1)
-      expect(games[0].opponentName).toBe('Tigers')
+      expect(games[0].team2Id).toBe(team2.id)
+    })
+
+    it('should return all non-deleted games with getAllGames', async () => {
+      const team1 = await createTeam('Mudcats')
+      const team2 = await createTeam('Tigers')
+      const team3 = await createTeam('Bears')
+      await createGame(team1.id!, team2.id!, team1.id!)
+      await createGame(team1.id!, team3.id!, team3.id!)
+      const gone = await createGame(team2.id!, team3.id!, team2.id!)
+      await deleteGame(gone.id!)
+
+      const games = await getAllGames()
+      expect(games).toHaveLength(2)
     })
   })
 
   describe('lineups', () => {
     it('should save and retrieve lineups for a game', async () => {
-      const team = await createTeam('Mudcats')
-      const game = await createGame(team.id!, 'Tigers', 'home')
+      const team1 = await createTeam('Mudcats')
+      const team2 = await createTeam('Tigers')
+      const game = await createGame(team1.id!, team2.id!, team1.id!)
 
-      await saveLineup(game.id!, 'us', [
-        { orderPosition: 1, playerId: 1, playerName: 'John', jerseyNumber: 23, position: 'SS', substitutions: [] },
+      await saveLineup(game.id!, 'home', [
+        { orderPosition: 1, playerId: 101, playerName: 'John', jerseyNumber: 23, position: 'SS', substitutions: [] },
       ])
 
       const lineups = await getLineupsForGame(game.id!)
       expect(lineups).toHaveLength(1)
-      expect(lineups[0].side).toBe('us')
+      expect(lineups[0].side).toBe('home')
       expect(lineups[0].battingOrder).toHaveLength(1)
     })
   })
 
   describe('plays', () => {
     it('should add plays with auto-incrementing sequence numbers', async () => {
-      const team = await createTeam('Mudcats')
-      const game = await createGame(team.id!, 'Tigers', 'home')
+      const team1 = await createTeam('Mudcats')
+      const team2 = await createTeam('Tigers')
+      const game = await createGame(team1.id!, team2.id!, team1.id!)
 
       const play1 = await addPlay(game.id!, {
         inning: 1,
@@ -186,8 +233,9 @@ describe('gameService', () => {
     })
 
     it('should delete the last play (undo)', async () => {
-      const team = await createTeam('Mudcats')
-      const game = await createGame(team.id!, 'Tigers', 'home')
+      const team1 = await createTeam('Mudcats')
+      const team2 = await createTeam('Tigers')
+      const game = await createGame(team1.id!, team2.id!, team1.id!)
 
       await addPlay(game.id!, {
         inning: 1, half: 'top', batterOrderPosition: 1, playType: 'K',
@@ -207,16 +255,18 @@ describe('gameService', () => {
     })
 
     it('should handle deleteLastPlay on a game with no plays', async () => {
-      const team = await createTeam('Mudcats')
-      const game = await createGame(team.id!, 'Tigers', 'home')
+      const team1 = await createTeam('Mudcats')
+      const team2 = await createTeam('Tigers')
+      const game = await createGame(team1.id!, team2.id!, team1.id!)
       await deleteLastPlay(game.id!)
       const plays = await getPlaysForGame(game.id!)
       expect(plays).toHaveLength(0)
     })
 
     it('should update an existing play (edit)', async () => {
-      const team = await createTeam('Mudcats')
-      const game = await createGame(team.id!, 'Tigers', 'home')
+      const team1 = await createTeam('Mudcats')
+      const team2 = await createTeam('Tigers')
+      const game = await createGame(team1.id!, team2.id!, team1.id!)
 
       const play = await addPlay(game.id!, {
         inning: 1, half: 'top', batterOrderPosition: 1, playType: 'K',
@@ -231,8 +281,9 @@ describe('gameService', () => {
     })
 
     it('should delete target play and all subsequent plays, preserving earlier plays', async () => {
-      const team = await createTeam('Mudcats')
-      const game = await createGame(team.id!, 'Tigers', 'home')
+      const team1 = await createTeam('Mudcats')
+      const team2 = await createTeam('Tigers')
+      const game = await createGame(team1.id!, team2.id!, team1.id!)
 
       const play1 = await addPlay(game.id!, {
         inning: 1, half: 'top', batterOrderPosition: 1, playType: 'K',
@@ -260,8 +311,9 @@ describe('gameService', () => {
     })
 
     it('should handle non-existent playId gracefully', async () => {
-      const team = await createTeam('Mudcats')
-      const game = await createGame(team.id!, 'Tigers', 'home')
+      const team1 = await createTeam('Mudcats')
+      const team2 = await createTeam('Tigers')
+      const game = await createGame(team1.id!, team2.id!, team1.id!)
 
       await addPlay(game.id!, {
         inning: 1, half: 'top', batterOrderPosition: 1, playType: 'K',

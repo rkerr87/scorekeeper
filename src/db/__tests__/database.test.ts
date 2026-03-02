@@ -78,7 +78,7 @@ describe('ScoreKeeperDB', () => {
   it('should store and retrieve lineups with nested battingOrder', async () => {
     await db.lineups.add({
       gameId: 1,
-      side: 'us',
+      side: 'home',
       battingOrder: [
         {
           orderPosition: 1,

@@ -11,10 +11,10 @@ export class ScoreKeeperDB extends Dexie {
 
   constructor() {
     super('scorekeeper_db')
-    this.version(1).stores({
+    this.version(2).stores({
       teams: '++id',
       players: '++id, teamId',
-      games: '++id, teamId, code, status',
+      games: '++id, team1Id, team2Id, code, status',
       lineups: '++id, gameId, [gameId+side]',
       plays: '++id, gameId, sequenceNumber, [gameId+inning+half]',
     })

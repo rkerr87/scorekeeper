@@ -1,5 +1,5 @@
 import { db } from './database'
-import type { Team, Player, Game, Lineup, Play, LineupSlot, HomeOrAway, HalfInning, PlayType, PitchResult, BaseRunnerOverride } from '../engine/types'
+import type { Team, Player, Game, Lineup, Play, LineupSlot, HalfInning, PlayType, PitchResult, BaseRunnerOverride } from '../engine/types'
 
 // --- Teams ---
 
@@ -45,17 +45,17 @@ function generateGameCode(): string {
 }
 
 export async function createGame(
-  teamId: number,
-  opponentName: string,
-  homeOrAway: HomeOrAway,
+  team1Id: number,
+  team2Id: number,
+  homeTeamId: number,
 ): Promise<Game> {
   const now = new Date()
   const game: Game = {
-    teamId,
+    team1Id,
+    team2Id,
+    homeTeamId,
     code: generateGameCode(),
     date: now,
-    opponentName,
-    homeOrAway,
     status: 'in_progress',
     createdAt: now,
     updatedAt: now,
@@ -69,11 +69,29 @@ export async function getGame(id: number): Promise<Game | undefined> {
 }
 
 export async function getGamesForTeam(teamId: number): Promise<Game[]> {
-  return db.games
-    .where('teamId')
+  const byTeam1 = await db.games
+    .where('team1Id')
     .equals(teamId)
     .filter(g => g.status !== 'deleted')
     .toArray()
+  const byTeam2 = await db.games
+    .where('team2Id')
+    .equals(teamId)
+    .filter(g => g.status !== 'deleted')
+    .toArray()
+  const seen = new Set<number>()
+  const result: Game[] = []
+  for (const g of [...byTeam1, ...byTeam2]) {
+    if (g.id !== undefined && !seen.has(g.id)) {
+      seen.add(g.id)
+      result.push(g)
+    }
+  }
+  return result
+}
+
+export async function getAllGames(): Promise<Game[]> {
+  return db.games.filter(g => g.status !== 'deleted').toArray()
 }
 
 export async function updateGameStatus(id: number, status: Game['status']): Promise<void> {
@@ -88,7 +106,7 @@ export async function deleteGame(id: number): Promise<void> {
 
 export async function saveLineup(
   gameId: number,
-  side: 'us' | 'them',
+  side: 'home' | 'away',
   battingOrder: LineupSlot[],
 ): Promise<Lineup> {
   // Upsert in a transaction to prevent data loss if crash between delete and add
