@@ -2,8 +2,7 @@
 
 export type HalfInning = 'top' | 'bottom'
 export type GameStatus = 'draft' | 'in_progress' | 'completed' | 'deleted'
-export type HomeOrAway = 'home' | 'away'
-export type Side = 'us' | 'them'
+export type Side = 'home' | 'away'
 export type PitchResult = 'B' | 'S' | 'F'
 
 // Play types that count as an at-bat (advance the batter)
@@ -61,7 +60,7 @@ export interface Substitution {
 
 export interface LineupSlot {
   orderPosition: number        // 1-based batting order position
-  playerId: number | null      // null for opponent players (inline)
+  playerId: number
   playerName: string
   jerseyNumber: number
   position: string
@@ -77,11 +76,11 @@ export interface Lineup {
 
 export interface Game {
   id?: number
-  teamId: number
+  team1Id: number
+  team2Id: number
+  homeTeamId: number  // must equal team1Id or team2Id
   code: string
   date: Date
-  opponentName: string
-  homeOrAway: HomeOrAway
   status: GameStatus
   createdAt: Date
   updatedAt: Date
@@ -131,15 +130,15 @@ export interface GameSnapshot {
   inning: number
   half: HalfInning
   outs: number
-  scoreUs: number
-  scoreThem: number
-  currentBatterUs: number      // 1-based order position
-  currentBatterThem: number    // 1-based order position
+  scoreHome: number
+  scoreAway: number
+  currentBatterHome: number      // 1-based order position
+  currentBatterAway: number      // 1-based order position
   baseRunners: BaseRunners
-  pitchCountByPitcher: Map<string, number>  // pitcher name → cumulative count (Map — not JSON-serializable; GameSnapshot is always computed, never stored or transported)
-  runsPerInningUs: number[]    // index 0 = inning 1
-  runsPerInningThem: number[]
-  runsScoredByPositionUs: Map<number, number>  // orderPosition → run count (us)
-  runsScoredByPositionThem: Map<number, number> // orderPosition → run count (them)
+  pitchCountByPitcher: Map<string, number>
+  runsPerInningHome: number[]    // index 0 = inning 1
+  runsPerInningAway: number[]
+  runsScoredByPositionHome: Map<number, number>  // orderPosition → run count (home)
+  runsScoredByPositionAway: Map<number, number>  // orderPosition → run count (away)
   isGameOver: boolean
 }
