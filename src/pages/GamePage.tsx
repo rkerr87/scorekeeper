@@ -195,15 +195,14 @@ export function GamePage() {
       ['SB', 'WP', 'PB', 'BK', 'FC', 'E'].includes(data.playType)
     const isOut = ['K', 'KL', 'GO', 'FO', 'LO', 'PO', 'SAC', 'DP'].includes(data.playType)
 
-    const preRunsScored = snapshot.half === usBattingHalf
-      ? tempSnapshot.scoreUs - snapshot.scoreUs
-      : tempSnapshot.scoreThem - snapshot.scoreThem
-
     if (hasRunnersOnBase && (affectsRunners || isOut)) {
+      // Only count batter's own run (HR) as initialRunsScored.
+      // Runner runs are counted by RunnerConfirmation via assignments — don't double-count.
+      const batterScored = data.basesReached.includes(4) ? 1 : 0
       setPendingPlay(data)
       setPendingPrePlayRunners(snapshot.baseRunners)
       setPendingRunners(tempSnapshot.baseRunners)
-      setPendingPreRunsScored(preRunsScored)
+      setPendingPreRunsScored(batterScored)
       setShowPlayEntry(false)
     } else {
       finalizePlay(data)
@@ -308,6 +307,7 @@ export function GamePage() {
         outs={snapshot.outs}
         scoreUs={snapshot.scoreUs}
         scoreThem={snapshot.scoreThem}
+        homeOrAway={game.homeOrAway}
         pitchCount={pitchCount}
         pitcherName={pitcherName}
       />

@@ -1,4 +1,4 @@
-import type { HalfInning } from '../engine/types'
+import type { HalfInning, HomeOrAway } from '../engine/types'
 
 interface ScoreSummaryProps {
   inning: number
@@ -6,6 +6,7 @@ interface ScoreSummaryProps {
   outs: number
   scoreUs: number
   scoreThem: number
+  homeOrAway: HomeOrAway
   pitchCount: number
   pitcherName: string
 }
@@ -16,6 +17,7 @@ export function ScoreSummary({
   outs,
   scoreUs,
   scoreThem,
+  homeOrAway,
   pitchCount,
   pitcherName,
 }: ScoreSummaryProps) {
@@ -43,16 +45,16 @@ export function ScoreSummary({
         ))}
       </div>
 
-      {/* Score */}
+      {/* Score — away first, home second (sports convention) */}
       <div className="flex items-center gap-2">
         <div className="text-center">
-          <div className="text-xs text-slate-400">US</div>
-          <div className="text-2xl font-bold">{scoreUs}</div>
+          <div className="text-xs text-slate-400">{homeOrAway === 'away' ? 'US' : 'THEM'}</div>
+          <div className="text-2xl font-bold">{homeOrAway === 'away' ? scoreUs : scoreThem}</div>
         </div>
         <div className="text-slate-500">-</div>
         <div className="text-center">
-          <div className="text-xs text-slate-400">THEM</div>
-          <div className="text-2xl font-bold">{scoreThem}</div>
+          <div className="text-xs text-slate-400">{homeOrAway === 'away' ? 'THEM' : 'US'}</div>
+          <div className="text-2xl font-bold">{homeOrAway === 'away' ? scoreThem : scoreUs}</div>
         </div>
       </div>
 

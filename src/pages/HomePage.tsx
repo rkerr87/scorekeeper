@@ -18,11 +18,13 @@ function GameRow({ game, linkTo, confirmDeleteId, onRequestDelete, onCancelDelet
   const isConfirming = confirmDeleteId === game.id
   const label = `${game.homeOrAway === 'home' ? 'Home' : 'Away'} \u00b7 ${game.code}`
 
+  const prefix = game.homeOrAway === 'home' ? 'vs' : '@'
+
   if (isConfirming) {
     return (
       <div className="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-4 py-3">
         <div>
-          <div className="font-semibold text-slate-900">vs {game.opponentName}</div>
+          <div className="font-semibold text-slate-900">{prefix} {game.opponentName}</div>
           <div className="text-xs text-slate-500">{label}</div>
         </div>
         <div className="flex gap-2">
@@ -46,7 +48,7 @@ function GameRow({ game, linkTo, confirmDeleteId, onRequestDelete, onCancelDelet
   return (
     <div className="flex items-stretch bg-white border border-slate-200 rounded-lg hover:bg-slate-50">
       <Link to={linkTo} className="flex-1 px-4 py-3">
-        <div className="font-semibold text-slate-900">vs {game.opponentName}</div>
+        <div className="font-semibold text-slate-900">{prefix} {game.opponentName}</div>
         <div className="text-xs text-slate-500">{label}</div>
       </Link>
       <button
@@ -108,7 +110,7 @@ export function HomePage() {
     try {
       const team = await createTeam('Mudcats')
       const ourPlayers = [
-        await addPlayer(team.id!, 'Jake Rivera', 7, 'P'),
+        await addPlayer(team.id!, 'James Kerr', 7, 'P'),
         await addPlayer(team.id!, 'Mateo Gonzalez', 23, 'C'),
         await addPlayer(team.id!, 'Connor Walsh', 11, '1B'),
         await addPlayer(team.id!, 'Dylan Park', 4, '2B'),

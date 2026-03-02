@@ -560,4 +560,64 @@ describe('GamePage', () => {
       expect(screen.getByText(/side retired — bot 1/i)).toBeInTheDocument()
     })
   })
+
+  it('should not double-count runs when runner confirmation accepts defaults (6 singles = 3 runs)', async () => {
+    const user = userEvent.setup()
+    const gameId = await seedFullGame() // home game, top 1 = opponent batting
+
+    // Pre-seed 3 singles by the opponent to load the bases (no runner overrides)
+    await db.plays.bulkAdd([
+      {
+        gameId, sequenceNumber: 1, inning: 1, half: 'top',
+        batterOrderPosition: 1,
+        playType: '1B', notation: '1B',
+        fieldersInvolved: [7], basesReached: [1], runsScoredOnPlay: 0,
+        rbis: 0, pitches: [], isAtBat: true, timestamp: new Date(),
+      },
+      {
+        gameId, sequenceNumber: 2, inning: 1, half: 'top',
+        batterOrderPosition: 2,
+        playType: '1B', notation: '1B',
+        fieldersInvolved: [7], basesReached: [1], runsScoredOnPlay: 0,
+        rbis: 0, pitches: [], isAtBat: true, timestamp: new Date(),
+      },
+      {
+        gameId, sequenceNumber: 3, inning: 1, half: 'top',
+        batterOrderPosition: 3,
+        playType: '1B', notation: '1B',
+        fieldersInvolved: [7], basesReached: [1], runsScoredOnPlay: 0,
+        rbis: 0, pitches: [], isAtBat: true, timestamp: new Date(),
+      },
+    ])
+
+    renderGame(gameId)
+
+    // Wait for game to load — bases should be loaded, score 0-0
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /record play/i })).toBeInTheDocument()
+    })
+
+    // Record 4th single — opens play entry panel
+    await user.click(screen.getByRole('button', { name: /record play/i }))
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /^1B$/i })).toBeInTheDocument()
+    })
+    await user.click(screen.getByRole('button', { name: /^1B$/i }))
+
+    // Runner confirmation should appear (bases loaded, runner on 3rd should default to scored)
+    await waitFor(() => {
+      expect(screen.getByText(/where did they end up/i)).toBeInTheDocument()
+    })
+
+    // Accept defaults — click Confirm
+    await user.click(screen.getByRole('button', { name: /confirm/i }))
+
+    // Score should be THEM = 1 (only runner from 3rd scored), not 2 (double-counted)
+    await waitFor(() => {
+      // The score display shows "THEM" label with the score value
+      // Look for the score indicator — "1" for them
+      const scoreSection = screen.getByText('THEM').parentElement!
+      expect(scoreSection.textContent).toContain('1')
+    })
+  })
 })

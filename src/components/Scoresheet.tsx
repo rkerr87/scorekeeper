@@ -57,6 +57,7 @@ function buildColumns(
   passMap: Map<number, number>,
   maxInnings: number,
   currentInning: number,
+  currentPass: number,
 ): InningColumn[] {
   const maxPassByInning = new Map<number, number>()
   for (const play of plays) {
@@ -65,6 +66,9 @@ function buildColumns(
     const cur = maxPassByInning.get(play.inning) ?? 0
     if (pass > cur) maxPassByInning.set(play.inning, pass)
   }
+  // Ensure a column exists for the current batter's pass (bat-around before first play in new pass)
+  const curMax = maxPassByInning.get(currentInning) ?? 1
+  if (currentPass > curMax) maxPassByInning.set(currentInning, currentPass)
 
   const highestInning = Math.max(maxInnings, currentInning)
   const cols: InningColumn[] = []
@@ -113,8 +117,8 @@ export function Scoresheet({
     : new Map<number, number[]>()
 
   const passMap = computePassMap(plays)
-  const columns = buildColumns(plays, passMap, maxInnings, currentInning)
   const currentPass = getCurrentPass(plays, passMap, currentInning, currentBatterPosition)
+  const columns = buildColumns(plays, passMap, maxInnings, currentInning, currentPass)
 
   const getPlayForCell = (batterPosition: number, inning: number, pass: number): Play | undefined => {
     return plays.find(
