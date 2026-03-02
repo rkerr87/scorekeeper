@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import type { Player, Play } from '../engine/types'
+import type { Team, Player, Play, HalfInning } from '../engine/types'
 import { getAllTeams, getPlayersForTeam, getGamesForTeam } from '../db/gameService'
 import { db } from '../db/database'
 import { replayGame } from '../engine/engine'
@@ -13,73 +13,110 @@ interface PlayerSeasonStats {
 }
 
 export function SeasonStatsPage() {
+  const [teams, setTeams] = useState<Team[]>([])
+  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null)
   const [playerStats, setPlayerStats] = useState<PlayerSeasonStats[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function load() {
-      const teams = await getAllTeams()
-      if (teams.length === 0) { setLoading(false); return }
-      const team = teams[0]
-      const players = await getPlayersForTeam(team.id!)
-      const games = await getGamesForTeam(team.id!)
+    async function loadTeams() {
+      const allTeams = await getAllTeams()
+      setTeams(allTeams)
+      if (allTeams.length > 0) {
+        setSelectedTeamId(allTeams[0].id!)
+      }
+      setLoading(false)
+    }
+    loadTeams()
+  }, [])
 
-      // Gather all our at-bats across all games
-      const allPlays: Play[] = []
-      const playerOrderMap = new Map<number, number>() // playerId -> orderPosition
-      const runsPerPlayer = new Map<number, number>()  // playerId -> total runs scored
+  const loadStats = useCallback(async (teamId: number) => {
+    setLoading(true)
+    const players = await getPlayersForTeam(teamId)
+    const games = await getGamesForTeam(teamId)
 
-      for (const game of games) {
-        const lineups = await db.lineups.where('gameId').equals(game.id!).toArray()
-        const ourLineup = lineups.find(l => l.side === 'us')
-        const theirLineup = lineups.find(l => l.side === 'them')
-        if (!ourLineup || !theirLineup) continue
+    const allPlays: Play[] = []
+    const playerOrderMap = new Map<number, number>() // playerId -> orderPosition
+    const runsPerPlayer = new Map<number, number>()  // playerId -> total runs scored
 
-        // Map player IDs to order positions for this game
-        for (const slot of ourLineup.battingOrder) {
-          if (slot.playerId) {
-            playerOrderMap.set(slot.playerId, slot.orderPosition)
-          }
-        }
+    for (const game of games) {
+      const lineups = await db.lineups.where('gameId').equals(game.id!).toArray()
+      const homeLineup = lineups.find(l => l.side === 'home')
+      const awayLineup = lineups.find(l => l.side === 'away')
+      if (!homeLineup || !awayLineup) continue
 
-        const plays = await db.plays.where('gameId').equals(game.id!).toArray()
-        // us bats bottom when home, top when away
-        const usBattingHalf = game.homeOrAway === 'home' ? 'bottom' : 'top'
-        const usPlays = plays.filter(p => p.half === usBattingHalf)
-        allPlays.push(...usPlays)
+      const isHome = game.homeTeamId === teamId
+      const teamLineup = isHome ? homeLineup : awayLineup
+      const teamBattingHalf: HalfInning = isHome ? 'bottom' : 'top'
 
-        // Accumulate per-player runs from this game's snapshot
-        const gameSnapshot = replayGame(plays, ourLineup, theirLineup, game.homeOrAway)
-        for (const slot of ourLineup.battingOrder) {
-          if (slot.playerId) {
-            const slotRuns = gameSnapshot.runsScoredByPositionUs.get(slot.orderPosition) ?? 0
-            runsPerPlayer.set(slot.playerId, (runsPerPlayer.get(slot.playerId) ?? 0) + slotRuns)
-          }
+      // Map player IDs to order positions for this game
+      for (const slot of teamLineup.battingOrder) {
+        if (slot.playerId) {
+          playerOrderMap.set(slot.playerId, slot.orderPosition)
         }
       }
 
-      // Compute stats per player
-      const results: PlayerSeasonStats[] = players.map(player => {
-        const orderPos = playerOrderMap.get(player.id!) ?? 0
-        const playerRuns = runsPerPlayer.get(player.id!) ?? 0
-        const stats = computePlayerStats(allPlays, orderPos, playerRuns)
-        return { player, stats }
-      })
+      const plays = await db.plays.where('gameId').equals(game.id!).toArray()
+      const teamPlays = plays.filter(p => p.half === teamBattingHalf)
+      allPlays.push(...teamPlays)
 
-      setPlayerStats(results.filter(r => r.stats.games > 0))
-      setLoading(false)
+      // Accumulate per-player runs from this game's snapshot
+      const gameSnapshot = replayGame(plays, homeLineup, awayLineup)
+      const runsMap = isHome
+        ? gameSnapshot.runsScoredByPositionHome
+        : gameSnapshot.runsScoredByPositionAway
+      for (const slot of teamLineup.battingOrder) {
+        if (slot.playerId) {
+          const slotRuns = runsMap.get(slot.orderPosition) ?? 0
+          runsPerPlayer.set(slot.playerId, (runsPerPlayer.get(slot.playerId) ?? 0) + slotRuns)
+        }
+      }
     }
-    load()
+
+    // Compute stats per player
+    const results: PlayerSeasonStats[] = players.map(player => {
+      const orderPos = playerOrderMap.get(player.id!) ?? 0
+      const playerRuns = runsPerPlayer.get(player.id!) ?? 0
+      const stats = computePlayerStats(allPlays, orderPos, playerRuns)
+      return { player, stats }
+    })
+
+    setPlayerStats(results.filter(r => r.stats.games > 0))
+    setLoading(false)
   }, [])
 
-  if (loading) return <div className="p-6">Loading...</div>
+  useEffect(() => {
+    if (selectedTeamId !== null) {
+      loadStats(selectedTeamId)
+    }
+  }, [selectedTeamId, loadStats])
+
+  if (loading && teams.length === 0) return <div className="p-6">Loading...</div>
 
   return (
     <div className="max-w-4xl mx-auto p-6">
       <Link to="/" className="text-blue-600 hover:underline text-sm">&larr; Home</Link>
-      <h1 className="text-2xl font-bold text-slate-900 mt-4 mb-6">Season Stats</h1>
+      <h1 className="text-2xl font-bold text-slate-900 mt-4 mb-4">Season Stats</h1>
 
-      {playerStats.length === 0 ? (
+      {teams.length > 1 && (
+        <div className="mb-6">
+          <label htmlFor="team-select" className="text-sm font-medium text-slate-700 mr-2">Team:</label>
+          <select
+            id="team-select"
+            value={selectedTeamId ?? ''}
+            onChange={e => setSelectedTeamId(Number(e.target.value))}
+            className="border border-slate-300 rounded px-3 py-1.5 text-sm"
+          >
+            {teams.map(t => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="p-6">Loading...</div>
+      ) : playerStats.length === 0 ? (
         <p className="text-slate-500">No games played yet.</p>
       ) : (
         <div className="overflow-x-auto">

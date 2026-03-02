@@ -6,25 +6,29 @@ import { GameStatsPage } from '../GameStatsPage'
 import { db } from '../../db/database'
 
 async function seedGameWithPlays() {
-  const teamId = await db.teams.add({ name: 'Mudcats', createdAt: new Date() })
+  const homeTeamId = await db.teams.add({ name: 'Mudcats', createdAt: new Date() })
+  const awayTeamId = await db.teams.add({ name: 'Tigers', createdAt: new Date() })
   const gameId = await db.games.add({
-    teamId, code: 'TEST01', date: new Date(), opponentName: 'Tigers',
-    // us is away → us bats top, matching the half: 'top' plays below
-    homeOrAway: 'away', status: 'completed', createdAt: new Date(), updatedAt: new Date(),
+    team1Id: homeTeamId, team2Id: awayTeamId, homeTeamId,
+    code: 'TEST01', date: new Date(),
+    status: 'completed', createdAt: new Date(), updatedAt: new Date(),
   })
+  // Away team lineup (Tigers bat top)
   await db.lineups.add({
-    gameId, side: 'us',
+    gameId, side: 'away',
     battingOrder: [
-      { orderPosition: 1, playerId: 1, playerName: 'Alice', jerseyNumber: 1, position: 'P', substitutions: [] },
-      { orderPosition: 2, playerId: 2, playerName: 'Bob', jerseyNumber: 2, position: 'C', substitutions: [] },
+      { orderPosition: 1, playerId: 101, playerName: 'Alice', jerseyNumber: 1, position: 'P', substitutions: [] },
+      { orderPosition: 2, playerId: 102, playerName: 'Bob', jerseyNumber: 2, position: 'C', substitutions: [] },
     ],
   })
+  // Home team lineup (Mudcats bat bottom)
   await db.lineups.add({
-    gameId, side: 'them',
+    gameId, side: 'home',
     battingOrder: [
-      { orderPosition: 1, playerId: null, playerName: 'Opp1', jerseyNumber: 10, position: 'P', substitutions: [] },
+      { orderPosition: 1, playerId: 201, playerName: 'Carol', jerseyNumber: 10, position: 'P', substitutions: [] },
     ],
   })
+  // Away team plays (top half)
   await db.plays.add({
     gameId, sequenceNumber: 1, inning: 1, half: 'top', batterOrderPosition: 1,
     playType: '1B', notation: '1B', fieldersInvolved: [], basesReached: [1],
@@ -60,22 +64,35 @@ describe('GameStatsPage', () => {
     await db.close()
   })
 
-  it('should display game info', async () => {
+  it('should display game info with both team names', async () => {
     const gameId = await seedGameWithPlays()
     renderStats(gameId)
 
     await waitFor(() => {
-      expect(screen.getByText(/tigers/i)).toBeInTheDocument()
+      expect(screen.getByText(/Tigers vs Mudcats/)).toBeInTheDocument()
     })
   })
 
-  it('should display player stats', async () => {
+  it('should display player stats for both teams', async () => {
     const gameId = await seedGameWithPlays()
     renderStats(gameId)
 
     await waitFor(() => {
+      // Away team players
       expect(screen.getByText('Alice')).toBeInTheDocument()
       expect(screen.getByText('Bob')).toBeInTheDocument()
+      // Home team players
+      expect(screen.getByText('Carol')).toBeInTheDocument()
+    })
+  })
+
+  it('should show away and home team section headers', async () => {
+    const gameId = await seedGameWithPlays()
+    renderStats(gameId)
+
+    await waitFor(() => {
+      expect(screen.getByText('Tigers (Away)')).toBeInTheDocument()
+      expect(screen.getByText('Mudcats (Home)')).toBeInTheDocument()
     })
   })
 })
