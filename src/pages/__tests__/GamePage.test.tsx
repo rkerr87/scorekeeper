@@ -612,11 +612,10 @@ describe('GamePage', () => {
     // Accept defaults — click Confirm
     await user.click(screen.getByRole('button', { name: /confirm/i }))
 
-    // Score should be THEM = 1 (only runner from 3rd scored), not 2 (double-counted)
+    // Score should be opponent = 1 (only runner from 3rd scored), not 2 (double-counted)
     await waitFor(() => {
-      // The score display shows "THEM" label with the score value
-      // Look for the score indicator — "1" for them
-      const scoreSection = screen.getByText('THEM').parentElement!
+      // Away score (opponent "Tigers") is on the left; find its parent to check the score value
+      const scoreSection = screen.getByText('Tigers').parentElement!
       expect(scoreSection.textContent).toContain('1')
     })
   })

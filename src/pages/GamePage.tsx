@@ -7,6 +7,7 @@ import { PlayEntryPanel } from '../components/PlayEntryPanel'
 import { RunnerConfirmation } from '../components/RunnerConfirmation'
 import type { BaseRunner, BaseRunners, HalfInning, Play, PlayType, PitchResult, Side } from '../engine/types'
 import { replayGame } from '../engine/engine'
+import { getTeam } from '../db/gameService'
 import { BeginnerGuide } from '../components/BeginnerGuide'
 import { PlayDetailPopover } from '../components/PlayDetailPopover'
 import { PositionChangeDialog } from '../components/PositionChangeDialog'
@@ -50,6 +51,7 @@ export function GamePage() {
   const [showStrikeoutConfirm, setShowStrikeoutConfirm] = useState(false)
   const [selectedPlay, setSelectedPlay] = useState<Play | null>(null)
   const [showPosChange, setShowPosChange] = useState(false)
+  const [teamName, setTeamName] = useState('')
 
   const gId = parseInt(gameId ?? '0')
 
@@ -58,6 +60,12 @@ export function GamePage() {
       loadGame(gId)
     }
   }, [gId, game, loadGame])
+
+  useEffect(() => {
+    if (game?.teamId) {
+      getTeam(game.teamId).then(t => { if (t) setTeamName(t.name) })
+    }
+  }, [game?.teamId])
 
   // Auto-dismiss toast after 3 seconds (setPendingToast inside setTimeout is async — not flagged)
   useEffect(() => {
@@ -308,6 +316,8 @@ export function GamePage() {
         scoreUs={snapshot.scoreUs}
         scoreThem={snapshot.scoreThem}
         homeOrAway={game.homeOrAway}
+        teamName={teamName}
+        opponentName={game.opponentName}
         pitchCount={pitchCount}
         pitcherName={pitcherName}
       />

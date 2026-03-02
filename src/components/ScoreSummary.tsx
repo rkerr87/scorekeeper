@@ -7,6 +7,8 @@ interface ScoreSummaryProps {
   scoreUs: number
   scoreThem: number
   homeOrAway: HomeOrAway
+  teamName: string
+  opponentName: string
   pitchCount: number
   pitcherName: string
 }
@@ -18,6 +20,8 @@ export function ScoreSummary({
   scoreUs,
   scoreThem,
   homeOrAway,
+  teamName,
+  opponentName,
   pitchCount,
   pitcherName,
 }: ScoreSummaryProps) {
@@ -48,12 +52,12 @@ export function ScoreSummary({
       {/* Score — away first, home second (sports convention) */}
       <div className="flex items-center gap-2">
         <div className="text-center">
-          <div className="text-xs text-slate-400">{homeOrAway === 'away' ? 'US' : 'THEM'}</div>
+          <div className="text-xs text-slate-400 uppercase truncate max-w-[60px]">{homeOrAway === 'away' ? (teamName || 'US') : opponentName}</div>
           <div className="text-2xl font-bold">{homeOrAway === 'away' ? scoreUs : scoreThem}</div>
         </div>
         <div className="text-slate-500">-</div>
         <div className="text-center">
-          <div className="text-xs text-slate-400">{homeOrAway === 'away' ? 'THEM' : 'US'}</div>
+          <div className="text-xs text-slate-400 uppercase truncate max-w-[60px]">{homeOrAway === 'away' ? opponentName : (teamName || 'US')}</div>
           <div className="text-2xl font-bold">{homeOrAway === 'away' ? scoreThem : scoreUs}</div>
         </div>
       </div>
