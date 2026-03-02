@@ -72,10 +72,10 @@ describe('runs scored tracking via GameSnapshot', () => {
   function makeLineup(size: number): Lineup {
     return {
       gameId: 1,
-      side: 'us',
+      side: 'away',
       battingOrder: Array.from({ length: size }, (_, i) => ({
         orderPosition: i + 1,
-        playerId: null,
+        playerId: i + 1,
         playerName: `Player${i + 1}`,
         jerseyNumber: i + 1,
         position: i === 0 ? 'P' : 'CF',
@@ -111,12 +111,13 @@ describe('runs scored tracking via GameSnapshot', () => {
       makePlay({ sequenceNumber: 1, batterOrderPosition: 1, playType: '1B', basesReached: [1] }),
       makePlay({ sequenceNumber: 2, batterOrderPosition: 2, playType: 'HR', basesReached: [1, 2, 3, 4], rbis: 2 }),
     ]
-    const snapshot = replayGame(plays, lineup, lineup, 'away')
+    const snapshot = replayGame(plays, lineup, lineup)
     // pos1 scored once (driven in by pos2 HR), pos2 scored once (home run)
-    expect(snapshot.runsScoredByPositionUs.get(1)).toBe(1)
-    expect(snapshot.runsScoredByPositionUs.get(2)).toBe(1)
+    // plays use half: 'top' so the batting team is "away"
+    expect(snapshot.runsScoredByPositionAway.get(1)).toBe(1)
+    expect(snapshot.runsScoredByPositionAway.get(2)).toBe(1)
     // pos2's plays should NOT show runs from driving in pos1
-    const pos2Stats = computePlayerStats(plays.filter(p => p.batterOrderPosition === 2), 2, snapshot.runsScoredByPositionUs.get(2) ?? 0)
+    const pos2Stats = computePlayerStats(plays.filter(p => p.batterOrderPosition === 2), 2, snapshot.runsScoredByPositionAway.get(2) ?? 0)
     expect(pos2Stats.runs).toBe(1)
   })
 })
