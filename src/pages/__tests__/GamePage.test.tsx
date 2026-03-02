@@ -6,27 +6,64 @@ import { GameProvider } from '../../contexts/GameContext'
 import { GamePage } from '../GamePage'
 import { db } from '../../db/database'
 
+const POSITIONS = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF']
+
 async function seedFullGame() {
-  const teamId = await db.teams.add({ name: 'Mudcats', createdAt: new Date() })
+  const team1Id = await db.teams.add({ name: 'Mudcats', createdAt: new Date() })
+  const team2Id = await db.teams.add({ name: 'Tigers', createdAt: new Date() })
+  // Add players to team1 (home team)
+  for (let i = 0; i < 9; i++) {
+    await db.players.add({
+      teamId: team1Id as number,
+      name: `Player${i + 1}`,
+      jerseyNumber: (i + 1) * 10,
+      defaultPosition: POSITIONS[i],
+      createdAt: new Date(),
+    })
+  }
+  // Add players to team2 (away team)
+  for (let i = 0; i < 9; i++) {
+    await db.players.add({
+      teamId: team2Id as number,
+      name: `Opp${i + 1}`,
+      jerseyNumber: (i + 1) * 10,
+      defaultPosition: POSITIONS[i],
+      createdAt: new Date(),
+    })
+  }
   const gameId = await db.games.add({
-    teamId, code: 'TEST01', date: new Date(), opponentName: 'Tigers',
-    homeOrAway: 'home', status: 'in_progress', createdAt: new Date(), updatedAt: new Date(),
+    team1Id: team1Id as number,
+    team2Id: team2Id as number,
+    homeTeamId: team1Id as number,
+    code: 'TEST01',
+    date: new Date(),
+    status: 'in_progress',
+    createdAt: new Date(),
+    updatedAt: new Date(),
   })
+  // Home lineup (team1 = Mudcats)
   await db.lineups.add({
-    gameId, side: 'us',
+    gameId: gameId as number,
+    side: 'home',
     battingOrder: Array.from({ length: 9 }, (_, i) => ({
-      orderPosition: i + 1, playerId: i + 1,
-      playerName: `Player${i + 1}`, jerseyNumber: (i + 1) * 10,
-      position: ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'][i],
+      orderPosition: i + 1,
+      playerId: i + 1,
+      playerName: `Player${i + 1}`,
+      jerseyNumber: (i + 1) * 10,
+      position: POSITIONS[i],
       substitutions: [],
     })),
   })
+  // Away lineup (team2 = Tigers)
   await db.lineups.add({
-    gameId, side: 'them',
+    gameId: gameId as number,
+    side: 'away',
     battingOrder: Array.from({ length: 9 }, (_, i) => ({
-      orderPosition: i + 1, playerId: null,
-      playerName: `Opp${i + 1}`, jerseyNumber: (i + 1) * 10,
-      position: ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'][i],
+      orderPosition: i + 1,
+      playerId: 10 + i + 1,
+      playerName: `Opp${i + 1}`,
+      jerseyNumber: (i + 1) * 10,
+      position: POSITIONS[i],
       substitutions: [],
     })),
   })
@@ -57,9 +94,9 @@ describe('GamePage', () => {
 
   it('should render scoresheet with player names', async () => {
     const gameId = await seedFullGame()
-    renderGame(gameId)
+    renderGame(gameId as number)
 
-    // Home game defaults to "Them" tab (top 1 = visitors batting)
+    // Top of 1st = away team (Tigers) batting → default tab is 'away'
     await waitFor(() => {
       expect(screen.getByText('Opp1')).toBeInTheDocument()
       expect(screen.getByText('Opp9')).toBeInTheDocument()
@@ -68,52 +105,67 @@ describe('GamePage', () => {
 
   it('should render score summary bar', async () => {
     const gameId = await seedFullGame()
-    renderGame(gameId)
+    renderGame(gameId as number)
 
     await waitFor(() => {
       expect(screen.getByText(/top 1/i)).toBeInTheDocument()
     })
   })
 
-  it('should default to batting team tab on initial load (them for top of 1st in home game)', async () => {
-    const gameId = await seedFullGame() // homeOrAway: 'home', so top 1 = them batting
-    renderGame(gameId)
+  it('should default to batting team tab on initial load (away for top of 1st)', async () => {
+    const gameId = await seedFullGame() // Mudcats are home, Tigers are away; top 1 = away batting
+    renderGame(gameId as number)
 
     await waitFor(() => {
-      // "Them" tab should be active — opponent players visible in scoresheet
+      // "Away" tab should be active — Tigers (away) players visible in scoresheet
       expect(screen.getByText('Opp1')).toBeInTheDocument()
     })
 
-    // "Us" tab should NOT be active — our players should not be in the scoresheet
+    // "Home" tab should NOT be active — home players should not be in the scoresheet
     // (Player1 may appear in ScoreSummary as pitcher, so check Player2 which is unique)
     expect(screen.queryByText('Player2')).not.toBeInTheDocument()
   })
 
-  it('should default to correct batting team when switching between games with different homeOrAway', async () => {
-    // Game 1: home game (us = home, top 1 = them batting)
-    const homeGameId = await seedFullGame() // homeOrAway: 'home', opponent: 'Tigers'
+  it('should default to correct batting team when switching between games', async () => {
+    // Game 1: Mudcats (home) vs Tigers (away) — top 1 = Tigers batting → away tab
+    const homeGameId = await seedFullGame()
 
-    // Game 2: away game (us = away, top 1 = us batting)
-    const awayTeamId = await db.teams.add({ name: 'Mudcats2', createdAt: new Date() })
+    // Game 2: different teams — team2 is home (Eagles), team1 is away (Hawks)
+    const team3Id = await db.teams.add({ name: 'Hawks', createdAt: new Date() })
+    const team4Id = await db.teams.add({ name: 'Eagles', createdAt: new Date() })
     const awayGameId = await db.games.add({
-      teamId: awayTeamId, code: 'TEST02', date: new Date(), opponentName: 'Eagles',
-      homeOrAway: 'away', status: 'in_progress', createdAt: new Date(), updatedAt: new Date(),
+      team1Id: team3Id as number,
+      team2Id: team4Id as number,
+      homeTeamId: team4Id as number, // Eagles are home
+      code: 'TEST02',
+      date: new Date(),
+      status: 'in_progress',
+      createdAt: new Date(),
+      updatedAt: new Date(),
     })
+    // Away lineup (Hawks = team3, away team)
     await db.lineups.add({
-      gameId: awayGameId, side: 'us',
+      gameId: awayGameId as number,
+      side: 'away',
       battingOrder: Array.from({ length: 9 }, (_, i) => ({
-        orderPosition: i + 1, playerId: i + 100,
-        playerName: `Away${i + 1}`, jerseyNumber: (i + 1) * 10,
-        position: ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'][i],
+        orderPosition: i + 1,
+        playerId: i + 100,
+        playerName: `Away${i + 1}`,
+        jerseyNumber: (i + 1) * 10,
+        position: POSITIONS[i],
         substitutions: [],
       })),
     })
+    // Home lineup (Eagles = team4, home team)
     await db.lineups.add({
-      gameId: awayGameId, side: 'them',
+      gameId: awayGameId as number,
+      side: 'home',
       battingOrder: Array.from({ length: 9 }, (_, i) => ({
-        orderPosition: i + 1, playerId: null,
-        playerName: `Home${i + 1}`, jerseyNumber: (i + 1) * 10,
-        position: ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'][i],
+        orderPosition: i + 1,
+        playerId: i + 200,
+        playerName: `Home${i + 1}`,
+        jerseyNumber: (i + 1) * 10,
+        position: POSITIONS[i],
         substitutions: [],
       })),
     })
@@ -135,26 +187,26 @@ describe('GamePage', () => {
       </MemoryRouter>
     )
 
-    // Verify home game defaults to "them" tab (opponents batting in top 1)
+    // Verify game 1 defaults to "away" tab (Tigers batting in top 1)
     await waitFor(() => {
       expect(screen.getByText('Opp1')).toBeInTheDocument()
     })
 
-    // Navigate to away game (same GameProvider persists, context retains stale data)
+    // Navigate to game 2
     const user = userEvent.setup()
     await user.click(screen.getByText('Go to away game'))
 
-    // Away game: us bats top, so top 1 = us batting → should show "us" tab
+    // Game 2: top 1 = away team (Hawks) batting → should show away tab with Away players
     await waitFor(() => {
       expect(screen.getByText('Away2')).toBeInTheDocument()
     })
-    // Opponent scoresheet should NOT be visible
+    // Home team scoresheet should NOT be visible
     expect(screen.queryByText('Home2')).not.toBeInTheDocument()
   })
 
   it('should show record play and undo buttons', async () => {
     const gameId = await seedFullGame()
-    renderGame(gameId)
+    renderGame(gameId as number)
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /record play/i })).toBeInTheDocument()
@@ -163,13 +215,13 @@ describe('GamePage', () => {
   })
 
   it('should show home/away tabs with away on left and home on right', async () => {
-    const gameId = await seedFullGame() // homeOrAway: 'home', opponent: 'Tigers'
-    renderGame(gameId)
+    const gameId = await seedFullGame() // Mudcats (home), Tigers (away)
+    renderGame(gameId as number)
 
     await waitFor(() => {
-      // Away tab (opponent) on left, home tab (us) on right
+      // Away tab (Tigers) on left, home tab (Mudcats) on right
       const awayBtn = screen.getByRole('button', { name: /tigers \(away\)/i })
-      const homeBtn = screen.getByRole('button', { name: /us \(home\)/i })
+      const homeBtn = screen.getByRole('button', { name: /mudcats \(home\)/i })
       expect(awayBtn).toBeInTheDocument()
       expect(homeBtn).toBeInTheDocument()
     })
@@ -177,7 +229,7 @@ describe('GamePage', () => {
 
   it('should disable Record Play when game is over', async () => {
     const gameId = await seedFullGame()
-    // Add 18 outs worth of plays (3 outs × 6 innings × 2 halves) to end the game
+    // Add 18 outs worth of plays (3 outs x 6 innings x 2 halves) to end the game
     const plays = []
     let seq = 1
     for (let inning = 1; inning <= 6; inning++) {
@@ -195,7 +247,7 @@ describe('GamePage', () => {
     }
     await db.plays.bulkAdd(plays)
 
-    renderGame(gameId)
+    renderGame(gameId as number)
 
     await waitFor(() => {
       const recordBtn = screen.getByRole('button', { name: /record play/i })
@@ -206,21 +258,21 @@ describe('GamePage', () => {
   it('should show actual batting team batter in play entry panel, not the viewed tab batter', async () => {
     const user = userEvent.setup()
     const gameId = await seedFullGame()
-    renderGame(gameId)
+    renderGame(gameId as number)
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /record play/i })).toBeInTheDocument()
     })
 
-    // Game starts with top half (opponents batting, game is 'home')
-    // Switch to "Us (Home)" tab (viewing our scoresheet)
-    await user.click(screen.getByRole('button', { name: /us \(home\)/i }))
+    // Game starts with top half (Tigers = away batting)
+    // Switch to "Mudcats (Home)" tab (viewing home scoresheet)
+    await user.click(screen.getByRole('button', { name: /mudcats \(home\)/i }))
 
-    // Open play entry panel — should show the actual current batter (Opp1, opponent batting top)
+    // Open play entry panel — should show the actual current batter (Opp1, away team batting top)
     await user.click(screen.getByRole('button', { name: /record play/i }))
 
     await waitFor(() => {
-      // Opp1 is the actual current batter (top half = opponent bats when we're home)
+      // Opp1 is the actual current batter (top half = away team bats)
       expect(screen.getByText('Opp1')).toBeInTheDocument()
     })
   })
@@ -228,7 +280,7 @@ describe('GamePage', () => {
   it('should show beginner guide card after a play is recorded', async () => {
     const user = userEvent.setup()
     const gameId = await seedFullGame()
-    renderGame(gameId)
+    renderGame(gameId as number)
     await waitFor(() => expect(screen.queryByText('Loading game...')).not.toBeInTheDocument())
     await user.click(screen.getByRole('button', { name: /record play/i }))
     // Use shorthand to record a strikeout (K button removed from outcome grid)
@@ -239,7 +291,7 @@ describe('GamePage', () => {
 
   it('should show game-over overlay when snapshot.isGameOver is true', async () => {
     const gameId = await seedFullGame()
-    // Add 18 outs worth of plays (3 outs × 6 innings × 2 halves) to end the game
+    // Add 18 outs worth of plays (3 outs x 6 innings x 2 halves) to end the game
     const plays = []
     let seq = 1
     for (let inning = 1; inning <= 6; inning++) {
@@ -257,7 +309,7 @@ describe('GamePage', () => {
     }
     await db.plays.bulkAdd(plays)
 
-    renderGame(gameId)
+    renderGame(gameId as number)
 
     await waitFor(() => {
       expect(screen.getByText('Game Over')).toBeInTheDocument()
@@ -286,7 +338,7 @@ describe('GamePage', () => {
     }
     await db.plays.bulkAdd(plays)
 
-    renderGame(gameId)
+    renderGame(gameId as number)
 
     await waitFor(() => {
       expect(screen.getByText('Game Over')).toBeInTheDocument()
@@ -301,7 +353,7 @@ describe('GamePage', () => {
 
   it('should show a persistent back-to-home link in the header', async () => {
     const gameId = await seedFullGame()
-    renderGame(gameId)
+    renderGame(gameId as number)
 
     await waitFor(() => {
       const backLink = screen.getByRole('button', { name: /back to home/i })
@@ -330,7 +382,7 @@ describe('GamePage', () => {
     }
     await db.plays.bulkAdd(plays)
 
-    renderGame(gameId)
+    renderGame(gameId as number)
 
     await waitFor(() => {
       expect(screen.getByText('Game Over')).toBeInTheDocument()
@@ -342,7 +394,7 @@ describe('GamePage', () => {
   it('should preserve pitch tracking when play entry panel is closed and reopened', async () => {
     const user = userEvent.setup()
     const gameId = await seedFullGame()
-    renderGame(gameId)
+    renderGame(gameId as number)
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /record play/i })).toBeInTheDocument()
@@ -380,7 +432,7 @@ describe('GamePage', () => {
   it('auto-records walk after 4th ball', async () => {
     const user = userEvent.setup()
     const gameId = await seedFullGame()
-    renderGame(gameId)
+    renderGame(gameId as number)
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /record play/i })).toBeInTheDocument()
@@ -410,7 +462,7 @@ describe('GamePage', () => {
   it('shows K vs KL confirmation after 3rd strike', async () => {
     const user = userEvent.setup()
     const gameId = await seedFullGame()
-    renderGame(gameId)
+    renderGame(gameId as number)
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /record play/i })).toBeInTheDocument()
@@ -435,7 +487,7 @@ describe('GamePage', () => {
   it('does not auto-strikeout on foul with 2 strikes', async () => {
     const user = userEvent.setup()
     const gameId = await seedFullGame()
-    renderGame(gameId)
+    renderGame(gameId as number)
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /record play/i })).toBeInTheDocument()
@@ -458,7 +510,7 @@ describe('GamePage', () => {
   it('records swinging strikeout when K (Swinging) is clicked in confirmation', async () => {
     const user = userEvent.setup()
     const gameId = await seedFullGame()
-    renderGame(gameId)
+    renderGame(gameId as number)
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /record play/i })).toBeInTheDocument()
@@ -497,7 +549,7 @@ describe('GamePage', () => {
   it('records looking strikeout when KL (Looking) is clicked in confirmation', async () => {
     const user = userEvent.setup()
     const gameId = await seedFullGame()
-    renderGame(gameId)
+    renderGame(gameId as number)
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /record play/i })).toBeInTheDocument()
@@ -547,10 +599,10 @@ describe('GamePage', () => {
       rbis: 0, pitches: ['B', 'S', 'B'], isAtBat: true, timestamp: new Date(),
     })
 
-    renderGame(gameId)
+    renderGame(gameId as number)
 
-    // Wait for game to load — game is 'home', so top half = opponent batting
-    // The tab auto-defaults to the batting team now, but click opponent tab to be explicit
+    // Wait for game to load — top half = away (Tigers) batting
+    // Default tab is 'away' so Tigers tab should be active
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /tigers/i })).toBeInTheDocument()
     })
@@ -569,7 +621,7 @@ describe('GamePage', () => {
 
     // Verify PlayDetailPopover appears with play notation and count text
     // PlayDetailPopover renders: notation as large text + "Count: B-S (N pitches)"
-    // With pitches ['B', 'S', 'B']: balls=2, strikes=1 → "Count: 2-1 (3 pitches)"
+    // With pitches ['B', 'S', 'B']: balls=2, strikes=1 -> "Count: 2-1 (3 pitches)"
     await waitFor(() => {
       expect(screen.getByText(/Count: 2-1 \(3 pitches\)/)).toBeInTheDocument()
     })
@@ -580,11 +632,11 @@ describe('GamePage', () => {
     expect(screen.getAllByRole('button', { name: /undo/i }).length).toBeGreaterThanOrEqual(2)
   })
 
-  it('should show toast and auto-switch tab to Us after top half ends (home game)', async () => {
+  it('should show toast and auto-switch tab to Home after top half ends', async () => {
     const user = userEvent.setup()
     const gameId = await seedFullGame()
 
-    // Seed 2 outs already in top half (them batting — game is 'home')
+    // Seed 2 outs already in top half (away team = Tigers batting)
     await db.plays.bulkAdd([
       {
         gameId, sequenceNumber: 1, inning: 1, half: 'top',
@@ -602,14 +654,14 @@ describe('GamePage', () => {
       },
     ])
 
-    renderGame(gameId)
+    renderGame(gameId as number)
 
     // Wait for game to load (2 outs showing)
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /record play/i })).toBeInTheDocument()
     })
 
-    // Record the 3rd out (K) via shorthand — K button removed from outcome grid
+    // Record the 3rd out (K) via shorthand
     await user.click(screen.getByRole('button', { name: /record play/i }))
     await waitFor(() => {
       expect(screen.getByPlaceholderText(/shorthand/i)).toBeInTheDocument()
@@ -617,7 +669,7 @@ describe('GamePage', () => {
     await user.type(screen.getByPlaceholderText(/shorthand/i), 'K')
     await user.click(screen.getByRole('button', { name: /^enter$/i }))
 
-    // After 3rd out: top half ends, game moves to Bot 1 (us bats — home team)
+    // After 3rd out: top half ends, game moves to Bot 1 (home team = Mudcats bats)
     // Toast should appear (text includes both "Side retired" and "Bot 1")
     await waitFor(() => {
       expect(screen.getByText(/side retired — bot 1/i)).toBeInTheDocument()
@@ -626,9 +678,9 @@ describe('GamePage', () => {
 
   it('should not double-count runs when runner confirmation accepts defaults (6 singles = 3 runs)', async () => {
     const user = userEvent.setup()
-    const gameId = await seedFullGame() // home game, top 1 = opponent batting
+    const gameId = await seedFullGame() // Mudcats home, Tigers away; top 1 = Tigers batting
 
-    // Pre-seed 3 singles by the opponent to load the bases (no runner overrides)
+    // Pre-seed 3 singles by the away team (Tigers) to load the bases (no runner overrides)
     await db.plays.bulkAdd([
       {
         gameId, sequenceNumber: 1, inning: 1, half: 'top',
@@ -653,7 +705,7 @@ describe('GamePage', () => {
       },
     ])
 
-    renderGame(gameId)
+    renderGame(gameId as number)
 
     // Wait for game to load — bases should be loaded, score 0-0
     await waitFor(() => {
@@ -675,9 +727,9 @@ describe('GamePage', () => {
     // Accept defaults — click Confirm
     await user.click(screen.getByRole('button', { name: /confirm/i }))
 
-    // Score should be opponent = 1 (only runner from 3rd scored), not 2 (double-counted)
+    // Score should be away = 1 (only runner from 3rd scored), not 2 (double-counted)
     await waitFor(() => {
-      // Away score (opponent "Tigers") is on the left; find its parent to check the score value
+      // Away score (Tigers) on the left; find its parent to check the score value
       const scoreSection = screen.getByText('Tigers').parentElement!
       expect(scoreSection.textContent).toContain('1')
     })

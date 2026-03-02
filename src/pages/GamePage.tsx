@@ -7,12 +7,11 @@ import { PlayEntryPanel } from '../components/PlayEntryPanel'
 import { RunnerConfirmation } from '../components/RunnerConfirmation'
 import type { BaseRunner, BaseRunners, HalfInning, Play, PlayType, PitchResult, Side } from '../engine/types'
 import { replayGame } from '../engine/engine'
-import { getTeam } from '../db/gameService'
 import { BeginnerGuide } from '../components/BeginnerGuide'
 import { PlayDetailPopover } from '../components/PlayDetailPopover'
 import { PositionChangeDialog } from '../components/PositionChangeDialog'
 
-type ActiveTab = 'us' | 'them'
+type ActiveTab = 'home' | 'away'
 
 interface PendingPlay {
   playType: PlayType
@@ -28,11 +27,11 @@ export function GamePage() {
   const { gameId } = useParams()
   const navigate = useNavigate()
   const {
-    game, lineupUs, lineupThem, plays, snapshot,
+    game, lineupHome, lineupAway, homeTeam, awayTeam, plays, snapshot,
     loadGame, recordPlay, undoLastPlay, undoFromPlay, updateLineupPositions,
   } = useGame()
 
-  const [activeTab, setActiveTab] = useState<ActiveTab>('us')
+  const [activeTab, setActiveTab] = useState<ActiveTab>('away')
   const [lastRecordedPlay, setLastRecordedPlay] = useState<{ playType: PlayType; notation: string } | null>(null)
   // trackedHalfKey records the snapshot half key that activeTab and pendingToast were last
   // auto-synced to. Updated during render (not in an effect) to avoid the
@@ -51,7 +50,6 @@ export function GamePage() {
   const [showStrikeoutConfirm, setShowStrikeoutConfirm] = useState(false)
   const [selectedPlay, setSelectedPlay] = useState<Play | null>(null)
   const [showPosChange, setShowPosChange] = useState(false)
-  const [teamName, setTeamName] = useState('')
 
   const gId = parseInt(gameId ?? '0')
 
@@ -60,12 +58,6 @@ export function GamePage() {
       loadGame(gId)
     }
   }, [gId, game, loadGame])
-
-  useEffect(() => {
-    if (game?.teamId) {
-      getTeam(game.teamId).then(t => { if (t) setTeamName(t.name) })
-    }
-  }, [game?.teamId])
 
   // Auto-dismiss toast after 3 seconds (setPendingToast inside setTimeout is async — not flagged)
   useEffect(() => {
@@ -81,13 +73,9 @@ export function GamePage() {
     return () => clearTimeout(timer)
   }, [lastRecordedPlay])
 
-  if (!game || !snapshot || !lineupUs || !lineupThem) {
+  if (!game || !snapshot || !lineupHome || !lineupAway) {
     return <div className="p-6 text-slate-500">Loading game...</div>
   }
-
-  // Determine which half "us" bats in
-  const usBattingHalf: HalfInning = game.homeOrAway === 'home' ? 'bottom' : 'top'
-  const themBattingHalf: HalfInning = usBattingHalf === 'top' ? 'bottom' : 'top'
 
   // Auto-switch tab when the half or game changes (during render, not in an effect).
   // React supports calling setState during render for derived-state updates — it discards
@@ -99,7 +87,7 @@ export function GamePage() {
     const prevGameId = trackedHalfKey.split('-')[0]
     const gameChanged = prevGameId !== String(game.id)
     setTrackedHalfKey(halfKey)
-    setActiveTab(snapshot.half === usBattingHalf ? 'us' : 'them')
+    setActiveTab(snapshot.half === 'bottom' ? 'home' : 'away')
     setCurrentAtBatPitches([])
     // Only show "Side retired" toast for half changes within the same game
     if (!gameChanged) {
@@ -109,25 +97,25 @@ export function GamePage() {
   } else if (trackedHalfKey === '') {
     // First render after game loads — sync tab to the currently batting team
     setTrackedHalfKey(halfKey)
-    setActiveTab(snapshot.half === usBattingHalf ? 'us' : 'them')
+    setActiveTab(snapshot.half === 'bottom' ? 'home' : 'away')
   }
 
-  const activeLineup = activeTab === 'us' ? lineupUs : lineupThem
-  const currentBatter = activeTab === 'us' ? snapshot.currentBatterUs : snapshot.currentBatterThem
+  const activeLineup = activeTab === 'home' ? lineupHome : lineupAway
+  const currentBatter = activeTab === 'home' ? snapshot.currentBatterHome : snapshot.currentBatterAway
   const activePlays = plays.filter(p =>
-    activeTab === 'us' ? p.half === usBattingHalf : p.half === themBattingHalf
+    activeTab === 'home' ? p.half === 'bottom' : p.half === 'top'
   )
 
   // Determine current pitcher for pitch count
-  const pitcherLineup = snapshot.half === usBattingHalf ? lineupThem : lineupUs
+  const pitcherLineup = snapshot.half === 'bottom' ? lineupAway : lineupHome
   const currentPitcher = pitcherLineup.battingOrder.find(s => s.position === 'P')
   const pitcherName = currentPitcher?.playerName ?? 'Unknown'
   const pitchCount = snapshot.pitchCountByPitcher.get(pitcherName) ?? 0
 
   // Current batter slot for play entry panel — use snapshot.half, not activeTab
-  const currentBatterSlot = snapshot.half === usBattingHalf
-    ? lineupUs.battingOrder.find(s => s.orderPosition === snapshot.currentBatterUs)
-    : lineupThem.battingOrder.find(s => s.orderPosition === snapshot.currentBatterThem)
+  const currentBatterSlot = snapshot.half === 'bottom'
+    ? lineupHome.battingOrder.find(s => s.orderPosition === snapshot.currentBatterHome)
+    : lineupAway.battingOrder.find(s => s.orderPosition === snapshot.currentBatterAway)
 
   const handleAddPitch = (p: PitchResult) => {
     const newPitches = [...currentAtBatPitches, p]
@@ -183,9 +171,9 @@ export function GamePage() {
 
   const handlePlayRecorded = (data: PendingPlay) => {
     // Determine the actual current batter position based on current half
-    const batterPos = snapshot.half === usBattingHalf
-      ? snapshot.currentBatterUs
-      : snapshot.currentBatterThem
+    const batterPos = snapshot.half === 'bottom'
+      ? snapshot.currentBatterHome
+      : snapshot.currentBatterAway
 
     // Compute what runners would look like after this play
     const tempPlays = [...plays, {
@@ -202,7 +190,7 @@ export function GamePage() {
       timestamp: new Date(),
     }]
 
-    const tempSnapshot = replayGame(tempPlays, lineupUs, lineupThem, game.homeOrAway)
+    const tempSnapshot = replayGame(tempPlays, lineupHome, lineupAway)
 
     const hasRunnersOnBase = !!(snapshot.baseRunners.first || snapshot.baseRunners.second || snapshot.baseRunners.third)
     const affectsRunners = data.basesReached.length > 0 ||
@@ -225,9 +213,9 @@ export function GamePage() {
 
   const finalizePlay = (data: PendingPlay, runnerOverrides?: BaseRunners, runsScoredOverride?: number) => {
     const half: HalfInning = snapshot.half
-    const batterPos = half === usBattingHalf
-      ? snapshot.currentBatterUs
-      : snapshot.currentBatterThem
+    const batterPos = half === 'bottom'
+      ? snapshot.currentBatterHome
+      : snapshot.currentBatterAway
 
     let runsScored: number
 
@@ -246,10 +234,10 @@ export function GamePage() {
         rbis: 0,
         timestamp: new Date(),
       }]
-      const tempSnapshot = replayGame(tempPlays, lineupUs, lineupThem, game.homeOrAway)
-      runsScored = half === usBattingHalf
-        ? tempSnapshot.scoreUs - snapshot.scoreUs
-        : tempSnapshot.scoreThem - snapshot.scoreThem
+      const tempSnapshot = replayGame(tempPlays, lineupHome, lineupAway)
+      runsScored = half === 'bottom'
+        ? tempSnapshot.scoreHome - snapshot.scoreHome
+        : tempSnapshot.scoreAway - snapshot.scoreAway
     }
 
     recordPlay({
@@ -292,11 +280,11 @@ export function GamePage() {
   }
 
   // Defensive team lineup — position changes apply to the team NOT batting
-  const defensiveLineup = snapshot.half === usBattingHalf ? lineupThem : lineupUs
+  const defensiveLineup = snapshot.half === 'bottom' ? lineupAway : lineupHome
 
   const handlePositionChange = async (changes: { orderPosition: number; newPosition: string }[]) => {
     // Position changes are for the defensive team
-    const side: Side = snapshot.half === usBattingHalf ? 'them' : 'us'
+    const side: Side = snapshot.half === 'bottom' ? 'away' : 'home'
     await updateLineupPositions(side, changes, snapshot.inning, snapshot.half)
     setShowPosChange(false)
   }
@@ -319,43 +307,32 @@ export function GamePage() {
         inning={snapshot.inning}
         half={snapshot.half}
         outs={snapshot.outs}
-        scoreUs={snapshot.scoreUs}
-        scoreThem={snapshot.scoreThem}
-        homeOrAway={game.homeOrAway}
-        teamName={teamName}
-        opponentName={game.opponentName}
+        scoreHome={snapshot.scoreHome}
+        scoreAway={snapshot.scoreAway}
+        homeTeamName={homeTeam?.name ?? 'Home'}
+        awayTeamName={awayTeam?.name ?? 'Away'}
         pitchCount={pitchCount}
         pitcherName={pitcherName}
       />
 
       {/* Home/Away tabs — away always left, home always right */}
       <div className="flex border-b border-slate-200 bg-white">
-        {(() => {
-          const awayTab: ActiveTab = game.homeOrAway === 'home' ? 'them' : 'us'
-          const homeTab: ActiveTab = game.homeOrAway === 'home' ? 'us' : 'them'
-          const awayLabel = awayTab === 'us' ? 'Us (Away)' : `${game.opponentName} (Away)`
-          const homeLabel = homeTab === 'us' ? 'Us (Home)' : `${game.opponentName} (Home)`
-          return (
-            <>
-              <button
-                onClick={() => setActiveTab(awayTab)}
-                className={`flex-1 py-2 text-sm font-bold text-center transition-all duration-150 ${
-                  activeTab === awayTab ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500'
-                }`}
-              >
-                {awayLabel}
-              </button>
-              <button
-                onClick={() => setActiveTab(homeTab)}
-                className={`flex-1 py-2 text-sm font-bold text-center transition-all duration-150 ${
-                  activeTab === homeTab ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500'
-                }`}
-              >
-                {homeLabel}
-              </button>
-            </>
-          )
-        })()}
+        <button
+          onClick={() => setActiveTab('away')}
+          className={`flex-1 py-2 text-sm font-bold text-center transition-all duration-150 ${
+            activeTab === 'away' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500'
+          }`}
+        >
+          {awayTeam?.name ?? 'Away'} (Away)
+        </button>
+        <button
+          onClick={() => setActiveTab('home')}
+          className={`flex-1 py-2 text-sm font-bold text-center transition-all duration-150 ${
+            activeTab === 'home' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500'
+          }`}
+        >
+          {homeTeam?.name ?? 'Home'} (Home)
+        </button>
       </div>
 
       {/* Scoresheet */}
@@ -364,9 +341,8 @@ export function GamePage() {
           lineup={activeLineup.battingOrder}
           plays={activePlays}
           allPlays={plays}
-          lineupUs={lineupUs}
-          lineupThem={lineupThem}
-          homeOrAway={game.homeOrAway}
+          lineupHome={lineupHome}
+          lineupAway={lineupAway}
           currentInning={snapshot.inning}
           currentBatterPosition={currentBatter}
           maxInnings={6}
@@ -382,7 +358,7 @@ export function GamePage() {
             }
             // Empty future cell: do nothing
           }}
-          runsMap={activeTab === 'us' ? snapshot.runsScoredByPositionUs : snapshot.runsScoredByPositionThem}
+          runsMap={activeTab === 'home' ? snapshot.runsScoredByPositionHome : snapshot.runsScoredByPositionAway}
         />
       </div>
 
@@ -515,14 +491,12 @@ export function GamePage() {
           <div className="bg-white rounded-2xl p-8 max-w-sm w-full mx-4 text-center">
             <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Game Over</div>
             <div className="text-5xl font-bold text-slate-900 mb-1">
-              {snapshot.scoreUs} — {snapshot.scoreThem}
+              {snapshot.scoreAway} — {snapshot.scoreHome}
             </div>
             <div className="text-lg font-semibold text-slate-600 mb-8">
-              {snapshot.scoreUs > snapshot.scoreThem
-                ? 'We won!'
-                : snapshot.scoreUs < snapshot.scoreThem
-                  ? 'They won.'
-                  : 'Tie game.'}
+              {snapshot.scoreHome !== snapshot.scoreAway
+                ? `${snapshot.scoreHome > snapshot.scoreAway ? (homeTeam?.name ?? 'Home') : (awayTeam?.name ?? 'Away')} wins!`
+                : 'Tie game.'}
             </div>
             <button
               onClick={() => navigate(`/game/${gId}/stats`)}
