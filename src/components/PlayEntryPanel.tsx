@@ -28,8 +28,9 @@ interface PlayEntryPanelProps {
 }
 
 type PanelMode = 'select' | 'fielding' | 'sb-runner-select'
+type TabType = 'hit' | 'out' | 'special' | 'shorthand'
 
-const COMMON_PLAYS: { label: string; playType: PlayType; basesReached: number[] }[] = [
+const HIT_PLAYS: { label: string; playType: PlayType; basesReached: number[] }[] = [
   { label: 'HBP', playType: 'HBP', basesReached: [1] },
   { label: '1B', playType: '1B', basesReached: [1] },
   { label: '2B', playType: '2B', basesReached: [1, 2] },
@@ -59,6 +60,7 @@ const RUNNER_REQUIRED: PlayType[] = ['FC', 'DP', 'SAC', 'SB', 'WP', 'PB', 'BK']
 
 export function PlayEntryPanel({ batterName, baseRunners, pitches, outs, onAddPitch, onRemovePitch, onClear, onRemoveAt, onPlayRecorded, onClose }: PlayEntryPanelProps) {
   const [mode, setMode] = useState<PanelMode>('select')
+  const [tab, setTab] = useState<TabType>('hit')
   const hasRunners = !!(baseRunners?.first || baseRunners?.second || baseRunners?.third)
   const [fieldingPlayType, setFieldingPlayType] = useState<PlayType>('GO')
   const [selectedPositions, setSelectedPositions] = useState<number[]>([])
@@ -167,6 +169,13 @@ export function PlayEntryPanel({ batterName, baseRunners, pitches, outs, onAddPi
     })
   }
 
+  const TABS: { key: TabType; label: string }[] = [
+    { key: 'hit', label: 'Hit' },
+    { key: 'out', label: 'Out' },
+    { key: 'special', label: 'Special' },
+    { key: 'shorthand', label: 'Shorthand' },
+  ]
+
   return (
     <div className="fixed inset-x-0 bottom-0 bg-white border-t-2 border-slate-300 shadow-2xl max-h-[80vh] overflow-y-auto z-50" style={{ animation: 'slideUp 200ms ease-out' }}>
       <div className="p-4">
@@ -186,41 +195,53 @@ export function PlayEntryPanel({ batterName, baseRunners, pitches, outs, onAddPi
 
         {mode === 'select' && (
           <>
-            {/* Common plays */}
-            <div className="mb-3">
-              <div className="text-xs font-semibold text-slate-500 mb-1.5">OUTCOME</div>
+            {/* Tab bar */}
+            <div className="flex gap-1 mb-3">
+              {TABS.map(t => (
+                <button
+                  key={t.key}
+                  onClick={() => setTab(t.key)}
+                  className={`flex-1 py-2.5 rounded-lg text-sm font-bold ${
+                    tab === t.key ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Hit tab */}
+            {tab === 'hit' && (
               <div className="grid grid-cols-4 gap-2">
-                {COMMON_PLAYS.map(play => (
+                {HIT_PLAYS.map(play => (
                   <button
                     key={play.label}
                     onClick={() => recordSimplePlay(play.playType, play.basesReached)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-bold text-sm transition-all duration-150 ease-in-out active:scale-95"
+                    className="bg-blue-600 hover:bg-blue-700 text-white py-3 rounded font-bold text-sm transition-all duration-150 ease-in-out active:scale-95"
                   >
                     {play.label}
                   </button>
                 ))}
               </div>
-            </div>
+            )}
 
-            {/* Fielding plays */}
-            <div className="mb-3">
-              <div className="text-xs font-semibold text-slate-500 mb-1.5">FIELDING</div>
-              <div className="grid grid-cols-2 gap-1.5">
+            {/* Out tab */}
+            {tab === 'out' && (
+              <div className="grid grid-cols-2 gap-2">
                 {FIELDING_PLAYS.map(play => (
                   <button
                     key={play.label}
                     onClick={() => handleFieldingPlaySelect(play.playType)}
-                    className="bg-green-600 hover:bg-green-700 text-white py-2 rounded font-bold text-sm transition-all duration-150 ease-in-out active:scale-95"
+                    className="bg-green-600 hover:bg-green-700 text-white py-3 rounded font-bold text-sm transition-all duration-150 ease-in-out active:scale-95"
                   >
                     {play.label}
                   </button>
                 ))}
               </div>
-            </div>
+            )}
 
-            {/* Special plays */}
-            <div className="mb-3">
-              <div className="text-xs font-semibold text-slate-500 mb-1.5">SPECIAL</div>
+            {/* Special tab */}
+            {tab === 'special' && (
               <div className="grid grid-cols-4 gap-1.5">
                 {SPECIAL_PLAYS.map(play => {
                   const needsRunners = RUNNER_REQUIRED.includes(play.playType)
@@ -231,19 +252,19 @@ export function PlayEntryPanel({ batterName, baseRunners, pitches, outs, onAddPi
                     <button
                       key={play.label}
                       onClick={() => {
-                      if (disabled) return
-                      if (play.playType === 'E') {
-                        setFieldingPlayType('E' as PlayType)
-                        setSelectedPositions([])
-                        setMode('fielding')
-                      } else if (play.playType === 'SB') {
-                        handleSbClick()
-                      } else {
-                        recordSimplePlay(play.playType, play.basesReached, play.isAtBat)
-                      }
-                    }}
+                        if (disabled) return
+                        if (play.playType === 'E') {
+                          setFieldingPlayType('E' as PlayType)
+                          setSelectedPositions([])
+                          setMode('fielding')
+                        } else if (play.playType === 'SB') {
+                          handleSbClick()
+                        } else {
+                          recordSimplePlay(play.playType, play.basesReached, play.isAtBat)
+                        }
+                      }}
                       disabled={disabled}
-                      className={`py-2 rounded font-bold text-sm transition-all duration-150 ease-in-out active:scale-95 ${
+                      className={`py-3 rounded font-bold text-sm transition-all duration-150 ease-in-out active:scale-95 ${
                         disabled
                           ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
                           : 'bg-amber-600 hover:bg-amber-700 text-white'
@@ -254,30 +275,37 @@ export function PlayEntryPanel({ batterName, baseRunners, pitches, outs, onAddPi
                   )
                 })}
               </div>
-            </div>
+            )}
 
-            {/* Shorthand input */}
-            <div className="flex gap-2">
-              <label className="sr-only" htmlFor="shorthand-input">Shorthand notation</label>
-              <input
-                id="shorthand-input"
-                type="text"
-                placeholder="Shorthand (e.g. 6-3, 1B7, F8)"
-                value={shorthand}
-                onChange={e => { setShorthand(e.target.value); setShorthandError('') }}
-                onKeyDown={e => e.key === 'Enter' && handleShorthandSubmit()}
-                className="flex-1 border border-slate-300 rounded px-3 py-2 text-sm font-mono"
-              />
-              <button
-                onClick={handleShorthandSubmit}
-                disabled={!shorthand.trim()}
-                className="bg-slate-700 hover:bg-slate-800 disabled:bg-slate-300 text-white px-4 py-2 rounded text-sm font-bold transition-all duration-150 ease-in-out active:scale-95"
-              >
-                Enter
-              </button>
-            </div>
-            {shorthandError && (
-              <p className="text-red-600 text-xs mt-1">{shorthandError}</p>
+            {/* Shorthand tab */}
+            {tab === 'shorthand' && (
+              <div>
+                <p className="text-xs text-slate-500 mb-2">
+                  Examples: <span className="font-mono">6-3</span> (groundout), <span className="font-mono">1B7</span> (single to left), <span className="font-mono">F8</span> (flyout to center)
+                </p>
+                <div className="flex gap-2">
+                  <label className="sr-only" htmlFor="shorthand-input">Shorthand notation</label>
+                  <input
+                    id="shorthand-input"
+                    type="text"
+                    placeholder="Shorthand (e.g. 6-3, 1B7, F8)"
+                    value={shorthand}
+                    onChange={e => { setShorthand(e.target.value); setShorthandError('') }}
+                    onKeyDown={e => e.key === 'Enter' && handleShorthandSubmit()}
+                    className="flex-1 border border-slate-300 rounded px-3 py-3 text-sm font-mono"
+                  />
+                  <button
+                    onClick={handleShorthandSubmit}
+                    disabled={!shorthand.trim()}
+                    className="bg-slate-700 hover:bg-slate-800 disabled:bg-slate-300 text-white px-4 py-3 rounded text-sm font-bold transition-all duration-150 ease-in-out active:scale-95"
+                  >
+                    Enter
+                  </button>
+                </div>
+                {shorthandError && (
+                  <p className="text-red-600 text-xs mt-1">{shorthandError}</p>
+                )}
+              </div>
             )}
           </>
         )}
@@ -294,14 +322,14 @@ export function PlayEntryPanel({ batterName, baseRunners, pitches, outs, onAddPi
             <div className="flex gap-2 mt-3">
               <button
                 onClick={() => { setMode('select'); setSelectedPositions([]) }}
-                className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 rounded font-bold text-sm transition-all duration-150 ease-in-out active:scale-95"
+                className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 py-3 rounded font-bold text-sm transition-all duration-150 ease-in-out active:scale-95"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmFielding}
                 disabled={selectedPositions.length === 0}
-                className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-slate-300 text-white py-2 rounded font-bold text-sm transition-all duration-150 ease-in-out active:scale-95"
+                className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-slate-300 text-white py-3 rounded font-bold text-sm transition-all duration-150 ease-in-out active:scale-95"
               >
                 Confirm
               </button>
@@ -322,7 +350,7 @@ export function PlayEntryPanel({ batterName, baseRunners, pitches, outs, onAddPi
                     key={base}
                     onClick={() => handleSbRunnerSelect(base)}
                     aria-label={`${runner.playerName} on ${baseLabel}`}
-                    className="w-full bg-amber-600 hover:bg-amber-700 text-white py-2.5 rounded-lg font-bold text-sm transition-all duration-150 active:scale-95"
+                    className="w-full bg-amber-600 hover:bg-amber-700 text-white py-3 rounded-lg font-bold text-sm transition-all duration-150 active:scale-95"
                   >
                     {runner.playerName} ({baseLabel})
                   </button>
@@ -331,7 +359,7 @@ export function PlayEntryPanel({ batterName, baseRunners, pitches, outs, onAddPi
             </div>
             <button
               onClick={() => setMode('select')}
-              className="w-full mt-2 bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 rounded font-bold text-sm transition-all duration-150"
+              className="w-full mt-2 bg-slate-200 hover:bg-slate-300 text-slate-700 py-3 rounded font-bold text-sm transition-all duration-150"
             >
               Cancel
             </button>

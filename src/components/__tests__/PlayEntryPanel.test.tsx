@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PlayEntryPanel } from '../PlayEntryPanel'
 import type { BaseRunners, PitchResult } from '../../engine/types'
@@ -44,10 +44,55 @@ function renderPanel(overrides?: Partial<{
 }
 
 describe('PlayEntryPanel', () => {
+  // --- Tab layout tests ---
+
+  it('shows tabbed layout with Hit, Out, Special, Shorthand tabs', () => {
+    renderPanel({ batterName: 'John Doe' })
+    expect(screen.getByText('Hit')).toBeInTheDocument()
+    expect(screen.getByText('Out')).toBeInTheDocument()
+    expect(screen.getByText('Special')).toBeInTheDocument()
+  })
+
+  it('only shows Hit buttons when Hit tab is active by default', () => {
+    renderPanel({ batterName: 'John Doe' })
+    // Hit tab is default — hit buttons visible
+    expect(screen.getByRole('button', { name: /^1B$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^HR$/i })).toBeInTheDocument()
+    // Out tab buttons not visible
+    expect(screen.queryByText('Ground Out')).not.toBeInTheDocument()
+    // Special tab buttons not visible
+    expect(screen.queryByRole('button', { name: /^SB$/i })).not.toBeInTheDocument()
+  })
+
+  it('switches to Out tab and shows fielding buttons', () => {
+    renderPanel({ batterName: 'John Doe' })
+    fireEvent.click(screen.getByText('Out'))
+    expect(screen.getByText('Ground Out')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^1B$/i })).not.toBeInTheDocument()
+  })
+
+  it('switches to Special tab and shows special play buttons', () => {
+    renderPanel({ batterName: 'John Doe' })
+    fireEvent.click(screen.getByText('Special'))
+    expect(screen.getByRole('button', { name: /^FC$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^SB$/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^1B$/i })).not.toBeInTheDocument()
+  })
+
+  it('switches to Shorthand tab and shows text input', () => {
+    renderPanel({ batterName: 'John Doe' })
+    fireEvent.click(screen.getByText(/shorthand/i))
+    expect(screen.getByPlaceholderText(/shorthand/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^1B$/i })).not.toBeInTheDocument()
+  })
+
+  // --- Existing tests (updated for tabbed layout) ---
+
   it('should render pitch tracker and common play buttons', () => {
     renderPanel({ batterName: 'John Doe' })
     expect(screen.getByText(/john doe/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /ball/i })).toBeInTheDocument()
+    // Hit tab is default
     expect(screen.getByRole('button', { name: /^1B$/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^HR$/i })).toBeInTheDocument()
   })
@@ -67,7 +112,7 @@ describe('PlayEntryPanel', () => {
     const user = userEvent.setup()
     const { props } = renderPanel({ pitches: ['B', 'S'] })
 
-    // Record a single — pitches from props should be included
+    // Hit tab is default — click 1B
     await user.click(screen.getByRole('button', { name: /^1B$/i }))
 
     expect(props.onPlayRecorded).toHaveBeenCalledOnce()
@@ -80,6 +125,8 @@ describe('PlayEntryPanel', () => {
     const user = userEvent.setup()
     renderPanel()
 
+    // Switch to Out tab first
+    await user.click(screen.getByText('Out'))
     await user.click(screen.getByRole('button', { name: /ground out/i }))
 
     // Field diagram should appear
@@ -90,6 +137,8 @@ describe('PlayEntryPanel', () => {
     const user = userEvent.setup()
     const { props } = renderPanel()
 
+    // Switch to Out tab first
+    await user.click(screen.getByText('Out'))
     await user.click(screen.getByRole('button', { name: /ground out/i }))
     await user.click(screen.getByRole('button', { name: /6.*SS/i }))
     await user.click(screen.getByRole('button', { name: /3.*1B/i }))
@@ -102,8 +151,10 @@ describe('PlayEntryPanel', () => {
     expect(call.notation).toBe('6-3')
   })
 
-  it('should have a shorthand text input', () => {
+  it('should have a shorthand text input on the Shorthand tab', async () => {
+    const user = userEvent.setup()
     renderPanel()
+    await user.click(screen.getByText(/shorthand/i))
     expect(screen.getByPlaceholderText(/shorthand/i)).toBeInTheDocument()
   })
 
@@ -111,6 +162,7 @@ describe('PlayEntryPanel', () => {
     const user = userEvent.setup()
     const { props } = renderPanel()
 
+    await user.click(screen.getByText(/shorthand/i))
     await user.type(screen.getByPlaceholderText(/shorthand/i), '???')
     await user.click(screen.getByRole('button', { name: /^enter$/i }))
 
@@ -122,6 +174,8 @@ describe('PlayEntryPanel', () => {
     const user = userEvent.setup()
     const { props } = renderPanel({ baseRunners: runnersOnFirst })
 
+    // SB is in Special tab
+    await user.click(screen.getByText('Special'))
     await user.click(screen.getByRole('button', { name: /^SB$/i }))
     expect(props.onPlayRecorded).toHaveBeenCalledOnce()
     expect((props.onPlayRecorded as ReturnType<typeof vi.fn>).mock.calls[0][0].playType).toBe('SB')
@@ -131,6 +185,7 @@ describe('PlayEntryPanel', () => {
     const user = userEvent.setup()
     renderPanel({ baseRunners: runnersOnFirstAndSecond })
 
+    await user.click(screen.getByText('Special'))
     await user.click(screen.getByRole('button', { name: /^SB$/i }))
     expect(screen.getByText(/who is stealing/i)).toBeInTheDocument()
   })
@@ -139,6 +194,7 @@ describe('PlayEntryPanel', () => {
     const user = userEvent.setup()
     const { props } = renderPanel({ baseRunners: runnersOnFirstAndSecond })
 
+    await user.click(screen.getByText('Special'))
     await user.click(screen.getByRole('button', { name: /^SB$/i }))
     // Select Alice (on 1st) as the stealer
     await user.click(screen.getByRole('button', { name: /alice/i }))
@@ -155,6 +211,7 @@ describe('PlayEntryPanel', () => {
     renderPanel({
       baseRunners: { first: null, second: null, third: null },
     })
+    fireEvent.click(screen.getByText('Special'))
     for (const label of ['FC', 'DP', 'SAC', 'SB', 'WP', 'PB', 'BK']) {
       expect(screen.getByRole('button', { name: label })).toBeDisabled()
     }
@@ -164,6 +221,7 @@ describe('PlayEntryPanel', () => {
     renderPanel({
       baseRunners: { first: { playerName: 'A', orderPosition: 1 }, second: null, third: null },
     })
+    fireEvent.click(screen.getByText('Special'))
     expect(screen.getByRole('button', { name: 'FC' })).toBeEnabled()
     expect(screen.getByRole('button', { name: 'SB' })).toBeEnabled()
   })
@@ -173,6 +231,7 @@ describe('PlayEntryPanel', () => {
       baseRunners: { first: { playerName: 'A', orderPosition: 1 }, second: null, third: null },
       outs: 2,
     })
+    fireEvent.click(screen.getByText('Special'))
     expect(screen.getByRole('button', { name: 'SAC' })).toBeDisabled()
   })
 
@@ -180,6 +239,7 @@ describe('PlayEntryPanel', () => {
     renderPanel({
       baseRunners: { first: null, second: null, third: null },
     })
+    fireEvent.click(screen.getByText('Special'))
     expect(screen.getByRole('button', { name: 'E' })).toBeEnabled()
   })
 
@@ -187,6 +247,7 @@ describe('PlayEntryPanel', () => {
     const user = userEvent.setup()
     const onPlayRecorded = vi.fn()
     renderPanel({ onPlayRecorded })
+    await user.click(screen.getByText('Special'))
     await user.click(screen.getByRole('button', { name: 'E' }))
     // Should show field diagram with error-specific prompt
     expect(screen.getByText(/error by/i)).toBeInTheDocument()
@@ -198,6 +259,7 @@ describe('PlayEntryPanel', () => {
     const user = userEvent.setup()
     const onPlayRecorded = vi.fn()
     renderPanel({ onPlayRecorded })
+    await user.click(screen.getByText('Special'))
     await user.click(screen.getByRole('button', { name: 'E' }))
     // Select SS (position 6)
     await user.click(screen.getByRole('button', { name: /6.*SS/i }))
