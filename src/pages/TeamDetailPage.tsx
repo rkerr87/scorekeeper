@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import type { Team, Player } from '../engine/types'
-import { getTeam, getPlayersForTeam, addPlayer, deletePlayer, getGamesForTeam, deleteTeam, updateTeamName } from '../db/gameService'
+import { getTeam, getPlayersForTeam, addPlayer, deletePlayer, updatePlayer, getGamesForTeam, deleteTeam, updateTeamName } from '../db/gameService'
 import { Spinner } from '../components/Spinner'
 
 export function TeamDetailPage() {
@@ -21,6 +21,10 @@ export function TeamDetailPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [showDeleteTeam, setShowDeleteTeam] = useState(false)
   const [deleteTeamBlocked, setDeleteTeamBlocked] = useState(false)
+  const [editingPlayerId, setEditingPlayerId] = useState<number | null>(null)
+  const [editPlayerName, setEditPlayerName] = useState('')
+  const [editJersey, setEditJersey] = useState('')
+  const [editPosition, setEditPosition] = useState('')
 
   const tId = parseInt(teamId ?? '0')
 
@@ -56,6 +60,27 @@ export function TeamDetailPage() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const startEdit = (p: Player) => {
+    setEditingPlayerId(p.id!)
+    setEditPlayerName(p.name)
+    setEditJersey(String(p.jerseyNumber))
+    setEditPosition(p.defaultPosition)
+  }
+
+  const saveEdit = async () => {
+    if (!editingPlayerId || !editPlayerName.trim() || !editJersey.trim()) return
+    await updatePlayer(editingPlayerId, {
+      name: editPlayerName.trim(),
+      jerseyNumber: parseInt(editJersey),
+      defaultPosition: editPosition || 'UT',
+    })
+    setPlayers(players.map(p => p.id === editingPlayerId
+      ? { ...p, name: editPlayerName.trim(), jerseyNumber: parseInt(editJersey), defaultPosition: editPosition || 'UT' }
+      : p
+    ))
+    setEditingPlayerId(null)
   }
 
   const handleDeletePlayer = async (id: number) => {
@@ -167,25 +192,47 @@ export function TeamDetailPage() {
           </thead>
           <tbody>
             {players.map(p => (
-              <tr key={p.id} className="border-t border-slate-100">
-                <td className="px-4 py-2 text-sm font-mono">{p.jerseyNumber}</td>
-                <td className="px-4 py-2 text-sm font-semibold">{p.name}</td>
-                <td className="px-4 py-2 text-sm text-slate-600">{p.defaultPosition}</td>
-                <td className="px-4 py-2">
-                  {confirmDeleteId === p.id ? (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-red-600">Delete {p.name}?</span>
-                      <button onClick={() => handleDeletePlayer(p.id!)} className="text-red-600 font-bold text-xs">Yes</button>
-                      <button onClick={() => setConfirmDeleteId(null)} className="text-slate-500 text-xs">No</button>
+              editingPlayerId === p.id ? (
+                <tr key={p.id} className="border-t border-slate-100 bg-blue-50">
+                  <td className="px-4 py-2" colSpan={4}>
+                    <div className="flex gap-2 items-center flex-wrap">
+                      <input value={editPlayerName} onChange={e => setEditPlayerName(e.target.value)}
+                        className="flex-1 border border-slate-300 rounded px-2 py-1 text-sm min-w-0" />
+                      <input value={editJersey} onChange={e => setEditJersey(e.target.value)}
+                        className="w-16 border border-slate-300 rounded px-2 py-1 text-sm" inputMode="numeric" />
+                      <select value={editPosition} onChange={e => setEditPosition(e.target.value)}
+                        className="w-20 border border-slate-300 rounded px-1 py-1 text-sm bg-white">
+                        <option value="">UT</option>
+                        {['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'].map(pos => (
+                          <option key={pos} value={pos}>{pos}</option>
+                        ))}
+                      </select>
+                      <button onClick={saveEdit} className="bg-blue-600 text-white px-3 py-1 rounded text-sm font-semibold">Save</button>
+                      <button onClick={() => setEditingPlayerId(null)} className="text-slate-500 text-sm">Cancel</button>
                     </div>
-                  ) : (
-                    <button onClick={() => setConfirmDeleteId(p.id!)}
-                      className="text-red-500 hover:text-red-700 text-sm px-3 py-2">
-                      Delete
-                    </button>
-                  )}
-                </td>
-              </tr>
+                  </td>
+                </tr>
+              ) : (
+                <tr key={p.id} className="border-t border-slate-100 cursor-pointer hover:bg-slate-50" onClick={() => startEdit(p)}>
+                  <td className="px-4 py-2 text-sm font-mono">{p.jerseyNumber}</td>
+                  <td className="px-4 py-2 text-sm font-semibold">{p.name}</td>
+                  <td className="px-4 py-2 text-sm text-slate-600">{p.defaultPosition}</td>
+                  <td className="px-4 py-2">
+                    {confirmDeleteId === p.id ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-red-600">Delete {p.name}?</span>
+                        <button onClick={e => { e.stopPropagation(); handleDeletePlayer(p.id!) }} className="text-red-600 font-bold text-xs">Yes</button>
+                        <button onClick={e => { e.stopPropagation(); setConfirmDeleteId(null) }} className="text-slate-500 text-xs">No</button>
+                      </div>
+                    ) : (
+                      <button onClick={e => { e.stopPropagation(); setConfirmDeleteId(p.id!) }}
+                        className="text-red-500 hover:text-red-700 text-sm px-3 py-2">
+                        Delete
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              )
             ))}
           </tbody>
         </table>

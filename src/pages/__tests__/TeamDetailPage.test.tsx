@@ -277,6 +277,66 @@ describe('TeamDetailPage', () => {
     })
   })
 
+  describe('Player Editing', () => {
+    it('allows editing a player by clicking their row', async () => {
+      const user = userEvent.setup()
+      const teamId = await db.teams.add({ name: 'Mudcats', createdAt: new Date() })
+      await db.players.add({ teamId, name: 'John Doe', jerseyNumber: 23, defaultPosition: 'SS', createdAt: new Date() })
+
+      renderWithRouter(String(teamId))
+
+      await waitFor(() => {
+        expect(screen.getByText('John Doe')).toBeInTheDocument()
+      })
+
+      // Click on the player row to start editing
+      await user.click(screen.getByText('John Doe'))
+
+      // Edit form appears with current values
+      const nameInput = screen.getByDisplayValue('John Doe')
+      expect(nameInput).toBeInTheDocument()
+      expect(screen.getByDisplayValue('23')).toBeInTheDocument()
+
+      // Change the name
+      await user.clear(nameInput)
+      await user.type(nameInput, 'Jane Smith')
+
+      // Click Save
+      await user.click(screen.getByRole('button', { name: /save/i }))
+
+      // Row shows updated name
+      await waitFor(() => {
+        expect(screen.getByText('Jane Smith')).toBeInTheDocument()
+        expect(screen.queryByText('John Doe')).not.toBeInTheDocument()
+      })
+    })
+
+    it('cancels editing when Cancel is clicked', async () => {
+      const user = userEvent.setup()
+      const teamId = await db.teams.add({ name: 'Mudcats', createdAt: new Date() })
+      await db.players.add({ teamId, name: 'John Doe', jerseyNumber: 23, defaultPosition: 'SS', createdAt: new Date() })
+
+      renderWithRouter(String(teamId))
+
+      await waitFor(() => {
+        expect(screen.getByText('John Doe')).toBeInTheDocument()
+      })
+
+      // Click on the player row to start editing
+      await user.click(screen.getByText('John Doe'))
+
+      // Edit form appears
+      expect(screen.getByDisplayValue('John Doe')).toBeInTheDocument()
+
+      // Click Cancel
+      await user.click(screen.getByRole('button', { name: /cancel/i }))
+
+      // Original row is shown again
+      expect(screen.getByText('John Doe')).toBeInTheDocument()
+      expect(screen.queryByDisplayValue('John Doe')).not.toBeInTheDocument()
+    })
+  })
+
   describe('Delete Team', () => {
     it('shows a Delete Team button', async () => {
       const teamId = await db.teams.add({ name: 'Mudcats', createdAt: new Date() })

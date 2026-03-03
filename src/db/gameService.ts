@@ -49,6 +49,10 @@ export async function deletePlayer(id: number): Promise<void> {
   await db.players.delete(id)
 }
 
+export async function updatePlayer(id: number, updates: { name?: string; jerseyNumber?: number; defaultPosition?: string }): Promise<void> {
+  await db.players.update(id, updates)
+}
+
 // --- Games ---
 
 function generateGameCode(): string {
