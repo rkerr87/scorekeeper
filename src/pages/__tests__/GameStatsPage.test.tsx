@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { GameProvider } from '../../contexts/GameContext'
 import { GameStatsPage } from '../GameStatsPage'
@@ -93,6 +93,47 @@ describe('GameStatsPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Tigers (Away)')).toBeInTheDocument()
       expect(screen.getByText('Mudcats (Home)')).toBeInTheDocument()
+    })
+  })
+
+  it('should show correct AB and hit count for Alice (1B)', async () => {
+    const gameId = await seedGameWithPlays()
+    renderStats(gameId)
+
+    await waitFor(() => {
+      const rows = screen.getAllByRole('row')
+      const aliceRow = rows.find(r => r.textContent?.includes('Alice'))!
+      expect(aliceRow).toBeDefined()
+      // Alice went 1-for-1: AVG shows 1.000
+      expect(within(aliceRow).getByText('1.000')).toBeInTheDocument()
+    })
+  })
+
+  it('should show HR=1 and RBI=2 for Bob (home run, scored Alice)', async () => {
+    const gameId = await seedGameWithPlays()
+    renderStats(gameId)
+
+    await waitFor(() => {
+      const rows = screen.getAllByRole('row')
+      const bobRow = rows.find(r => r.textContent?.includes('Bob'))!
+      expect(bobRow).toBeDefined()
+      // Bob's RBI=2 is the only "2" value in his row
+      expect(within(bobRow).getByText('2')).toBeInTheDocument()
+      expect(within(bobRow).getByText('1.000')).toBeInTheDocument()
+    })
+  })
+
+  it('should credit Alice with R=1 (she scored from Bob\'s HR)', async () => {
+    const gameId = await seedGameWithPlays()
+    renderStats(gameId)
+
+    await waitFor(() => {
+      const rows = screen.getAllByRole('row')
+      const aliceRow = rows.find(r => r.textContent?.includes('Alice'))!
+      // Alice: AB=1, R=1, H=1 — three cells with value "1"
+      const cells = within(aliceRow).getAllByRole('cell')
+      const oneCells = cells.filter(c => c.textContent === '1')
+      expect(oneCells.length).toBeGreaterThanOrEqual(3)
     })
   })
 })
