@@ -2,16 +2,19 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { ToastProvider } from '../../contexts/ToastContext'
 import { TeamDetailPage } from '../TeamDetailPage'
 import { db } from '../../db/database'
 
 function renderWithRouter(teamId: string) {
   return render(
     <MemoryRouter initialEntries={[`/teams/${teamId}`]}>
-      <Routes>
-        <Route path="/teams/:teamId" element={<TeamDetailPage />} />
-        <Route path="/teams" element={<div>Teams List</div>} />
-      </Routes>
+      <ToastProvider>
+        <Routes>
+          <Route path="/teams/:teamId" element={<TeamDetailPage />} />
+          <Route path="/teams" element={<div>Teams List</div>} />
+        </Routes>
+      </ToastProvider>
     </MemoryRouter>
   )
 }

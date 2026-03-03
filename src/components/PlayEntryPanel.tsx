@@ -117,7 +117,7 @@ export function PlayEntryPanel({ batterName, baseRunners, pitches, outs, onAddPi
     if (!shorthand.trim()) return
     const parsed = parseShorthand(shorthand)
     if (!parsed) {
-      setShorthandError(`Unrecognized shorthand: "${shorthand}"`)
+      setShorthandError('Unrecognized notation. Try: 6-3 (groundout), 1B7 (single to left), F8 (flyout to center)')
       return
     }
     setShorthandError('')

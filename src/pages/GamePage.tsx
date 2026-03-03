@@ -11,6 +11,7 @@ import { BeginnerGuide } from '../components/BeginnerGuide'
 import { PlayDetailPopover } from '../components/PlayDetailPopover'
 import { PositionChangeDialog } from '../components/PositionChangeDialog'
 import { Spinner } from '../components/Spinner'
+import { useToast } from '../contexts/ToastContext'
 
 type ActiveTab = 'home' | 'away'
 
@@ -27,6 +28,7 @@ interface PendingPlay {
 export function GamePage() {
   const { gameId } = useParams()
   const navigate = useNavigate()
+  const { showToast } = useToast()
   const {
     game, lineupHome, lineupAway, homeTeam, awayTeam, plays, snapshot,
     loadGame, recordPlay, undoLastPlay, undoFromPlay, updateLineupPositions,
@@ -34,13 +36,10 @@ export function GamePage() {
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('away')
   const [lastRecordedPlay, setLastRecordedPlay] = useState<{ playType: PlayType; notation: string } | null>(null)
-  // trackedHalfKey records the snapshot half key that activeTab and pendingToast were last
+  // trackedHalfKey records the snapshot half key that activeTab was last
   // auto-synced to. Updated during render (not in an effect) to avoid the
   // react-hooks/set-state-in-effect lint rule.
   const [trackedHalfKey, setTrackedHalfKey] = useState<string>('')
-  // pendingToast is set during render when the half changes; derived directly as the
-  // visible toast message. The effect below schedules its clearance after 3 seconds.
-  const [pendingToast, setPendingToast] = useState<string | null>(null)
   const [showPlayEntry, setShowPlayEntry] = useState(false)
   const [currentAtBatPitches, setCurrentAtBatPitches] = useState<PitchResult[]>([])
   const [pendingPlay, setPendingPlay] = useState<PendingPlay | null>(null)
@@ -59,13 +58,6 @@ export function GamePage() {
       loadGame(gId)
     }
   }, [gId, game, loadGame])
-
-  // Auto-dismiss toast after 3 seconds (setPendingToast inside setTimeout is async — not flagged)
-  useEffect(() => {
-    if (!pendingToast) return
-    const timer = setTimeout(() => setPendingToast(null), 3000)
-    return () => clearTimeout(timer)
-  }, [pendingToast])
 
   // Auto-dismiss beginner guide card after 5 seconds
   useEffect(() => {
@@ -93,7 +85,7 @@ export function GamePage() {
     // Only show "Side retired" toast for half changes within the same game
     if (!gameChanged) {
       const halfLabel = snapshot.half === 'top' ? 'Top' : 'Bot'
-      setPendingToast(`Side retired — ${halfLabel} ${snapshot.inning}`)
+      showToast(`Side retired — ${halfLabel} ${snapshot.inning}`, 'info')
     }
   } else if (trackedHalfKey === '') {
     // First render after game loads — sync tab to the currently batting team
@@ -265,6 +257,7 @@ export function GamePage() {
     setPendingRunners(null)
     setPendingPrePlayRunners(null)
     setPendingPreRunsScored(0)
+    showToast(`Play recorded — ${data.playType}`, 'success')
   }
 
   const handleRunnerConfirm = (result: { runners: BaseRunners; runsScored: number }) => {
@@ -288,6 +281,7 @@ export function GamePage() {
     const side: Side = snapshot.half === 'bottom' ? 'away' : 'home'
     await updateLineupPositions(side, changes, snapshot.inning, snapshot.half)
     setShowPosChange(false)
+    showToast('Position change saved', 'success')
   }
 
   return (
@@ -394,7 +388,7 @@ export function GamePage() {
           Pos Change
         </button>
         <button
-          onClick={() => { undoLastPlay(); setCurrentAtBatPitches([]) }}
+          onClick={() => { undoLastPlay(); setCurrentAtBatPitches([]); showToast('Play undone', 'info') }}
           disabled={plays.length === 0}
           className="bg-slate-200 hover:bg-slate-300 disabled:bg-slate-100 disabled:text-slate-400 text-slate-700 py-2.5 px-4 rounded-lg font-bold transition-all duration-150 ease-in-out active:scale-95 font-heading uppercase"
         >
@@ -473,13 +467,6 @@ export function GamePage() {
           onConfirm={handleRunnerConfirm}
           onCancel={handleRunnerCancel}
         />
-      )}
-
-      {/* Toast notification */}
-      {pendingToast && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-5 py-2.5 rounded-full text-sm font-semibold shadow-lg z-50">
-          {pendingToast}
-        </div>
       )}
 
       {/* Game-over overlay */}

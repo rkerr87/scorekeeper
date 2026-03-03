@@ -3,19 +3,22 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { GameProvider } from '../../contexts/GameContext'
+import { ToastProvider } from '../../contexts/ToastContext'
 import { HomePage } from '../HomePage'
 import { db } from '../../db/database'
 
 function renderHome() {
   return render(
     <MemoryRouter initialEntries={['/']}>
-      <GameProvider>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/teams" element={<div>Teams Page</div>} />
-          <Route path="/game/:gameId/setup" element={<div>Setup Page</div>} />
-        </Routes>
-      </GameProvider>
+      <ToastProvider>
+        <GameProvider>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/teams" element={<div>Teams Page</div>} />
+            <Route path="/game/:gameId/setup" element={<div>Setup Page</div>} />
+          </Routes>
+        </GameProvider>
+      </ToastProvider>
     </MemoryRouter>
   )
 }

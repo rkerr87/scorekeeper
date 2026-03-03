@@ -3,10 +3,12 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import type { Team, Player } from '../engine/types'
 import { getTeam, getPlayersForTeam, addPlayer, deletePlayer, updatePlayer, getGamesForTeam, deleteTeam, updateTeamName } from '../db/gameService'
 import { Spinner } from '../components/Spinner'
+import { useToast } from '../contexts/ToastContext'
 
 export function TeamDetailPage() {
   const { teamId } = useParams()
   const navigate = useNavigate()
+  const { showToast } = useToast()
   const [team, setTeam] = useState<Team | null>(null)
   const [players, setPlayers] = useState<Player[]>([])
   const [loading, setLoading] = useState(true)
@@ -57,6 +59,7 @@ export function TeamDetailPage() {
       setPlayerName('')
       setJerseyNumber('')
       setPosition('')
+      showToast('Player added', 'success')
     } finally {
       setSubmitting(false)
     }
@@ -87,6 +90,7 @@ export function TeamDetailPage() {
     await deletePlayer(id)
     setPlayers(players.filter(p => p.id !== id))
     setConfirmDeleteId(null)
+    showToast('Player deleted', 'success')
   }
 
   const handleDeleteTeam = async () => {
@@ -108,12 +112,14 @@ export function TeamDetailPage() {
     if (trimmed && trimmed !== team!.name) {
       await updateTeamName(tId, trimmed)
       setTeam({ ...team!, name: trimmed })
+      showToast('Team renamed', 'success')
     }
     setIsEditingName(false)
   }
 
   const confirmDeleteTeam = async () => {
     await deleteTeam(tId)
+    showToast('Team deleted', 'success')
     navigate('/teams')
   }
 

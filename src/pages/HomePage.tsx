@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import type { Game, Team, LineupSlot } from '../engine/types'
 import { getAllTeams, getAllGames, createGame, deleteGame, createTeam, addPlayer, saveLineup } from '../db/gameService'
 import { db } from '../db/database'
+import { useToast } from '../contexts/ToastContext'
 
 interface GameRowProps {
   game: Game
@@ -66,6 +67,7 @@ function GameRow({ game, teams, linkTo, confirmDeleteId, onRequestDelete, onCanc
 
 export function HomePage() {
   const navigate = useNavigate()
+  const { showToast } = useToast()
   const [teamsList, setTeamsList] = useState<Team[]>([])
   const [teamsMap, setTeamsMap] = useState<Map<number, Team>>(new Map())
   const [games, setGames] = useState<Game[]>([])
@@ -109,6 +111,7 @@ export function HomePage() {
     await deleteGame(id)
     setGames(prev => prev.filter(g => g.id !== id))
     setConfirmDeleteId(null)
+    showToast('Game deleted', 'success')
   }
 
   const [seeding, setSeeding] = useState(false)

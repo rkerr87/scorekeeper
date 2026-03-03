@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import type { Team } from '../engine/types'
 import { getAllTeams, getPlayersForTeam, createTeam } from '../db/gameService'
+import { useToast } from '../contexts/ToastContext'
 
 interface TeamWithCount {
   team: Team
@@ -9,6 +10,7 @@ interface TeamWithCount {
 }
 
 export function TeamsPage() {
+  const { showToast } = useToast()
   const [teams, setTeams] = useState<TeamWithCount[]>([])
   const [teamName, setTeamName] = useState('')
   const [loading, setLoading] = useState(true)
@@ -42,6 +44,7 @@ export function TeamsPage() {
       const t = await createTeam(teamName.trim())
       setTeams([...teams, { team: t, playerCount: 0 }])
       setTeamName('')
+      showToast('Team created', 'success')
     } finally {
       setCreating(false)
     }

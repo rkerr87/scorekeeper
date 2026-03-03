@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom'
 import { GameProvider } from '../../contexts/GameContext'
+import { ToastProvider } from '../../contexts/ToastContext'
 import { GamePage } from '../GamePage'
 import { db } from '../../db/database'
 
@@ -73,11 +74,13 @@ async function seedFullGame() {
 function renderGame(gameId: number) {
   return render(
     <MemoryRouter initialEntries={[`/game/${gameId}`]}>
-      <GameProvider>
-        <Routes>
-          <Route path="/game/:gameId" element={<GamePage />} />
-        </Routes>
-      </GameProvider>
+      <ToastProvider>
+        <GameProvider>
+          <Routes>
+            <Route path="/game/:gameId" element={<GamePage />} />
+          </Routes>
+        </GameProvider>
+      </ToastProvider>
     </MemoryRouter>
   )
 }
@@ -178,12 +181,14 @@ describe('GamePage', () => {
 
     render(
       <MemoryRouter initialEntries={[`/game/${homeGameId}`]}>
-        <GameProvider>
-          <Routes>
-            <Route path="/game/:gameId" element={<GamePage />} />
-          </Routes>
-          <NavButton to={`/game/${awayGameId}`} label="Go to away game" />
-        </GameProvider>
+        <ToastProvider>
+          <GameProvider>
+            <Routes>
+              <Route path="/game/:gameId" element={<GamePage />} />
+            </Routes>
+            <NavButton to={`/game/${awayGameId}`} label="Go to away game" />
+          </GameProvider>
+        </ToastProvider>
       </MemoryRouter>
     )
 
