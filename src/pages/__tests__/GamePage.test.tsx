@@ -111,7 +111,8 @@ describe('GamePage', () => {
     renderGame(gameId as number)
 
     await waitFor(() => {
-      expect(screen.getByText(/top 1/i)).toBeInTheDocument()
+      // ScoreSummary renders "TOP" and inning number as separate spans
+      expect(screen.getByText('TOP')).toBeInTheDocument()
     })
   })
 
@@ -320,11 +321,11 @@ describe('GamePage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Game Over')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /view stats/i })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /view stats/i })).toBeInTheDocument()
     })
   })
 
-  it('should dismiss game-over overlay when Back to scoresheet is clicked', async () => {
+  it('should dismiss game-over overlay when clicking the backdrop', async () => {
     const user = userEvent.setup()
     const gameId = await seedFullGame()
     // Add 18 outs worth of plays to end the game
@@ -351,7 +352,9 @@ describe('GamePage', () => {
       expect(screen.getByText('Game Over')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: /back to scoresheet/i }))
+    // Click the backdrop (the fixed overlay behind the dialog card)
+    const backdrop = screen.getByText('Game Over').closest('[class*="fixed"]')!
+    await user.click(backdrop)
 
     await waitFor(() => {
       expect(screen.queryByText('Game Over')).not.toBeInTheDocument()
@@ -363,7 +366,7 @@ describe('GamePage', () => {
     renderGame(gameId as number)
 
     await waitFor(() => {
-      const backLink = screen.getByRole('button', { name: /back to home/i })
+      const backLink = screen.getByRole('link', { name: /← home/i })
       expect(backLink).toBeInTheDocument()
       expect(backLink).toHaveTextContent('← Home')
     })
@@ -393,8 +396,8 @@ describe('GamePage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Game Over')).toBeInTheDocument()
-      // Home button should exist between View Stats and Back to scoresheet
-      expect(screen.getByRole('button', { name: /^home$/i })).toBeInTheDocument()
+      // Home link should exist alongside View Stats
+      expect(screen.getByRole('link', { name: /^home$/i })).toBeInTheDocument()
     })
   })
 

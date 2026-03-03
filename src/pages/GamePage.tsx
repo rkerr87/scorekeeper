@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { useGame } from '../contexts/GameContext'
 import { ScoreSummary } from '../components/ScoreSummary'
 import { Scoresheet } from '../components/Scoresheet'
@@ -27,7 +27,6 @@ interface PendingPlay {
 
 export function GamePage() {
   const { gameId } = useParams()
-  const navigate = useNavigate()
   const { showToast } = useToast()
   const {
     game, lineupHome, lineupAway, homeTeam, awayTeam, plays, snapshot,
@@ -300,13 +299,12 @@ export function GamePage() {
     <div className="h-screen flex flex-col bg-slate-50">
       {/* Persistent back button */}
       <div className="bg-slate-800 px-3 pt-2 flex items-center">
-        <button
-          onClick={() => navigate('/')}
-          aria-label="Back to home"
-          className="text-slate-300 hover:text-white text-sm font-semibold transition-colors"
+        <Link
+          to="/"
+          className="text-slate-400 hover:text-white text-sm font-medium"
         >
           ← Home
-        </button>
+        </Link>
       </div>
 
       {/* Score summary */}
@@ -482,8 +480,14 @@ export function GamePage() {
 
       {/* Game-over overlay */}
       {snapshot.isGameOver && !gameOverDismissed && (
-        <div className="fixed inset-0 bg-slate-900/80 flex items-center justify-center z-60">
-          <div className="bg-white rounded-2xl p-8 max-w-sm w-full mx-4 text-center">
+        <div
+          className="fixed inset-0 bg-slate-900/80 flex items-center justify-center z-60"
+          onClick={() => setGameOverDismissed(true)}
+        >
+          <div
+            className="bg-white rounded-2xl p-8 max-w-sm w-full mx-4 text-center"
+            onClick={e => e.stopPropagation()}
+          >
             <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Game Over</div>
             <div className="text-5xl font-bold text-slate-900 mb-1">
               {snapshot.scoreAway} — {snapshot.scoreHome}
@@ -493,24 +497,20 @@ export function GamePage() {
                 ? `${snapshot.scoreHome > snapshot.scoreAway ? (homeTeam?.name ?? 'Home') : (awayTeam?.name ?? 'Away')} wins!`
                 : 'Tie game.'}
             </div>
-            <button
-              onClick={() => navigate(`/game/${gId}/stats`)}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold mb-3 transition-all duration-150 active:scale-95"
-            >
-              View Stats
-            </button>
-            <button
-              onClick={() => navigate('/')}
-              className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 py-3 rounded-xl font-bold mb-3 transition-all duration-150 active:scale-95"
-            >
-              Home
-            </button>
-            <button
-              onClick={() => setGameOverDismissed(true)}
-              className="text-slate-500 hover:text-slate-700 text-sm font-semibold transition-colors"
-            >
-              Back to scoresheet
-            </button>
+            <div className="flex gap-3 mt-6">
+              <Link
+                to={`/game/${gId}/stats`}
+                className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-bold text-center"
+              >
+                View Stats
+              </Link>
+              <Link
+                to="/"
+                className="flex-1 bg-slate-200 text-slate-700 py-3 rounded-lg font-bold text-center"
+              >
+                Home
+              </Link>
+            </div>
           </div>
         </div>
       )}
