@@ -67,13 +67,13 @@ describe('TeamDetailPage', () => {
 
     await user.type(screen.getByPlaceholderText(/player name/i), 'John Doe')
     await user.type(screen.getByPlaceholderText(/jersey/i), '23')
-    await user.type(screen.getByPlaceholderText(/position/i), 'SS')
+    await user.selectOptions(screen.getByRole('combobox'), 'SS')
     await user.click(screen.getByRole('button', { name: /add player/i }))
 
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument()
       expect(screen.getByText('23')).toBeInTheDocument()
-      expect(screen.getByText('SS')).toBeInTheDocument()
+      expect(screen.getByRole('cell', { name: 'SS' })).toBeInTheDocument()
     })
 
     // Player count should update
@@ -113,7 +113,7 @@ describe('TeamDetailPage', () => {
     // Table headers
     expect(screen.getByText('#')).toBeInTheDocument()
     expect(screen.getByText('Name')).toBeInTheDocument()
-    expect(screen.getByText('Pos')).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Pos' })).toBeInTheDocument()
 
     // Player count
     expect(screen.getByText('2 players')).toBeInTheDocument()
