@@ -80,7 +80,7 @@ function PositionDropdown({ position, onPositionChange }: PositionDropdownProps)
       <button
         aria-label={`position: ${position}`}
         onClick={() => setOpen(!open)}
-        className="text-xs text-blue-600 font-medium w-8 text-center hover:text-blue-800"
+        className="text-xs text-blue-600 font-medium w-8 py-2.5 text-center hover:text-blue-800"
       >
         {position}
       </button>

@@ -25,7 +25,6 @@ function renderPanel(overrides?: Partial<{
   onAddPitch: (pitch: PitchResult) => void
   onRemovePitch: () => void
   onClear: () => void
-  onRemoveAt: (index: number) => void
   onPlayRecorded: (data: unknown) => void
   onClose: () => void
 }>) {
@@ -35,7 +34,6 @@ function renderPanel(overrides?: Partial<{
     onAddPitch: vi.fn(),
     onRemovePitch: vi.fn(),
     onClear: vi.fn(),
-    onRemoveAt: vi.fn(),
     onPlayRecorded: vi.fn(),
     onClose: vi.fn(),
     ...overrides,

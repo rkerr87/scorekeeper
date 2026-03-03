@@ -6,10 +6,9 @@ interface PitchTrackerProps {
   onAddPitch: (pitch: PitchResult) => void
   onRemovePitch: () => void
   onClear: () => void
-  onRemoveAt: (index: number) => void
 }
 
-export function PitchTracker({ pitches, onAddPitch, onRemovePitch, onClear, onRemoveAt }: PitchTrackerProps) {
+export function PitchTracker({ pitches, onAddPitch, onRemovePitch, onClear }: PitchTrackerProps) {
   const [showClearConfirm, setShowClearConfirm] = useState(false)
 
   let b = 0
@@ -29,43 +28,41 @@ export function PitchTracker({ pitches, onAddPitch, onRemovePitch, onClear, onRe
 
       <div className="flex items-center gap-1 mb-3">
         {pitches.map((p, i) => (
-          <button
+          <div
             key={i}
-            onClick={() => onRemoveAt(i)}
             data-testid="pitch-dot"
-            title="Tap to remove"
-            className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white cursor-pointer hover:opacity-70 ${
+            className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white ${
               p === 'B' ? 'bg-blue-500' : p === 'S' ? 'bg-red-500' : 'bg-amber-500'
             }`}
           >
             {p}
-          </button>
+          </div>
         ))}
       </div>
 
       <div className="flex gap-2">
         <button
           onClick={() => onAddPitch('B')}
-          className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg font-bold text-sm"
+          className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-lg font-bold text-sm"
         >
           Ball
         </button>
         <button
           onClick={() => onAddPitch('S')}
-          className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg font-bold text-sm"
+          className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-bold text-sm"
         >
           Strike
         </button>
         <button
           onClick={() => onAddPitch('F')}
-          className="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-2 rounded-lg font-bold text-sm"
+          className="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-lg font-bold text-sm"
         >
           Foul
         </button>
         {pitches.length > 0 && (
           <button
             onClick={onRemovePitch}
-            className="bg-slate-300 hover:bg-slate-400 text-slate-700 py-2 px-3 rounded-lg font-bold text-sm"
+            className="bg-slate-300 hover:bg-slate-400 text-slate-700 py-3 px-3 rounded-lg font-bold text-sm"
           >
             Undo
           </button>

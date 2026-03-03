@@ -22,7 +22,6 @@ interface PlayEntryPanelProps {
   onAddPitch: (pitch: PitchResult) => void
   onRemovePitch: () => void
   onClear: () => void
-  onRemoveAt: (index: number) => void
   onPlayRecorded: (data: PlayRecordedData) => void
   onClose: () => void
 }
@@ -58,7 +57,7 @@ const SPECIAL_PLAYS: { label: string; playType: PlayType; basesReached: number[]
 
 const RUNNER_REQUIRED: PlayType[] = ['FC', 'DP', 'SAC', 'SB', 'WP', 'PB', 'BK']
 
-export function PlayEntryPanel({ batterName, baseRunners, pitches, outs, onAddPitch, onRemovePitch, onClear, onRemoveAt, onPlayRecorded, onClose }: PlayEntryPanelProps) {
+export function PlayEntryPanel({ batterName, baseRunners, pitches, outs, onAddPitch, onRemovePitch, onClear, onPlayRecorded, onClose }: PlayEntryPanelProps) {
   const [mode, setMode] = useState<PanelMode>('select')
   const [tab, setTab] = useState<TabType>('hit')
   const hasRunners = !!(baseRunners?.first || baseRunners?.second || baseRunners?.third)
@@ -190,7 +189,7 @@ export function PlayEntryPanel({ batterName, baseRunners, pitches, outs, onAddPi
 
         {/* Pitch tracker */}
         <div className="mb-4">
-          <PitchTracker pitches={pitches} onAddPitch={onAddPitch} onRemovePitch={onRemovePitch} onClear={onClear} onRemoveAt={onRemoveAt} />
+          <PitchTracker pitches={pitches} onAddPitch={onAddPitch} onRemovePitch={onRemovePitch} onClear={onClear} />
         </div>
 
         {mode === 'select' && (

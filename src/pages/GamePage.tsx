@@ -159,9 +159,6 @@ export function GamePage() {
   }
   const handleRemovePitch = () => setCurrentAtBatPitches(prev => prev.slice(0, -1))
   const handleClearPitches = () => setCurrentAtBatPitches([])
-  const handleRemovePitchAt = (index: number) => {
-    setCurrentAtBatPitches(prev => prev.filter((_, i) => i !== index))
-  }
 
   const handleStrikeoutConfirm = (type: 'K' | 'KL') => {
     const play: PendingPlay = {
@@ -421,7 +418,6 @@ export function GamePage() {
           onAddPitch={handleAddPitch}
           onRemovePitch={handleRemovePitch}
           onClear={handleClearPitches}
-          onRemoveAt={handleRemovePitchAt}
           onPlayRecorded={handlePlayRecorded}
           onClose={() => setShowPlayEntry(false)}
         />

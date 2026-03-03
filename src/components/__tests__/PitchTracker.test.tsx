@@ -8,7 +8,6 @@ const defaultProps = {
   onAddPitch: vi.fn(),
   onRemovePitch: vi.fn(),
   onClear: vi.fn(),
-  onRemoveAt: vi.fn(),
 }
 
 describe('PitchTracker', () => {
@@ -79,12 +78,9 @@ describe('PitchTracker', () => {
     expect(screen.getByRole('button', { name: /clear pitches/i })).toBeInTheDocument()
   })
 
-  it('calls onRemoveAt when pitch dot is clicked', async () => {
-    const user = userEvent.setup()
-    const onRemoveAt = vi.fn()
-    render(<PitchTracker pitches={['B', 'S', 'F']} {...defaultProps} onRemoveAt={onRemoveAt} />)
+  it('renders pitch dots for each pitch', () => {
+    render(<PitchTracker pitches={['B', 'S', 'F']} {...defaultProps} />)
     const dots = screen.getAllByTestId('pitch-dot')
-    await user.click(dots[1]) // click the 'S' dot
-    expect(onRemoveAt).toHaveBeenCalledWith(1)
+    expect(dots).toHaveLength(3)
   })
 })
