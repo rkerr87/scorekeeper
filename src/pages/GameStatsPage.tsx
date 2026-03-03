@@ -4,6 +4,7 @@ import type { Game, Lineup, Play } from '../engine/types'
 import { getGame, getLineupsForGame, getPlaysForGame, getTeam } from '../db/gameService'
 import { replayGame } from '../engine/engine'
 import { computePlayerStats } from '../engine/stats'
+import { Spinner } from '../components/Spinner'
 
 export function GameStatsPage() {
   const { gameId } = useParams()
@@ -40,7 +41,7 @@ export function GameStatsPage() {
     load()
   }, [gId])
 
-  if (loading) return <div className="p-6">Loading...</div>
+  if (loading) return <Spinner />
   if (!game || !lineupHome || !lineupAway) return <div className="p-6">Game not found.</div>
 
   const snapshot = replayGame(plays, lineupHome, lineupAway)

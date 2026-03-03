@@ -88,7 +88,7 @@ describe('GameSetupPage', () => {
     const gameId = await seedTwoTeamsAndGame()
     renderSetup(gameId)
 
-    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('Alice')).toBeInTheDocument())
 
     expect(screen.queryByPlaceholderText(/opponent name/i)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /add opponent/i })).not.toBeInTheDocument()
@@ -97,7 +97,7 @@ describe('GameSetupPage', () => {
   it('should enable Start Game button when both batting orders have players', async () => {
     const gameId = await seedTwoTeamsAndGame()
     renderSetup(gameId)
-    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('Alice')).toBeInTheDocument())
     const startBtn = screen.getByRole('button', { name: /start game/i })
     expect(startBtn).not.toBeDisabled()
   })
@@ -105,7 +105,7 @@ describe('GameSetupPage', () => {
   it('should render drag handles for each player in both batting orders', async () => {
     const gameId = await seedTwoTeamsAndGame()
     renderSetup(gameId)
-    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('Alice')).toBeInTheDocument())
     const handles = screen.getAllByRole('button', { name: /drag to reorder/i })
     // 3 home + 3 away = 6 drag handles
     expect(handles).toHaveLength(6)
@@ -114,7 +114,7 @@ describe('GameSetupPage', () => {
   it('should not render up/down arrow buttons', async () => {
     const gameId = await seedTwoTeamsAndGame()
     renderSetup(gameId)
-    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('Alice')).toBeInTheDocument())
     expect(screen.queryByRole('button', { name: /move up/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /move down/i })).not.toBeInTheDocument()
   })
@@ -124,7 +124,7 @@ describe('GameSetupPage', () => {
     const gameId = await seedTwoTeamsAndGame()
     renderSetup(gameId)
 
-    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('Alice')).toBeInTheDocument())
 
     const startBtn = screen.getByRole('button', { name: /start game/i })
     await user.click(startBtn)

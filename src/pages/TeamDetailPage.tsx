@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import type { Team, Player } from '../engine/types'
 import { getTeam, getPlayersForTeam, addPlayer, deletePlayer } from '../db/gameService'
+import { Spinner } from '../components/Spinner'
 
 export function TeamDetailPage() {
   const { teamId } = useParams()
@@ -47,7 +48,7 @@ export function TeamDetailPage() {
     setPlayers(players.filter(p => p.id !== id))
   }
 
-  if (loading) return <div className="p-6">Loading...</div>
+  if (loading) return <Spinner />
   if (!team) return <div className="p-6">Team not found.</div>
 
   return (

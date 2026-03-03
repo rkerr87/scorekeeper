@@ -36,7 +36,7 @@ describe('SeasonStatsPage', () => {
     const mudcatsId = await db.teams.add({ name: 'Mudcats', createdAt: new Date() })
     const tigersId = await db.teams.add({ name: 'Tigers', createdAt: new Date() })
     const aliceId = await db.players.add({
-      teamId: mudcatsId, name: 'Alice', jerseyNumber: 7, position: 'P', createdAt: new Date(),
+      teamId: mudcatsId, name: 'Alice', jerseyNumber: 7, defaultPosition: 'P', createdAt: new Date(),
     })
     const gameId = await db.games.add({
       team1Id: mudcatsId, team2Id: tigersId, homeTeamId: mudcatsId,
@@ -79,7 +79,7 @@ describe('SeasonStatsPage', () => {
     const mudcatsId = await db.teams.add({ name: 'Mudcats', createdAt: new Date() })
     const tigersId = await db.teams.add({ name: 'Tigers', createdAt: new Date() })
     const aliceId = await db.players.add({
-      teamId: mudcatsId, name: 'Alice', jerseyNumber: 7, position: 'P', createdAt: new Date(),
+      teamId: mudcatsId, name: 'Alice', jerseyNumber: 7, defaultPosition: 'P', createdAt: new Date(),
     })
 
     // Game 1: Alice hits a single

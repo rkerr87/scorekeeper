@@ -10,6 +10,7 @@ import { replayGame } from '../engine/engine'
 import { BeginnerGuide } from '../components/BeginnerGuide'
 import { PlayDetailPopover } from '../components/PlayDetailPopover'
 import { PositionChangeDialog } from '../components/PositionChangeDialog'
+import { Spinner } from '../components/Spinner'
 
 type ActiveTab = 'home' | 'away'
 
@@ -74,7 +75,7 @@ export function GamePage() {
   }, [lastRecordedPlay])
 
   if (!game || !snapshot || !lineupHome || !lineupAway) {
-    return <div className="p-6 text-slate-500">Loading game...</div>
+    return <Spinner />
   }
 
   // Auto-switch tab when the half or game changes (during render, not in an effect).

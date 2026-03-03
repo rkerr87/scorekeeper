@@ -281,7 +281,7 @@ describe('GamePage', () => {
     const user = userEvent.setup()
     const gameId = await seedFullGame()
     renderGame(gameId as number)
-    await waitFor(() => expect(screen.queryByText('Loading game...')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('button', { name: /record play/i })).toBeInTheDocument())
     await user.click(screen.getByRole('button', { name: /record play/i }))
     // Use shorthand to record a strikeout (K button removed from outcome grid)
     await user.type(screen.getByPlaceholderText(/shorthand/i), 'K')

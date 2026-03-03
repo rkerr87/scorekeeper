@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import type { Player, LineupSlot } from '../engine/types'
 import { useGame } from '../contexts/GameContext'
 import { getGame, getTeam, getPlayersForTeam, saveLineup, updateGameStatus, addPlayer } from '../db/gameService'
+import { Spinner } from '../components/Spinner'
 import {
   DndContext,
   closestCenter,
@@ -482,7 +483,7 @@ export function GameSetupPage() {
     ...homeWarnings.map(w => `${homeTeamName}: ${w}`),
   ]
 
-  if (loading) return <div className="p-6">Loading...</div>
+  if (loading) return <Spinner />
 
   return (
     <div className="max-w-4xl mx-auto p-6">

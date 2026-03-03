@@ -6,6 +6,7 @@ import { db } from '../db/database'
 import { replayGame } from '../engine/engine'
 import { computePlayerStats } from '../engine/stats'
 import type { PlayerStats } from '../engine/stats'
+import { Spinner } from '../components/Spinner'
 
 interface PlayerSeasonStats {
   player: Player
@@ -101,7 +102,7 @@ export function SeasonStatsPage() {
     return () => { cancelled = true }
   }, [selectedTeamId])
 
-  if (loading && teams.length === 0) return <div className="p-6">Loading...</div>
+  if (loading && teams.length === 0) return <Spinner />
 
   return (
     <div className="max-w-4xl mx-auto p-6">
@@ -125,7 +126,7 @@ export function SeasonStatsPage() {
       )}
 
       {loading ? (
-        <div className="p-6">Loading...</div>
+        <Spinner />
       ) : playerStats.length === 0 ? (
         <p className="text-slate-500">No games played yet.</p>
       ) : (
