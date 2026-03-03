@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import type { Player, LineupSlot } from '../engine/types'
 import { useGame } from '../contexts/GameContext'
-import { getGame, getTeam, getPlayersForTeam, saveLineup, updateGameStatus } from '../db/gameService'
+import { getGame, getTeam, getPlayersForTeam, saveLineup, updateGameStatus, addPlayer } from '../db/gameService'
 import {
   DndContext,
   closestCenter,
@@ -53,7 +53,7 @@ function PositionDropdown({ position, onPositionChange }: PositionDropdownProps)
         {position}
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded shadow-lg z-10 py-1 min-w-[4rem]">
+        <div role="listbox" className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded shadow-lg z-10 py-1 min-w-[4rem]">
           {ALL_POSITIONS.map(pos => (
             <div
               key={pos}
@@ -165,6 +165,18 @@ export function GameSetupPage() {
   const [homePositions, setHomePositions] = useState<Map<number, string>>(new Map())
   const [awayPositions, setAwayPositions] = useState<Map<number, string>>(new Map())
   const [loading, setLoading] = useState(true)
+  const [homeTeamId, setHomeTeamId] = useState(0)
+  const [awayTeamId, setAwayTeamId] = useState(0)
+
+  // Guest player form state
+  const [addingPlayerSide, setAddingPlayerSide] = useState<'home' | 'away' | null>(null)
+  const [newPlayerName, setNewPlayerName] = useState('')
+  const [newPlayerJersey, setNewPlayerJersey] = useState('')
+  const [newPlayerPosition, setNewPlayerPosition] = useState('RF')
+  const [saveToRoster, setSaveToRoster] = useState(true)
+  const [homeGuestPlayers, setHomeGuestPlayers] = useState<Player[]>([])
+  const [awayGuestPlayers, setAwayGuestPlayers] = useState<Player[]>([])
+  const [guestSaveToRoster, setGuestSaveToRoster] = useState<Set<number>>(new Set())
 
   const gId = parseInt(gameId ?? '0')
 
@@ -182,6 +194,8 @@ export function GameSetupPage() {
         getPlayersForTeam(awayId),
       ])
 
+      setHomeTeamId(homeId)
+      setAwayTeamId(awayId)
       setHomeTeamName(homeTeam?.name ?? 'Home')
       setAwayTeamName(awayTeam?.name ?? 'Away')
       setHomePlayers(homeP)
@@ -237,14 +251,58 @@ export function GameSetupPage() {
     }
   }
 
-  const buildSlots = (side: 'home' | 'away'): LineupSlot[] => {
+  const findPlayer = (side: 'home' | 'away', playerId: number): Player | undefined => {
+    const roster = side === 'home' ? homePlayers : awayPlayers
+    const guests = side === 'home' ? homeGuestPlayers : awayGuestPlayers
+    return roster.find(p => p.id === playerId) ?? guests.find(p => p.id === playerId)
+  }
+
+  const resetForm = () => {
+    setNewPlayerName('')
+    setNewPlayerJersey('')
+    setNewPlayerPosition('RF')
+    setSaveToRoster(true)
+  }
+
+  const handleSaveNewPlayer = () => {
+    if (!newPlayerName.trim() || !newPlayerJersey.trim() || !addingPlayerSide) return
+    const jerseyNum = parseInt(newPlayerJersey)
+    if (isNaN(jerseyNum)) return
+
+    const tempId = -Date.now()
+    const guestPlayer: Player = {
+      id: tempId,
+      teamId: addingPlayerSide === 'home' ? homeTeamId : awayTeamId,
+      name: newPlayerName.trim(),
+      jerseyNumber: jerseyNum,
+      defaultPosition: newPlayerPosition,
+      createdAt: new Date(),
+    }
+
+    if (addingPlayerSide === 'home') {
+      setHomeGuestPlayers(prev => [...prev, guestPlayer])
+      setHomeBattingOrder(prev => [...prev, tempId])
+    } else {
+      setAwayGuestPlayers(prev => [...prev, guestPlayer])
+      setAwayBattingOrder(prev => [...prev, tempId])
+    }
+
+    if (saveToRoster) {
+      setGuestSaveToRoster(prev => new Set(prev).add(tempId))
+    }
+
+    resetForm()
+    setAddingPlayerSide(null)
+  }
+
+  const buildSlots = (side: 'home' | 'away', idMap: Map<number, number>): LineupSlot[] => {
     const order = side === 'home' ? homeBattingOrder : awayBattingOrder
-    const players = side === 'home' ? homePlayers : awayPlayers
+    const resolveId = (tempId: number) => idMap.get(tempId) ?? tempId
     return order.map((playerId, i) => {
-      const player = players.find(p => p.id === playerId)!
+      const player = findPlayer(side, playerId)!
       return {
         orderPosition: i + 1,
-        playerId: player.id!,
+        playerId: resolveId(player.id!),
         playerName: player.name,
         jerseyNumber: player.jerseyNumber,
         position: getPosition(side, player),
@@ -254,8 +312,16 @@ export function GameSetupPage() {
   }
 
   const handleStartGame = async () => {
-    await saveLineup(gId, 'home', buildSlots('home'))
-    await saveLineup(gId, 'away', buildSlots('away'))
+    const idMap = new Map<number, number>()
+    for (const guest of [...homeGuestPlayers, ...awayGuestPlayers]) {
+      if (guestSaveToRoster.has(guest.id!)) {
+        const saved = await addPlayer(guest.teamId, guest.name, guest.jerseyNumber, guest.defaultPosition)
+        idMap.set(guest.id!, saved.id!)
+      }
+    }
+
+    await saveLineup(gId, 'home', buildSlots('home', idMap))
+    await saveLineup(gId, 'away', buildSlots('away', idMap))
     await updateGameStatus(gId, 'in_progress')
     await loadGame(gId)
     navigate(`/game/${gId}`)
@@ -275,7 +341,7 @@ export function GameSetupPage() {
             <SortableContext items={awayBattingOrder} strategy={verticalListSortingStrategy}>
               <div className="space-y-1">
                 {awayBattingOrder.map((playerId, index) => {
-                  const player = awayPlayers.find(p => p.id === playerId)
+                  const player = findPlayer('away', playerId)
                   if (!player) return null
                   return (
                     <SortablePlayerRow
@@ -292,7 +358,66 @@ export function GameSetupPage() {
               </div>
             </SortableContext>
           </DndContext>
-          <BenchSection benchIds={awayBench} players={awayPlayers} onAddBack={(id) => handleAddBack('away', id)} />
+          <BenchSection benchIds={awayBench} players={[...awayPlayers, ...awayGuestPlayers]} onAddBack={(id) => handleAddBack('away', id)} />
+          {addingPlayerSide === 'away' ? (
+            <div className="mt-2 space-y-2 bg-slate-50 border border-slate-200 rounded p-3">
+              <input
+                type="text"
+                placeholder="Player name"
+                value={newPlayerName}
+                onChange={e => setNewPlayerName(e.target.value)}
+                className="w-full border border-slate-300 rounded px-2 py-1 text-sm"
+              />
+              <input
+                type="text"
+                placeholder="Jersey #"
+                inputMode="numeric"
+                value={newPlayerJersey}
+                onChange={e => setNewPlayerJersey(e.target.value)}
+                className="w-full border border-slate-300 rounded px-2 py-1 text-sm"
+              />
+              <select
+                aria-label="Position"
+                value={newPlayerPosition}
+                onChange={e => setNewPlayerPosition(e.target.value)}
+                className="w-full border border-slate-300 rounded px-2 py-1 text-sm"
+              >
+                {ALL_POSITIONS.map(pos => (
+                  <option key={pos} value={pos}>{pos}</option>
+                ))}
+              </select>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  aria-label="Add to team roster"
+                  checked={saveToRoster}
+                  onChange={e => setSaveToRoster(e.target.checked)}
+                />
+                Add to team roster
+              </label>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSaveNewPlayer}
+                  className="bg-blue-600 text-white px-3 py-1 rounded text-sm font-medium hover:bg-blue-700"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => { resetForm(); setAddingPlayerSide(null) }}
+                  className="text-slate-600 px-3 py-1 rounded text-sm hover:text-slate-800"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setAddingPlayerSide('away')}
+              className="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
+            >
+              + Add Player
+            </button>
+          )}
         </div>
 
         {/* Home batting order */}
@@ -302,7 +427,7 @@ export function GameSetupPage() {
             <SortableContext items={homeBattingOrder} strategy={verticalListSortingStrategy}>
               <div className="space-y-1">
                 {homeBattingOrder.map((playerId, index) => {
-                  const player = homePlayers.find(p => p.id === playerId)
+                  const player = findPlayer('home', playerId)
                   if (!player) return null
                   return (
                     <SortablePlayerRow
@@ -319,7 +444,66 @@ export function GameSetupPage() {
               </div>
             </SortableContext>
           </DndContext>
-          <BenchSection benchIds={homeBench} players={homePlayers} onAddBack={(id) => handleAddBack('home', id)} />
+          <BenchSection benchIds={homeBench} players={[...homePlayers, ...homeGuestPlayers]} onAddBack={(id) => handleAddBack('home', id)} />
+          {addingPlayerSide === 'home' ? (
+            <div className="mt-2 space-y-2 bg-slate-50 border border-slate-200 rounded p-3">
+              <input
+                type="text"
+                placeholder="Player name"
+                value={newPlayerName}
+                onChange={e => setNewPlayerName(e.target.value)}
+                className="w-full border border-slate-300 rounded px-2 py-1 text-sm"
+              />
+              <input
+                type="text"
+                placeholder="Jersey #"
+                inputMode="numeric"
+                value={newPlayerJersey}
+                onChange={e => setNewPlayerJersey(e.target.value)}
+                className="w-full border border-slate-300 rounded px-2 py-1 text-sm"
+              />
+              <select
+                aria-label="Position"
+                value={newPlayerPosition}
+                onChange={e => setNewPlayerPosition(e.target.value)}
+                className="w-full border border-slate-300 rounded px-2 py-1 text-sm"
+              >
+                {ALL_POSITIONS.map(pos => (
+                  <option key={pos} value={pos}>{pos}</option>
+                ))}
+              </select>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  aria-label="Add to team roster"
+                  checked={saveToRoster}
+                  onChange={e => setSaveToRoster(e.target.checked)}
+                />
+                Add to team roster
+              </label>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSaveNewPlayer}
+                  className="bg-blue-600 text-white px-3 py-1 rounded text-sm font-medium hover:bg-blue-700"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => { resetForm(); setAddingPlayerSide(null) }}
+                  className="text-slate-600 px-3 py-1 rounded text-sm hover:text-slate-800"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setAddingPlayerSide('home')}
+              className="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
+            >
+              + Add Player
+            </button>
+          )}
         </div>
       </div>
 

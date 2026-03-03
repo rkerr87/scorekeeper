@@ -293,6 +293,118 @@ describe('GameSetupPage', () => {
     expect(daveSlot!.position).toBe('CF')
   })
 
+  it('shows Add Player button for each team', async () => {
+    const gameId = await seedTwoTeamsAndGame()
+    renderSetup(gameId)
+    await waitFor(() => {
+      expect(screen.getByText('Alice')).toBeInTheDocument()
+    })
+    const addButtons = screen.getAllByRole('button', { name: /add player/i })
+    expect(addButtons).toHaveLength(2)
+  })
+
+  it('opens inline form when Add Player clicked', async () => {
+    const gameId = await seedTwoTeamsAndGame()
+    renderSetup(gameId)
+    await waitFor(() => {
+      expect(screen.getByText('Alice')).toBeInTheDocument()
+    })
+    const addButtons = screen.getAllByRole('button', { name: /add player/i })
+    await userEvent.click(addButtons[0])
+    expect(screen.getByPlaceholderText('Player name')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Jersey #')).toBeInTheDocument()
+    expect(screen.getByLabelText('Add to team roster')).toBeInTheDocument()
+  })
+
+  it('adds guest player to batting order', async () => {
+    const gameId = await seedTwoTeamsAndGame()
+    renderSetup(gameId)
+    await waitFor(() => {
+      expect(screen.getByText('Dave')).toBeInTheDocument()
+    })
+    const addButtons = screen.getAllByRole('button', { name: /add player/i })
+    await userEvent.click(addButtons[0])
+    await userEvent.type(screen.getByPlaceholderText('Player name'), 'Gina')
+    await userEvent.type(screen.getByPlaceholderText('Jersey #'), '99')
+    await userEvent.click(screen.getByLabelText('Add to team roster')) // uncheck
+    await userEvent.selectOptions(screen.getByLabelText('Position'), 'RF')
+    await userEvent.click(screen.getByRole('button', { name: /^save$/i }))
+    expect(screen.getByText('Gina')).toBeInTheDocument()
+  })
+
+  it('saves guest player to roster when checkbox is checked on Start Game', async () => {
+    const user = userEvent.setup()
+    const gameId = await seedTwoTeamsAndGame()
+    renderSetup(gameId)
+    await waitFor(() => {
+      expect(screen.getByText('Dave')).toBeInTheDocument()
+    })
+    // Add a guest player to away team (first Add Player button = away side)
+    const addButtons = screen.getAllByRole('button', { name: /add player/i })
+    await user.click(addButtons[0])
+    await user.type(screen.getByPlaceholderText('Player name'), 'Gina')
+    await user.type(screen.getByPlaceholderText('Jersey #'), '99')
+    // saveToRoster checkbox is checked by default — leave it
+    await user.click(screen.getByRole('button', { name: /^save$/i }))
+    expect(screen.getByText('Gina')).toBeInTheDocument()
+
+    // Start the game
+    const startBtn = screen.getByRole('button', { name: /start game/i })
+    await user.click(startBtn)
+
+    await waitFor(() => {
+      expect(screen.getByText('Game Page')).toBeInTheDocument()
+    })
+
+    // Verify Gina was persisted to the team roster in DB
+    const awayTeamId = (await db.games.get(gameId))!.team2Id
+    const awayPlayers = await db.players.where('teamId').equals(awayTeamId).toArray()
+    expect(awayPlayers.find(p => p.name === 'Gina')).toBeDefined()
+
+    // Verify Gina appears in the away lineup with a real (positive) ID
+    const lineups = await db.lineups.where('gameId').equals(gameId).toArray()
+    const awaySide = lineups.find(l => l.side === 'away')
+    const ginaSlot = awaySide!.battingOrder.find(s => s.playerName === 'Gina')
+    expect(ginaSlot).toBeDefined()
+    expect(ginaSlot!.playerId).toBeGreaterThan(0)
+  })
+
+  it('does not save guest player to roster when checkbox is unchecked', async () => {
+    const user = userEvent.setup()
+    const gameId = await seedTwoTeamsAndGame()
+    renderSetup(gameId)
+    await waitFor(() => {
+      expect(screen.getByText('Dave')).toBeInTheDocument()
+    })
+    const addButtons = screen.getAllByRole('button', { name: /add player/i })
+    await user.click(addButtons[0])
+    await user.type(screen.getByPlaceholderText('Player name'), 'Hank')
+    await user.type(screen.getByPlaceholderText('Jersey #'), '77')
+    await user.click(screen.getByLabelText('Add to team roster')) // uncheck
+    await user.click(screen.getByRole('button', { name: /^save$/i }))
+    expect(screen.getByText('Hank')).toBeInTheDocument()
+
+    // Start the game
+    const startBtn = screen.getByRole('button', { name: /start game/i })
+    await user.click(startBtn)
+
+    await waitFor(() => {
+      expect(screen.getByText('Game Page')).toBeInTheDocument()
+    })
+
+    // Verify Hank was NOT persisted to team roster
+    const awayTeamId = (await db.games.get(gameId))!.team2Id
+    const awayPlayers = await db.players.where('teamId').equals(awayTeamId).toArray()
+    expect(awayPlayers.find(p => p.name === 'Hank')).toBeUndefined()
+
+    // Verify Hank is in lineup with negative (temp) ID
+    const lineups = await db.lineups.where('gameId').equals(gameId).toArray()
+    const awaySide = lineups.find(l => l.side === 'away')
+    const hankSlot = awaySide!.battingOrder.find(s => s.playerName === 'Hank')
+    expect(hankSlot).toBeDefined()
+    expect(hankSlot!.playerId).toBeLessThan(0)
+  })
+
   it('should correctly identify home vs away when team2 is home', async () => {
     const team1Id = await db.teams.add({ name: 'Eagles', createdAt: new Date() })
     const team2Id = await db.teams.add({ name: 'Hawks', createdAt: new Date() })
