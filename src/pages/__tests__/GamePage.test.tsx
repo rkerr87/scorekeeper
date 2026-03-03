@@ -101,8 +101,8 @@ describe('GamePage', () => {
 
     // Top of 1st = away team (Tigers) batting → default tab is 'away'
     await waitFor(() => {
-      expect(screen.getByText('Opp1')).toBeInTheDocument()
-      expect(screen.getByText('Opp9')).toBeInTheDocument()
+      expect(screen.getByText('10 Opp1')).toBeInTheDocument()
+      expect(screen.getByText('90 Opp9')).toBeInTheDocument()
     })
   })
 
@@ -121,7 +121,7 @@ describe('GamePage', () => {
 
     await waitFor(() => {
       // "Away" tab should be active — Tigers (away) players visible in scoresheet
-      expect(screen.getByText('Opp1')).toBeInTheDocument()
+      expect(screen.getByText('10 Opp1')).toBeInTheDocument()
     })
 
     // "Home" tab should NOT be active — home players should not be in the scoresheet
@@ -194,7 +194,7 @@ describe('GamePage', () => {
 
     // Verify game 1 defaults to "away" tab (Tigers batting in top 1)
     await waitFor(() => {
-      expect(screen.getByText('Opp1')).toBeInTheDocument()
+      expect(screen.getByText('10 Opp1')).toBeInTheDocument()
     })
 
     // Navigate to game 2
@@ -203,10 +203,10 @@ describe('GamePage', () => {
 
     // Game 2: top 1 = away team (Hawks) batting → should show away tab with Away players
     await waitFor(() => {
-      expect(screen.getByText('Away2')).toBeInTheDocument()
+      expect(screen.getByText('20 Away2')).toBeInTheDocument()
     })
     // Home team scoresheet should NOT be visible
-    expect(screen.queryByText('Home2')).not.toBeInTheDocument()
+    expect(screen.queryByText('20 Home2')).not.toBeInTheDocument()
   })
 
   it('should show record play and undo buttons', async () => {

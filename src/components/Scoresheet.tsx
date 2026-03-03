@@ -98,6 +98,14 @@ function getCurrentPass(
   return seenInLastPass.has(currentBatterPosition) ? lastPass + 1 : lastPass
 }
 
+function abbreviateName(name: string, jerseyNumber: number): string {
+  const parts = name.split(' ')
+  if (parts.length >= 2) {
+    return `${jerseyNumber} ${parts[0][0]}.${parts[parts.length - 1]}`
+  }
+  return `${jerseyNumber} ${name}`
+}
+
 export function Scoresheet({
   lineup,
   plays,
@@ -129,11 +137,11 @@ export function Scoresheet({
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto relative">
       <table className="border-collapse text-sm min-w-full">
         <thead>
           <tr className="bg-slate-100">
-            <th className="sticky left-0 z-10 bg-slate-100 border border-slate-200 px-2 py-1.5 text-left min-w-[140px]">
+            <th className="sticky left-0 z-10 bg-slate-100 border border-slate-200 px-2 py-1.5 text-left min-w-[100px]">
               Batter
             </th>
             {columns.map(col => (
@@ -156,19 +164,17 @@ export function Scoresheet({
 
             return (
               <tr key={slot.orderPosition}>
-                <td className="sticky left-0 z-10 bg-white border border-slate-200 px-2 py-1">
-                  <div className="flex items-center gap-2">
+                <td className="sticky left-0 z-10 bg-white border border-slate-200 px-2 py-1 min-w-[100px]">
+                  <div className="flex items-center gap-1">
                     <span className="text-xs text-slate-400 font-mono w-4">{slot.orderPosition}.</span>
-                    <span className="text-xs text-slate-500 font-mono w-6">#{slot.jerseyNumber}</span>
-                    <span className="text-xs text-slate-500 w-6">{slot.position}</span>
-                    <span className="font-semibold text-slate-800 truncate">{slot.playerName}</span>
+                    <span className="text-xs text-slate-500 w-5">{slot.position}</span>
+                    <span className="text-xs font-semibold text-slate-800 truncate">{abbreviateName(slot.playerName, slot.jerseyNumber)}</span>
                   </div>
                   {slot.substitutions.map((sub, si) => (
-                    <div key={si} className="flex items-center gap-2 mt-0.5 text-xs text-slate-400 border-t border-dashed border-slate-200 pt-0.5">
+                    <div key={si} className="flex items-center gap-1 mt-0.5 text-xs text-slate-400 border-t border-dashed border-slate-200 pt-0.5">
                       <span className="w-4"></span>
-                      <span className="font-mono w-6">#{sub.newJerseyNumber}</span>
-                      <span className="w-6">{sub.newPosition}</span>
-                      <span className="truncate">{sub.newPlayerName}</span>
+                      <span className="w-5">{sub.newPosition}</span>
+                      <span className="truncate">{abbreviateName(sub.newPlayerName, sub.newJerseyNumber)}</span>
                       <span className="text-[10px]">({sub.half === 'top' ? 'T' : 'B'}{sub.inning})</span>
                     </div>
                   ))}
@@ -216,6 +222,7 @@ export function Scoresheet({
           })}
         </tbody>
       </table>
+      <div className="absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-l from-slate-50 to-transparent pointer-events-none" />
     </div>
   )
 }

@@ -21,9 +21,9 @@ describe('Scoresheet', () => {
         onCellClick={() => {}}
       />
     )
-    expect(screen.getByText('Alice')).toBeInTheDocument()
-    expect(screen.getByText('Bob')).toBeInTheDocument()
-    expect(screen.getByText('Charlie')).toBeInTheDocument()
+    expect(screen.getByText('1 Alice')).toBeInTheDocument()
+    expect(screen.getByText('2 Bob')).toBeInTheDocument()
+    expect(screen.getByText('3 Charlie')).toBeInTheDocument()
   })
 
   it('should render inning column headers', () => {

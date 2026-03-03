@@ -22,7 +22,7 @@ export function AtBatCell({ play, isCurrentBatter, onClick }: AtBatCellProps) {
       data-testid="atbat-cell"
       onClick={onClick}
       className={`
-        min-h-[72px] min-w-[72px] flex items-center justify-center cursor-pointer
+        min-h-[76px] min-w-[76px] flex items-center justify-center cursor-pointer
         border border-slate-200 transition-colors
         ${isCurrentBatter ? 'bg-amber-50 ring-2 ring-amber-400 ring-inset' : 'bg-white hover:bg-slate-50'}
       `}
