@@ -25,9 +25,10 @@ interface SortablePlayerRowProps {
   playerId: number
   index: number
   player: Player
+  onRemove: (playerId: number) => void
 }
 
-function SortablePlayerRow({ playerId, index, player }: SortablePlayerRowProps) {
+function SortablePlayerRow({ playerId, index, player, onRemove }: SortablePlayerRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: playerId })
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -47,6 +48,47 @@ function SortablePlayerRow({ playerId, index, player }: SortablePlayerRowProps) 
       <span className="text-sm font-semibold flex-1">{player.name}</span>
       <span className="text-xs text-slate-500">#{player.jerseyNumber}</span>
       <span className="text-xs text-slate-500 w-8">{player.defaultPosition}</span>
+      <button
+        aria-label="Remove from lineup"
+        onClick={() => onRemove(playerId)}
+        className="text-slate-400 hover:text-red-500 ml-1 text-lg leading-none"
+      >
+        ×
+      </button>
+    </div>
+  )
+}
+
+interface BenchSectionProps {
+  benchIds: number[]
+  players: Player[]
+  onAddBack: (playerId: number) => void
+}
+
+function BenchSection({ benchIds, players, onAddBack }: BenchSectionProps) {
+  if (benchIds.length === 0) return null
+  return (
+    <div className="mt-3">
+      <h3 className="text-sm font-semibold text-slate-600 mb-2">Not Playing ({benchIds.length})</h3>
+      <div className="space-y-1">
+        {benchIds.map(id => {
+          const player = players.find(p => p.id === id)
+          if (!player) return null
+          return (
+            <div key={id} className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded px-3 py-2">
+              <span className="text-sm flex-1 text-slate-500">{player.name}</span>
+              <span className="text-xs text-slate-400">#{player.jerseyNumber}</span>
+              <button
+                aria-label={`Add ${player.name} back to lineup`}
+                onClick={() => onAddBack(id)}
+                className="text-slate-400 hover:text-green-600 ml-1 text-lg leading-none"
+              >
+                +
+              </button>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -62,6 +104,8 @@ export function GameSetupPage() {
   const [awayPlayers, setAwayPlayers] = useState<Player[]>([])
   const [homeBattingOrder, setHomeBattingOrder] = useState<number[]>([])
   const [awayBattingOrder, setAwayBattingOrder] = useState<number[]>([])
+  const [homeBench, setHomeBench] = useState<number[]>([])
+  const [awayBench, setAwayBench] = useState<number[]>([])
   const [loading, setLoading] = useState(true)
 
   const gId = parseInt(gameId ?? '0')
@@ -118,6 +162,26 @@ export function GameSetupPage() {
     }
   }
 
+  const handleRemoveHome = (playerId: number) => {
+    setHomeBattingOrder(prev => prev.filter(id => id !== playerId))
+    setHomeBench(prev => [...prev, playerId])
+  }
+
+  const handleAddBackHome = (playerId: number) => {
+    setHomeBench(prev => prev.filter(id => id !== playerId))
+    setHomeBattingOrder(prev => [...prev, playerId])
+  }
+
+  const handleRemoveAway = (playerId: number) => {
+    setAwayBattingOrder(prev => prev.filter(id => id !== playerId))
+    setAwayBench(prev => [...prev, playerId])
+  }
+
+  const handleAddBackAway = (playerId: number) => {
+    setAwayBench(prev => prev.filter(id => id !== playerId))
+    setAwayBattingOrder(prev => [...prev, playerId])
+  }
+
   const handleStartGame = async () => {
     const homeSlots: LineupSlot[] = homeBattingOrder.map((playerId, i) => {
       const player = homePlayers.find(p => p.id === playerId)!
@@ -172,12 +236,14 @@ export function GameSetupPage() {
                       playerId={playerId}
                       index={index}
                       player={player}
+                      onRemove={handleRemoveAway}
                     />
                   )
                 })}
               </div>
             </SortableContext>
           </DndContext>
+          <BenchSection benchIds={awayBench} players={awayPlayers} onAddBack={handleAddBackAway} />
         </div>
 
         {/* Home batting order */}
@@ -195,12 +261,14 @@ export function GameSetupPage() {
                       playerId={playerId}
                       index={index}
                       player={player}
+                      onRemove={handleRemoveHome}
                     />
                   )
                 })}
               </div>
             </SortableContext>
           </DndContext>
+          <BenchSection benchIds={homeBench} players={homePlayers} onAddBack={handleAddBackHome} />
         </div>
       </div>
 

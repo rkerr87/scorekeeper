@@ -161,6 +161,85 @@ describe('GameSetupPage', () => {
     expect(game?.status).toBe('in_progress')
   })
 
+  it('shows a remove button for each player in the batting order', async () => {
+    const gameId = await seedTwoTeamsAndGame()
+    renderSetup(gameId)
+    await waitFor(() => {
+      expect(screen.getByText('Alice')).toBeInTheDocument()
+    })
+    const removeButtons = screen.getAllByLabelText('Remove from lineup')
+    expect(removeButtons).toHaveLength(6) // 3 per team
+  })
+
+  it('removes player to bench when remove button clicked', async () => {
+    const user = userEvent.setup()
+    const gameId = await seedTwoTeamsAndGame()
+    renderSetup(gameId)
+    await waitFor(() => {
+      expect(screen.getByText('Dave')).toBeInTheDocument()
+    })
+    // Away team renders first; first remove button is for Dave
+    const removeButtons = screen.getAllByLabelText('Remove from lineup')
+    await user.click(removeButtons[0])
+    expect(screen.getByText('Not Playing (1)')).toBeInTheDocument()
+  })
+
+  it('adds player back from bench to batting order', async () => {
+    const user = userEvent.setup()
+    const gameId = await seedTwoTeamsAndGame()
+    renderSetup(gameId)
+    await waitFor(() => {
+      expect(screen.getByText('Dave')).toBeInTheDocument()
+    })
+    // Remove Dave
+    const removeButtons = screen.getAllByLabelText('Remove from lineup')
+    await user.click(removeButtons[0])
+    expect(screen.getByText('Not Playing (1)')).toBeInTheDocument()
+    // Add Dave back
+    const addBackButton = screen.getByLabelText('Add Dave back to lineup')
+    await user.click(addBackButton)
+    expect(screen.queryByText(/Not Playing/)).not.toBeInTheDocument()
+  })
+
+  it('does not show bench section when no players are benched', async () => {
+    const gameId = await seedTwoTeamsAndGame()
+    renderSetup(gameId)
+    await waitFor(() => {
+      expect(screen.getByText('Alice')).toBeInTheDocument()
+    })
+    expect(screen.queryByText(/Not Playing/)).not.toBeInTheDocument()
+  })
+
+  it('excludes benched players from saved lineup on Start Game', async () => {
+    const user = userEvent.setup()
+    const gameId = await seedTwoTeamsAndGame()
+    renderSetup(gameId)
+    await waitFor(() => {
+      expect(screen.getByText('Dave')).toBeInTheDocument()
+    })
+    // Remove Dave from away batting order
+    const removeButtons = screen.getAllByLabelText('Remove from lineup')
+    await user.click(removeButtons[0])
+    expect(screen.getByText('Not Playing (1)')).toBeInTheDocument()
+
+    // Start the game
+    const startBtn = screen.getByRole('button', { name: /start game/i })
+    await user.click(startBtn)
+
+    await waitFor(() => {
+      expect(screen.getByText('Game Page')).toBeInTheDocument()
+    })
+
+    // Verify away lineup only has 2 players (Dave excluded)
+    const lineups = await db.lineups.where('gameId').equals(gameId).toArray()
+    const awaySide = lineups.find(l => l.side === 'away')
+    expect(awaySide!.battingOrder).toHaveLength(2)
+    const awayNames = awaySide!.battingOrder.map(s => s.playerName)
+    expect(awayNames).not.toContain('Dave')
+    expect(awayNames).toContain('Eve')
+    expect(awayNames).toContain('Frank')
+  })
+
   it('should correctly identify home vs away when team2 is home', async () => {
     const team1Id = await db.teams.add({ name: 'Eagles', createdAt: new Date() })
     const team2Id = await db.teams.add({ name: 'Hawks', createdAt: new Date() })
