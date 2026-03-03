@@ -42,4 +42,37 @@ describe('SubstitutionDialog', () => {
       newPosition: 'RF',
     })
   })
+
+  it('should call onCancel when Cancel is clicked and not call onConfirm', async () => {
+    const user = userEvent.setup()
+    const onConfirm = vi.fn()
+    const onCancel = vi.fn()
+    render(
+      <SubstitutionDialog
+        currentPlayerName="Alice"
+        orderPosition={3}
+        onConfirm={onConfirm}
+        onCancel={onCancel}
+      />
+    )
+
+    await user.click(screen.getByRole('button', { name: /cancel/i }))
+
+    expect(onCancel).toHaveBeenCalledOnce()
+    expect(onConfirm).not.toHaveBeenCalled()
+  })
+
+  it('should disable Confirm Sub button when name is empty', () => {
+    render(
+      <SubstitutionDialog
+        currentPlayerName="Alice"
+        orderPosition={3}
+        onConfirm={() => {}}
+        onCancel={() => {}}
+      />
+    )
+
+    // Nothing typed yet — button must be disabled
+    expect(screen.getByRole('button', { name: /confirm sub/i })).toBeDisabled()
+  })
 })
