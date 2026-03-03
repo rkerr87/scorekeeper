@@ -23,14 +23,12 @@ export function ScoreSummary({
   pitchCount,
   pitcherName,
 }: ScoreSummaryProps) {
-  const halfLabel = half === 'top' ? '\u25B2' : '\u25BC' // ▲ ▼
-
   return (
     <div className="bg-slate-800 text-white px-4 py-3 flex items-center justify-between gap-4">
       {/* Inning */}
       <div className="flex items-center gap-1.5">
-        <span className="text-xs">{halfLabel}</span>
-        <span className="text-lg font-bold">{half === 'top' ? 'Top' : 'Bot'} {inning}</span>
+        <span className="text-xs font-bold text-amber-400">{half === 'top' ? 'TOP' : 'BOT'}</span>
+        <span className="text-lg font-bold">{inning}</span>
       </div>
 
       {/* Outs */}

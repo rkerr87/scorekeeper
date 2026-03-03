@@ -12,15 +12,16 @@ describe('ScoreSummary', () => {
     render(
       <ScoreSummary inning={3} half="top" outs={2} scoreHome={4} scoreAway={1} {...defaults} pitchCount={47} pitcherName="Smith" />
     )
-    expect(screen.getByText(/top 3/i)).toBeInTheDocument()
+    expect(screen.getByText('TOP')).toBeInTheDocument()
+    expect(screen.getByText('3')).toBeInTheDocument()
   })
 
   it('should display score', () => {
     render(
-      <ScoreSummary inning={1} half="top" outs={0} scoreHome={4} scoreAway={1} {...defaults} pitchCount={0} pitcherName="Smith" />
+      <ScoreSummary inning={2} half="top" outs={0} scoreHome={4} scoreAway={7} {...defaults} pitchCount={0} pitcherName="Smith" />
     )
     expect(screen.getByText('4')).toBeInTheDocument()
-    expect(screen.getByText('1')).toBeInTheDocument()
+    expect(screen.getByText('7')).toBeInTheDocument()
   })
 
   it('should display outs as visual indicators', () => {
@@ -65,5 +66,29 @@ describe('ScoreSummary', () => {
     const labels = screen.getAllByText(/^(Mudcats|Tigers)$/)
     expect(labels[0].textContent).toBe('Tigers')
     expect(labels[1].textContent).toBe('Mudcats')
+  })
+
+  it('shows TOP instead of triangle symbol for top half', () => {
+    render(
+      <ScoreSummary inning={3} half="top" outs={0} scoreHome={0} scoreAway={0} {...defaults} pitchCount={0} pitcherName="Smith" />
+    )
+    expect(screen.getByText('TOP')).toBeInTheDocument()
+    expect(screen.queryByText('▲')).not.toBeInTheDocument()
+  })
+
+  it('shows BOT instead of triangle symbol for bottom half', () => {
+    render(
+      <ScoreSummary inning={3} half="bottom" outs={0} scoreHome={0} scoreAway={0} {...defaults} pitchCount={0} pitcherName="Smith" />
+    )
+    expect(screen.getByText('BOT')).toBeInTheDocument()
+    expect(screen.queryByText('▼')).not.toBeInTheDocument()
+  })
+
+  it('shows team names in score display', () => {
+    render(
+      <ScoreSummary inning={1} half="top" outs={0} scoreHome={0} scoreAway={0} awayTeamName="Tigers" homeTeamName="Lions" pitchCount={0} pitcherName="Smith" />
+    )
+    expect(screen.getByText('Tigers')).toBeInTheDocument()
+    expect(screen.getByText('Lions')).toBeInTheDocument()
   })
 })
