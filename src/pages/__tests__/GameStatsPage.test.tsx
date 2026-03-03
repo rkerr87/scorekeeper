@@ -117,8 +117,11 @@ describe('GameStatsPage', () => {
       const rows = screen.getAllByRole('row')
       const bobRow = rows.find(r => r.textContent?.includes('Bob'))!
       expect(bobRow).toBeDefined()
-      // Bob's RBI=2 is the only "2" value in his row
-      expect(within(bobRow).getByText('2')).toBeInTheDocument()
+      // Check cells by column index to avoid false matches
+      // Column order: Player | AB | R | H | 2B | 3B | HR | RBI | BB | K | AVG
+      const cells = within(bobRow).getAllByRole('cell')
+      expect(cells[6].textContent).toBe('1') // HR column
+      expect(cells[7].textContent).toBe('2') // RBI column
       expect(within(bobRow).getByText('1.000')).toBeInTheDocument()
     })
   })
@@ -133,7 +136,7 @@ describe('GameStatsPage', () => {
       // Alice: AB=1, R=1, H=1 — three cells with value "1"
       const cells = within(aliceRow).getAllByRole('cell')
       const oneCells = cells.filter(c => c.textContent === '1')
-      expect(oneCells.length).toBeGreaterThanOrEqual(3)
+      expect(oneCells.length).toBe(3)
     })
   })
 })
