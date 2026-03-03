@@ -27,7 +27,7 @@ describe('SeasonStatsPage', () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText(/no games played yet/i)).toBeInTheDocument()
+      expect(screen.getByText(/no completed games yet for this team/i)).toBeInTheDocument()
     })
   })
 
@@ -153,7 +153,7 @@ describe('SeasonStatsPage', () => {
     })
     // Wait for loadStats to finish (no games → shows empty state) before cleanup
     await waitFor(() => {
-      expect(screen.getByText(/no games played yet/i)).toBeInTheDocument()
+      expect(screen.getByText(/no completed games yet for this team/i)).toBeInTheDocument()
     })
   })
 })

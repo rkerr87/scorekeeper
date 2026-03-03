@@ -25,6 +25,16 @@ describe('TeamDetailPage', () => {
     await db.close()
   })
 
+  it('should show "No players on the roster yet." when team has no players', async () => {
+    const teamId = await db.teams.add({ name: 'Mudcats', createdAt: new Date() })
+
+    renderWithRouter(String(teamId))
+
+    await waitFor(() => {
+      expect(screen.getByText(/no players on the roster yet/i)).toBeInTheDocument()
+    })
+  })
+
   it('should load a team by ID from URL params', async () => {
     const teamId = await db.teams.add({ name: 'Mudcats', createdAt: new Date() })
 

@@ -86,6 +86,11 @@ export function TeamDetailPage() {
         </div>
       </div>
 
+      {/* Roster empty state */}
+      {players.length === 0 && (
+        <p className="text-center text-slate-400 py-6">No players on the roster yet. Add your first player above.</p>
+      )}
+
       {/* Roster table */}
       {players.length > 0 && (
         <table className="w-full border-collapse bg-white rounded-lg overflow-hidden">

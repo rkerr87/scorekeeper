@@ -128,7 +128,7 @@ export function SeasonStatsPage() {
       {loading ? (
         <Spinner />
       ) : playerStats.length === 0 ? (
-        <p className="text-slate-500">No games played yet.</p>
+        <p className="text-center text-slate-400 py-6">No completed games yet for this team.</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full border-collapse bg-white rounded-lg overflow-hidden text-sm">

@@ -50,7 +50,7 @@ export function TeamsPage() {
 
       {/* Team list */}
       {teams.length === 0 ? (
-        <p className="text-slate-500 mb-6">No teams yet. Create one below.</p>
+        <p className="text-center text-slate-400 py-6">No teams yet. Create your first team to get started.</p>
       ) : (
         <div className="space-y-2 mb-6">
           {teams.map(({ team, playerCount }) => (

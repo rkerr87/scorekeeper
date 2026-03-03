@@ -347,6 +347,11 @@ export function HomePage() {
         </div>
       )}
 
+      {/* No games empty state */}
+      {inProgressGames.length === 0 && completedGames.length === 0 && (
+        <p className="text-center text-slate-400 py-6">No games yet</p>
+      )}
+
       {/* Season stats link */}
       <div className="mb-6">
         <Link to="/stats" className="block w-full text-center bg-slate-500 hover:bg-slate-600 text-white py-3 px-4 rounded-lg font-semibold">

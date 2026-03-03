@@ -38,6 +38,17 @@ describe('HomePage', () => {
     })
   })
 
+  it('should show "No games yet" when no games exist and teams are present', async () => {
+    await db.teams.add({ name: 'Mudcats', createdAt: new Date() })
+    await db.teams.add({ name: 'Cardinals', createdAt: new Date() })
+
+    renderHome()
+
+    await waitFor(() => {
+      expect(screen.getByText(/no games yet/i)).toBeInTheDocument()
+    })
+  })
+
   it('should show new game dialog with team pickers when clicking start new game', async () => {
     const user = userEvent.setup()
     await db.teams.add({ name: 'Mudcats', createdAt: new Date() })
