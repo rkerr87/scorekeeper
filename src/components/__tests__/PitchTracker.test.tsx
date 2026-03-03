@@ -47,23 +47,23 @@ describe('PitchTracker', () => {
     expect(screen.getByText(/5 pitches/i)).toBeInTheDocument()
   })
 
-  it('shows clear button when pitches exist', () => {
+  it('shows clear pitches button when pitches exist', () => {
     render(<PitchTracker pitches={['B', 'S']} {...defaultProps} />)
-    expect(screen.getByRole('button', { name: /clear/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /clear pitches/i })).toBeInTheDocument()
   })
 
-  it('does not show clear button when no pitches', () => {
+  it('does not show clear pitches button when no pitches', () => {
     render(<PitchTracker pitches={[]} {...defaultProps} />)
-    expect(screen.queryByRole('button', { name: /clear/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /clear pitches/i })).not.toBeInTheDocument()
   })
 
-  it('shows confirmation before clearing', async () => {
+  it('shows inline confirmation before clearing', async () => {
     const user = userEvent.setup()
     const onClear = vi.fn()
     render(<PitchTracker pitches={['B', 'S']} {...defaultProps} onClear={onClear} />)
-    await user.click(screen.getByRole('button', { name: /clear/i }))
-    expect(screen.getByText(/clear 2 pitches/i)).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /confirm/i }))
+    await user.click(screen.getByRole('button', { name: /clear pitches/i }))
+    expect(screen.getByText(/clear 2 pitches\?/i)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /^clear$/i }))
     expect(onClear).toHaveBeenCalled()
   })
 
@@ -71,12 +71,12 @@ describe('PitchTracker', () => {
     const user = userEvent.setup()
     const onClear = vi.fn()
     render(<PitchTracker pitches={['B', 'S']} {...defaultProps} onClear={onClear} />)
-    await user.click(screen.getByRole('button', { name: /clear/i }))
-    expect(screen.getByText(/clear 2 pitches/i)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /clear pitches/i }))
+    expect(screen.getByText(/clear 2 pitches\?/i)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /cancel/i }))
     expect(onClear).not.toHaveBeenCalled()
-    // Clear button should be visible again
-    expect(screen.getByRole('button', { name: /clear/i })).toBeInTheDocument()
+    // Clear pitches button should be visible again
+    expect(screen.getByRole('button', { name: /clear pitches/i })).toBeInTheDocument()
   })
 
   it('calls onRemoveAt when pitch dot is clicked', async () => {

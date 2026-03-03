@@ -74,16 +74,16 @@ export function PitchTracker({ pitches, onAddPitch, onRemovePitch, onClear, onRe
 
       {showClearConfirm ? (
         <div className="flex items-center gap-2 mt-2">
-          <span className="text-xs text-red-600 font-semibold">Clear {pitches.length} pitches?</span>
+          <span className="text-xs text-slate-600">Clear {pitches.length} pitches?</span>
           <button
             onClick={() => { onClear(); setShowClearConfirm(false) }}
-            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded text-xs font-bold transition-all duration-150"
+            className="text-red-600 font-bold text-xs"
           >
-            Confirm
+            Clear
           </button>
           <button
             onClick={() => setShowClearConfirm(false)}
-            className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2.5 rounded text-xs font-bold transition-all duration-150"
+            className="text-slate-500 text-xs"
           >
             Cancel
           </button>
@@ -92,9 +92,9 @@ export function PitchTracker({ pitches, onAddPitch, onRemovePitch, onClear, onRe
         pitches.length > 0 && (
           <button
             onClick={() => setShowClearConfirm(true)}
-            className="mt-2 bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1 rounded text-xs font-bold transition-all duration-150"
+            className="mt-2 text-xs text-slate-500 hover:text-slate-700"
           >
-            Clear
+            Clear pitches
           </button>
         )
       )}

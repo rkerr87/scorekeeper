@@ -15,6 +15,7 @@ export function TeamDetailPage() {
   const [position, setPosition] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [errors, setErrors] = useState<{ name?: string; jersey?: string }>({})
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
 
   const tId = parseInt(teamId ?? '0')
 
@@ -55,6 +56,7 @@ export function TeamDetailPage() {
   const handleDeletePlayer = async (id: number) => {
     await deletePlayer(id)
     setPlayers(players.filter(p => p.id !== id))
+    setConfirmDeleteId(null)
   }
 
   if (loading) return <Spinner />
@@ -124,10 +126,18 @@ export function TeamDetailPage() {
                 <td className="px-4 py-2 text-sm font-semibold">{p.name}</td>
                 <td className="px-4 py-2 text-sm text-slate-600">{p.defaultPosition}</td>
                 <td className="px-4 py-2">
-                  <button onClick={() => handleDeletePlayer(p.id!)}
-                    className="text-red-500 hover:text-red-700 text-sm px-3 py-2">
-                    Delete
-                  </button>
+                  {confirmDeleteId === p.id ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-red-600">Delete {p.name}?</span>
+                      <button onClick={() => handleDeletePlayer(p.id!)} className="text-red-600 font-bold text-xs">Yes</button>
+                      <button onClick={() => setConfirmDeleteId(null)} className="text-slate-500 text-xs">No</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setConfirmDeleteId(p.id!)}
+                      className="text-red-500 hover:text-red-700 text-sm px-3 py-2">
+                      Delete
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

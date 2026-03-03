@@ -102,6 +102,37 @@ describe('TeamDetailPage', () => {
     })
 
     await user.click(screen.getByRole('button', { name: /delete/i }))
+    await user.click(screen.getByRole('button', { name: /yes/i }))
+
+    await waitFor(() => {
+      expect(screen.queryByText('John Doe')).not.toBeInTheDocument()
+    })
+  })
+
+  it('shows confirmation before deleting a player', async () => {
+    const user = userEvent.setup()
+    const teamId = await db.teams.add({ name: 'Mudcats', createdAt: new Date() })
+    await db.players.add({ teamId, name: 'John Doe', jerseyNumber: 23, defaultPosition: 'SS', createdAt: new Date() })
+
+    renderWithRouter(String(teamId))
+
+    await waitFor(() => {
+      expect(screen.getByText('John Doe')).toBeInTheDocument()
+    })
+
+    // Click delete — should show confirmation, not immediately delete
+    await user.click(screen.getByRole('button', { name: /delete/i }))
+    expect(screen.getByText(/delete john doe\?/i)).toBeInTheDocument()
+    expect(screen.getByText('John Doe')).toBeInTheDocument()
+
+    // Click Cancel — player still in DOM
+    await user.click(screen.getByRole('button', { name: /no/i }))
+    expect(screen.getByText('John Doe')).toBeInTheDocument()
+    expect(screen.queryByText(/delete john doe\?/i)).not.toBeInTheDocument()
+
+    // Click Delete again, then Yes — player removed
+    await user.click(screen.getByRole('button', { name: /delete/i }))
+    await user.click(screen.getByRole('button', { name: /yes/i }))
 
     await waitFor(() => {
       expect(screen.queryByText('John Doe')).not.toBeInTheDocument()
