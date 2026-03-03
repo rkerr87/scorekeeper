@@ -456,6 +456,21 @@ export function GameSetupPage() {
     )
   }
 
+  const homeWarnings = computeWarnings(
+    homeBattingOrder,
+    (id) => findPlayer('home', id),
+    (player) => getPosition('home', player),
+  )
+  const awayWarnings = computeWarnings(
+    awayBattingOrder,
+    (id) => findPlayer('away', id),
+    (player) => getPosition('away', player),
+  )
+  const allWarnings = [
+    ...awayWarnings.map(w => `${awayTeamName}: ${w}`),
+    ...homeWarnings.map(w => `${homeTeamName}: ${w}`),
+  ]
+
   if (loading) return <div className="p-6">Loading...</div>
 
   return (
@@ -469,31 +484,15 @@ export function GameSetupPage() {
 
       {/* Lineup warnings + Start game button */}
       <div className="mt-8">
-        {(() => {
-          const homeWarnings = computeWarnings(
-            homeBattingOrder,
-            (id) => findPlayer('home', id),
-            (player) => getPosition('home', player),
-          )
-          const awayWarnings = computeWarnings(
-            awayBattingOrder,
-            (id) => findPlayer('away', id),
-            (player) => getPosition('away', player),
-          )
-          const allWarnings = [
-            ...awayWarnings.map(w => `${awayTeamName}: ${w}`),
-            ...homeWarnings.map(w => `${homeTeamName}: ${w}`),
-          ]
-          return allWarnings.length > 0 ? (
-            <div className="mb-4 space-y-1">
-              {allWarnings.map((w, i) => (
-                <div key={i} className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
-                  {w}
-                </div>
-              ))}
-            </div>
-          ) : null
-        })()}
+        {allWarnings.length > 0 && (
+          <div className="mb-4 space-y-1">
+            {allWarnings.map(w => (
+              <div key={w} className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+                {w}
+              </div>
+            ))}
+          </div>
+        )}
         <button
           onClick={handleStartGame}
           disabled={homeBattingOrder.length === 0 || awayBattingOrder.length === 0}
