@@ -447,6 +447,75 @@ describe('GameSetupPage', () => {
     expect(screen.getByRole('button', { name: /start game/i })).toBeEnabled()
   })
 
+  it('starts game with edited lineup (removed player, changed position, guest player)', async () => {
+    const user = userEvent.setup()
+    const gameId = await seedTwoTeamsAndGame()
+    renderSetup(gameId)
+    await waitFor(() => {
+      expect(screen.getByText('Dave')).toBeInTheDocument()
+    })
+
+    // 1. Remove Dave from away lineup (first remove button = Dave, first away player)
+    const removeButtons = screen.getAllByLabelText('Remove from lineup')
+    await user.click(removeButtons[0])
+    expect(screen.getByText('Not Playing (1)')).toBeInTheDocument()
+
+    // 2. Change Eve's position from C to P
+    //    After removing Dave, position buttons re-index: Eve=0, Frank=1, Alice=2, Bob=3, Charlie=4
+    const positionButtons = screen.getAllByRole('button', { name: /position/i })
+    await user.click(positionButtons[0]) // Eve is now first away player
+    await user.click(screen.getByRole('option', { name: 'P' }))
+
+    // 3. Add guest player Gina to away team (first Add Player = away side)
+    const addButtons = screen.getAllByRole('button', { name: /add player/i })
+    await user.click(addButtons[0])
+    await user.type(screen.getByPlaceholderText('Player name'), 'Gina')
+    await user.type(screen.getByPlaceholderText('Jersey #'), '99')
+    await user.selectOptions(screen.getByLabelText('Position'), 'LF')
+    await user.click(screen.getByLabelText('Add to team roster')) // uncheck save-to-roster
+    await user.click(screen.getByRole('button', { name: /^save$/i }))
+    expect(screen.getByText('Gina')).toBeInTheDocument()
+
+    // 4. Start game
+    await user.click(screen.getByRole('button', { name: /start game/i }))
+
+    // Should navigate to game page
+    await waitFor(() => {
+      expect(screen.getByText('Game Page')).toBeInTheDocument()
+    })
+
+    // Verify lineups were saved correctly
+    const lineups = await db.lineups.where('gameId').equals(gameId).toArray()
+    expect(lineups).toHaveLength(2)
+
+    const awayLineup = lineups.find(l => l.side === 'away')!
+    const homeLineup = lineups.find(l => l.side === 'home')!
+
+    // Away lineup: Eve, Frank, Gina (Dave removed)
+    expect(awayLineup.battingOrder).toHaveLength(3)
+    const awayNames = awayLineup.battingOrder.map(s => s.playerName)
+    expect(awayNames).toEqual(['Eve', 'Frank', 'Gina'])
+    expect(awayLineup.battingOrder[0].position).toBe('P') // Eve changed from C to P
+    expect(awayLineup.battingOrder[1].position).toBe('SS') // Frank kept default
+    expect(awayLineup.battingOrder[2].playerName).toBe('Gina')
+    expect(awayLineup.battingOrder[2].position).toBe('LF') // Gina's chosen position
+    expect(awayLineup.battingOrder[2].playerId).toBeLessThan(0) // guest, not saved to roster
+
+    // Home lineup: Alice, Bob, Charlie — unchanged
+    expect(homeLineup.battingOrder).toHaveLength(3)
+    const homeNames = homeLineup.battingOrder.map(s => s.playerName)
+    expect(homeNames).toEqual(['Alice', 'Bob', 'Charlie'])
+
+    // Verify Gina was NOT saved to team roster (checkbox was unchecked)
+    const awayTeamId = (await db.games.get(gameId))!.team2Id
+    const awayPlayers = await db.players.where('teamId').equals(awayTeamId).toArray()
+    expect(awayPlayers.find(p => p.name === 'Gina')).toBeUndefined()
+
+    // Verify game status updated
+    const game = await db.games.get(gameId)
+    expect(game?.status).toBe('in_progress')
+  })
+
   it('should correctly identify home vs away when team2 is home', async () => {
     const team1Id = await db.teams.add({ name: 'Eagles', createdAt: new Date() })
     const team2Id = await db.teams.add({ name: 'Hawks', createdAt: new Date() })
