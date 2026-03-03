@@ -12,6 +12,7 @@ export function TeamsPage() {
   const [teams, setTeams] = useState<TeamWithCount[]>([])
   const [teamName, setTeamName] = useState('')
   const [loading, setLoading] = useState(true)
+  const [creating, setCreating] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -29,10 +30,15 @@ export function TeamsPage() {
   }, [])
 
   const handleCreateTeam = async () => {
-    if (!teamName.trim()) return
-    const t = await createTeam(teamName.trim())
-    setTeams([...teams, { team: t, playerCount: 0 }])
-    setTeamName('')
+    if (!teamName.trim() || creating) return
+    setCreating(true)
+    try {
+      const t = await createTeam(teamName.trim())
+      setTeams([...teams, { team: t, playerCount: 0 }])
+      setTeamName('')
+    } finally {
+      setCreating(false)
+    }
   }
 
   if (loading) return <div className="p-6">Loading...</div>
@@ -40,7 +46,7 @@ export function TeamsPage() {
   return (
     <div className="max-w-lg mx-auto p-6">
       <Link to="/" className="text-blue-600 hover:underline text-sm">&larr; Home</Link>
-      <h1 className="text-2xl font-bold text-slate-900 mt-4 mb-6">Teams</h1>
+      <h1 className="text-2xl font-bold text-slate-900 mt-4 mb-6 font-heading uppercase tracking-wide">Teams</h1>
 
       {/* Team list */}
       {teams.length === 0 ? (
@@ -62,9 +68,11 @@ export function TeamsPage() {
 
       {/* Add team form */}
       <div className="border border-slate-200 rounded-lg p-4 bg-white">
-        <h2 className="text-lg font-semibold text-slate-800 mb-3">Add Team</h2>
+        <h2 className="text-lg font-semibold text-slate-800 mb-3 font-heading uppercase">Add Team</h2>
         <div className="flex gap-2">
+          <label className="sr-only" htmlFor="team-name-input">Team name</label>
           <input
+            id="team-name-input"
             type="text"
             placeholder="Team name"
             value={teamName}
@@ -74,9 +82,10 @@ export function TeamsPage() {
           />
           <button
             onClick={handleCreateTeam}
-            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold"
+            disabled={creating}
+            className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg font-semibold"
           >
-            Create
+            {creating ? 'Creating...' : 'Create'}
           </button>
         </div>
       </div>

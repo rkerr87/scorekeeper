@@ -176,7 +176,7 @@ export function PlayEntryPanel({ batterName, baseRunners, pitches, outs, onAddPi
             <span className="text-sm text-slate-500">At bat:</span>
             <span className="ml-2 font-bold text-slate-900">{batterName}</span>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 text-2xl leading-none transition-colors duration-150">&times;</button>
+          <button onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-slate-700 text-2xl leading-none transition-colors duration-150"><span aria-hidden="true">&times;</span></button>
         </div>
 
         {/* Pitch tracker */}
@@ -189,7 +189,7 @@ export function PlayEntryPanel({ batterName, baseRunners, pitches, outs, onAddPi
             {/* Common plays */}
             <div className="mb-3">
               <div className="text-xs font-semibold text-slate-500 mb-1.5">OUTCOME</div>
-              <div className="grid grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-4 gap-2">
                 {COMMON_PLAYS.map(play => (
                   <button
                     key={play.label}
@@ -258,7 +258,9 @@ export function PlayEntryPanel({ batterName, baseRunners, pitches, outs, onAddPi
 
             {/* Shorthand input */}
             <div className="flex gap-2">
+              <label className="sr-only" htmlFor="shorthand-input">Shorthand notation</label>
               <input
+                id="shorthand-input"
                 type="text"
                 placeholder="Shorthand (e.g. 6-3, 1B7, F8)"
                 value={shorthand}

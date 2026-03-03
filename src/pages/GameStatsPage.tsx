@@ -51,7 +51,7 @@ export function GameStatsPage() {
   return (
     <div className="max-w-3xl mx-auto p-6">
       <Link to="/" className="text-blue-600 hover:underline text-sm">&larr; Home</Link>
-      <h1 className="text-2xl font-bold text-slate-900 mt-4 mb-1">
+      <h1 className="text-2xl font-bold text-slate-900 mt-4 mb-1 font-heading uppercase tracking-wide">
         {awayTeamName} vs {homeTeamName}
       </h1>
       <p className="text-sm text-slate-500 mb-6">

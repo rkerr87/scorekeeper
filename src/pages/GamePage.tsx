@@ -296,7 +296,7 @@ export function GamePage() {
         <button
           onClick={() => navigate('/')}
           aria-label="Back to home"
-          className="text-slate-400 hover:text-white text-sm font-semibold transition-colors"
+          className="text-slate-300 hover:text-white text-sm font-semibold transition-colors"
         >
           ← Home
         </button>
@@ -319,7 +319,7 @@ export function GamePage() {
       <div className="flex border-b border-slate-200 bg-white">
         <button
           onClick={() => setActiveTab('away')}
-          className={`flex-1 py-2 text-sm font-bold text-center transition-all duration-150 ${
+          className={`flex-1 py-2 text-sm font-bold text-center transition-all duration-150 font-heading uppercase tracking-wide ${
             activeTab === 'away' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500'
           }`}
         >
@@ -327,7 +327,7 @@ export function GamePage() {
         </button>
         <button
           onClick={() => setActiveTab('home')}
-          className={`flex-1 py-2 text-sm font-bold text-center transition-all duration-150 ${
+          className={`flex-1 py-2 text-sm font-bold text-center transition-all duration-150 font-heading uppercase tracking-wide ${
             activeTab === 'home' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500'
           }`}
         >
@@ -368,7 +368,7 @@ export function GamePage() {
           <button
             onClick={() => setLastRecordedPlay(null)}
             aria-label="Dismiss guide"
-            className="absolute top-2 right-3 text-blue-300 hover:text-blue-500 text-xl leading-none z-10"
+            className="absolute top-2 right-3 min-w-[44px] min-h-[44px] flex items-center justify-center text-blue-300 hover:text-blue-500 text-xl leading-none z-10"
           >
             ×
           </button>
@@ -381,21 +381,21 @@ export function GamePage() {
         <button
           onClick={() => setShowPlayEntry(true)}
           disabled={snapshot.isGameOver}
-          className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white py-2.5 rounded-lg font-bold transition-all duration-150 ease-in-out active:scale-95"
+          className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white py-2.5 rounded-lg font-bold transition-all duration-150 ease-in-out active:scale-95 font-heading uppercase"
         >
           Record Play
         </button>
         <button
           onClick={() => setShowPosChange(true)}
           disabled={snapshot.isGameOver}
-          className="bg-slate-200 hover:bg-slate-300 disabled:bg-slate-100 disabled:text-slate-400 text-slate-700 py-2.5 px-4 rounded-lg font-bold transition-all duration-150 ease-in-out active:scale-95"
+          className="bg-slate-200 hover:bg-slate-300 disabled:bg-slate-100 disabled:text-slate-400 text-slate-700 py-2.5 px-4 rounded-lg font-bold transition-all duration-150 ease-in-out active:scale-95 font-heading uppercase"
         >
           Pos Change
         </button>
         <button
           onClick={() => { undoLastPlay(); setCurrentAtBatPitches([]) }}
           disabled={plays.length === 0}
-          className="bg-slate-200 hover:bg-slate-300 disabled:bg-slate-100 disabled:text-slate-400 text-slate-700 py-2.5 px-4 rounded-lg font-bold transition-all duration-150 ease-in-out active:scale-95"
+          className="bg-slate-200 hover:bg-slate-300 disabled:bg-slate-100 disabled:text-slate-400 text-slate-700 py-2.5 px-4 rounded-lg font-bold transition-all duration-150 ease-in-out active:scale-95 font-heading uppercase"
         >
           Undo
         </button>

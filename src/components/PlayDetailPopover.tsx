@@ -39,13 +39,13 @@ export function PlayDetailPopover({ play, playsAfterCount = 0, onEdit, onUndo, o
           <div className="flex gap-2">
             <button
               onClick={() => play.id !== undefined && onEdit(play.id)}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-bold text-sm transition-all duration-150 active:scale-95"
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold text-sm transition-all duration-150 active:scale-95"
             >
               Edit
             </button>
             <button
               onClick={() => playsAfterCount > 0 ? setConfirmUndo(true) : (play.id !== undefined && onUndo(play.id))}
-              className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg font-bold text-sm transition-all duration-150 active:scale-95"
+              className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-bold text-sm transition-all duration-150 active:scale-95"
             >
               Undo
             </button>
@@ -58,13 +58,13 @@ export function PlayDetailPopover({ play, playsAfterCount = 0, onEdit, onUndo, o
             <div className="flex gap-2">
               <button
                 onClick={() => setConfirmUndo(false)}
-                className="flex-1 bg-slate-200 text-slate-700 py-2 rounded-lg font-bold text-sm transition-all duration-150 active:scale-95"
+                className="flex-1 bg-slate-200 text-slate-700 py-3 rounded-lg font-bold text-sm transition-all duration-150 active:scale-95"
               >
                 Cancel
               </button>
               <button
                 onClick={() => play.id !== undefined && onUndo(play.id)}
-                className="flex-1 bg-red-600 text-white py-2 rounded-lg font-bold text-sm transition-all duration-150 active:scale-95"
+                className="flex-1 bg-red-600 text-white py-3 rounded-lg font-bold text-sm transition-all duration-150 active:scale-95"
               >
                 Confirm
               </button>

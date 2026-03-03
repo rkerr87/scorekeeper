@@ -129,7 +129,7 @@ function SortablePlayerRow({ playerId, index, player, position, onRemove, onPosi
         aria-label="Drag to reorder"
         className="text-slate-400 hover:text-slate-600 cursor-grab active:cursor-grabbing px-1 text-lg leading-none touch-none"
       >
-        ≡
+        <span aria-hidden="true">≡</span>
       </button>
       <span className="text-sm font-mono text-slate-400 w-6">{index + 1}.</span>
       <span className="text-sm font-semibold flex-1">{player.name}</span>
@@ -138,9 +138,9 @@ function SortablePlayerRow({ playerId, index, player, position, onRemove, onPosi
       <button
         aria-label="Remove from lineup"
         onClick={() => onRemove(playerId)}
-        className="text-slate-400 hover:text-red-500 ml-1 text-lg leading-none"
+        className="min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-400 hover:text-red-500 ml-1 text-lg leading-none"
       >
-        ×
+        <span aria-hidden="true">×</span>
       </button>
     </div>
   )
@@ -168,9 +168,9 @@ function BenchSection({ benchIds, players, onAddBack }: BenchSectionProps) {
               <button
                 aria-label={`Add ${player.name} back to lineup`}
                 onClick={() => onAddBack(id)}
-                className="text-slate-400 hover:text-green-600 ml-1 text-lg leading-none"
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-400 hover:text-green-600 ml-1 text-lg leading-none"
               >
-                +
+                <span aria-hidden="true">+</span>
               </button>
             </div>
           )
@@ -209,6 +209,7 @@ export function GameSetupPage() {
   const [awayGuestPlayers, setAwayGuestPlayers] = useState<Player[]>([])
   const [guestSaveToRoster, setGuestSaveToRoster] = useState<Set<number>>(new Set())
   const [nextTempId, setNextTempId] = useState(-1)
+  const [starting, setStarting] = useState(false)
 
   const gId = parseInt(gameId ?? '0')
 
@@ -345,19 +346,25 @@ export function GameSetupPage() {
   }
 
   const handleStartGame = async () => {
-    const idMap = new Map<number, number>()
-    for (const guest of [...homeGuestPlayers, ...awayGuestPlayers]) {
-      if (guestSaveToRoster.has(guest.id!)) {
-        const saved = await addPlayer(guest.teamId, guest.name, guest.jerseyNumber, guest.defaultPosition)
-        idMap.set(guest.id!, saved.id!)
+    if (starting) return
+    setStarting(true)
+    try {
+      const idMap = new Map<number, number>()
+      for (const guest of [...homeGuestPlayers, ...awayGuestPlayers]) {
+        if (guestSaveToRoster.has(guest.id!)) {
+          const saved = await addPlayer(guest.teamId, guest.name, guest.jerseyNumber, guest.defaultPosition)
+          idMap.set(guest.id!, saved.id!)
+        }
       }
-    }
 
-    await saveLineup(gId, 'home', buildSlots('home', idMap))
-    await saveLineup(gId, 'away', buildSlots('away', idMap))
-    await updateGameStatus(gId, 'in_progress')
-    await loadGame(gId)
-    navigate(`/game/${gId}`)
+      await saveLineup(gId, 'home', buildSlots('home', idMap))
+      await saveLineup(gId, 'away', buildSlots('away', idMap))
+      await updateGameStatus(gId, 'in_progress')
+      await loadGame(gId)
+      navigate(`/game/${gId}`)
+    } finally {
+      setStarting(false)
+    }
   }
 
   const renderTeamColumn = (side: 'home' | 'away') => {
@@ -370,7 +377,7 @@ export function GameSetupPage() {
 
     return (
       <div>
-        <h2 className="text-lg font-semibold text-slate-800 mb-3">{teamName} ({label}) Batting Order</h2>
+        <h2 className="text-lg font-semibold text-slate-800 mb-3 font-heading uppercase tracking-wide">{teamName} ({label}) Batting Order</h2>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => handleDragEnd(side, e)}>
           <SortableContext items={battingOrder} strategy={verticalListSortingStrategy}>
             <div className="space-y-1">
@@ -395,14 +402,18 @@ export function GameSetupPage() {
         <BenchSection benchIds={benchIds} players={[...rosterPlayers, ...guestPlayers]} onAddBack={(id) => handleAddBack(side, id)} />
         {addingPlayerSide === side ? (
           <div className="mt-2 space-y-2 bg-slate-50 border border-slate-200 rounded p-3">
+            <label className="sr-only" htmlFor={`guest-name-${side}`}>Player name</label>
             <input
+              id={`guest-name-${side}`}
               type="text"
               placeholder="Player name"
               value={newPlayerName}
               onChange={e => setNewPlayerName(e.target.value)}
               className="w-full border border-slate-300 rounded px-2 py-1 text-sm"
             />
+            <label className="sr-only" htmlFor={`guest-jersey-${side}`}>Jersey number</label>
             <input
+              id={`guest-jersey-${side}`}
               type="text"
               placeholder="Jersey #"
               inputMode="numeric"
@@ -475,7 +486,7 @@ export function GameSetupPage() {
 
   return (
     <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-2xl font-bold text-slate-900 mb-6">Game Setup</h1>
+      <h1 className="text-2xl font-bold text-slate-900 mb-6 font-heading uppercase tracking-wide">Game Setup</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {renderTeamColumn('away')}
@@ -495,10 +506,10 @@ export function GameSetupPage() {
         )}
         <button
           onClick={handleStartGame}
-          disabled={homeBattingOrder.length === 0 || awayBattingOrder.length === 0}
+          disabled={homeBattingOrder.length === 0 || awayBattingOrder.length === 0 || starting}
           className="w-full bg-green-600 hover:bg-green-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white py-3 px-4 rounded-lg font-bold text-lg"
         >
-          Start Game
+          {starting ? 'Starting...' : 'Start Game'}
         </button>
       </div>
     </div>

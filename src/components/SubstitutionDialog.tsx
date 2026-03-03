@@ -41,7 +41,9 @@ export function SubstitutionDialog({
         </p>
 
         <div className="space-y-3 mb-6">
+          <label className="sr-only" htmlFor="sub-player-name">Player name</label>
           <input
+            id="sub-player-name"
             type="text"
             placeholder="New player name"
             value={name}
@@ -49,7 +51,9 @@ export function SubstitutionDialog({
             className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
           />
           <div className="flex gap-2">
+            <label className="sr-only" htmlFor="sub-jersey-number">Jersey number</label>
             <input
+              id="sub-jersey-number"
               type="text"
               inputMode="numeric"
               placeholder="Jersey #"
@@ -57,7 +61,9 @@ export function SubstitutionDialog({
               onChange={e => setJersey(e.target.value)}
               className="w-24 border border-slate-300 rounded-lg px-3 py-2 text-sm"
             />
+            <label className="sr-only" htmlFor="sub-position">Position</label>
             <input
+              id="sub-position"
               type="text"
               placeholder="Position"
               value={position}

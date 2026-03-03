@@ -35,7 +35,7 @@ export function ScoreSummary({
 
       {/* Outs */}
       <div className="flex items-center gap-1">
-        <span className="text-xs text-slate-400 mr-1">OUT</span>
+        <span className="text-xs text-slate-300 mr-1">OUT</span>
         {[0, 1, 2].map(i => (
           <div
             key={i}
@@ -50,19 +50,19 @@ export function ScoreSummary({
       {/* Score — away first, home second (sports convention) */}
       <div className="flex items-center gap-2">
         <div className="text-center">
-          <div className="text-xs text-slate-400 uppercase truncate max-w-[60px]">{awayTeamName}</div>
-          <div className="text-2xl font-bold">{scoreAway}</div>
+          <div className="text-xs text-slate-300 uppercase truncate max-w-[60px] font-heading tracking-wider">{awayTeamName}</div>
+          <div className="text-2xl font-bold font-heading">{scoreAway}</div>
         </div>
         <div className="text-slate-500">-</div>
         <div className="text-center">
-          <div className="text-xs text-slate-400 uppercase truncate max-w-[60px]">{homeTeamName}</div>
-          <div className="text-2xl font-bold">{scoreHome}</div>
+          <div className="text-xs text-slate-300 uppercase truncate max-w-[60px] font-heading tracking-wider">{homeTeamName}</div>
+          <div className="text-2xl font-bold font-heading">{scoreHome}</div>
         </div>
       </div>
 
       {/* Pitcher + pitch count */}
       <div className="text-right">
-        <div className="text-xs text-slate-400">{pitcherName}</div>
+        <div className="text-xs text-slate-300">{pitcherName}</div>
         <div className="text-lg font-mono font-bold">PC: {pitchCount}</div>
       </div>
     </div>

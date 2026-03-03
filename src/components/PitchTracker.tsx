@@ -77,13 +77,13 @@ export function PitchTracker({ pitches, onAddPitch, onRemovePitch, onClear, onRe
           <span className="text-xs text-red-600 font-semibold">Clear {pitches.length} pitches?</span>
           <button
             onClick={() => { onClear(); setShowClearConfirm(false) }}
-            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-bold transition-all duration-150"
+            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded text-xs font-bold transition-all duration-150"
           >
             Confirm
           </button>
           <button
             onClick={() => setShowClearConfirm(false)}
-            className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1 rounded text-xs font-bold transition-all duration-150"
+            className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2.5 rounded text-xs font-bold transition-all duration-150"
           >
             Cancel
           </button>

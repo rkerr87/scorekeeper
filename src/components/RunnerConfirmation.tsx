@@ -130,7 +130,7 @@ export function RunnerConfirmation({ runners, prePlayRunners, onConfirm, onCance
                         key={dest}
                         onClick={() => setDest(orig, dest)}
                         disabled={!valid}
-                        className={`px-2.5 py-1.5 rounded text-xs font-bold transition-all duration-150 ${
+                        className={`px-3.5 py-2.5 rounded text-xs font-bold transition-all duration-150 ${
                           !valid
                             ? 'bg-slate-100 text-slate-300 cursor-not-allowed'
                             : currentDest === dest

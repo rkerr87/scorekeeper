@@ -101,7 +101,7 @@ export function SeasonStatsPage() {
   return (
     <div className="max-w-4xl mx-auto p-6">
       <Link to="/" className="text-blue-600 hover:underline text-sm">&larr; Home</Link>
-      <h1 className="text-2xl font-bold text-slate-900 mt-4 mb-4">Season Stats</h1>
+      <h1 className="text-2xl font-bold text-slate-900 mt-4 mb-4 font-heading uppercase tracking-wide">Season Stats</h1>
 
       {teams.length > 1 && (
         <div className="mb-6">

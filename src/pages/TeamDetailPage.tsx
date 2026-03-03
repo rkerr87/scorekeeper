@@ -12,6 +12,7 @@ export function TeamDetailPage() {
   const [playerName, setPlayerName] = useState('')
   const [jerseyNumber, setJerseyNumber] = useState('')
   const [position, setPosition] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   const tId = parseInt(teamId ?? '0')
 
@@ -28,12 +29,17 @@ export function TeamDetailPage() {
   }, [tId])
 
   const handleAddPlayer = async () => {
-    if (!team?.id || !playerName.trim() || !jerseyNumber.trim()) return
-    const p = await addPlayer(team.id, playerName.trim(), parseInt(jerseyNumber), position.trim() || 'UT')
-    setPlayers([...players, p])
-    setPlayerName('')
-    setJerseyNumber('')
-    setPosition('')
+    if (!team?.id || !playerName.trim() || !jerseyNumber.trim() || submitting) return
+    setSubmitting(true)
+    try {
+      const p = await addPlayer(team.id, playerName.trim(), parseInt(jerseyNumber), position.trim() || 'UT')
+      setPlayers([...players, p])
+      setPlayerName('')
+      setJerseyNumber('')
+      setPosition('')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleDeletePlayer = async (id: number) => {
@@ -47,17 +53,19 @@ export function TeamDetailPage() {
   return (
     <div className="max-w-2xl mx-auto p-6">
       <Link to="/teams" className="text-blue-600 hover:underline text-sm">&larr; Teams</Link>
-      <h1 className="text-2xl font-bold text-slate-900 mt-4 mb-2">{team.name}</h1>
+      <h1 className="text-2xl font-bold text-slate-900 mt-4 mb-2 font-heading uppercase tracking-wide">{team.name}</h1>
       <p className="text-slate-500 mb-6">{players.length} player{players.length !== 1 ? 's' : ''}</p>
 
       {/* Add player form */}
       <div className="border border-slate-200 rounded-lg p-4 mb-6 bg-white">
-        <h2 className="text-lg font-semibold text-slate-800 mb-3">Add Player</h2>
+        <h2 className="text-lg font-semibold text-slate-800 mb-3 font-heading uppercase">Add Player</h2>
         <div className="flex gap-2">
-          <input type="text" placeholder="Player name" value={playerName}
+          <label className="sr-only" htmlFor="player-name-input">Player name</label>
+          <input id="player-name-input" type="text" placeholder="Player name" value={playerName}
             onChange={e => setPlayerName(e.target.value)}
             className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm" />
-          <input type="text" inputMode="numeric" placeholder="Jersey #" value={jerseyNumber}
+          <label className="sr-only" htmlFor="jersey-number-input">Jersey number</label>
+          <input id="jersey-number-input" type="text" inputMode="numeric" placeholder="Jersey #" value={jerseyNumber}
             onChange={e => setJerseyNumber(e.target.value)}
             className="w-20 border border-slate-300 rounded-lg px-3 py-2 text-sm" />
           <select value={position} onChange={e => setPosition(e.target.value)}
@@ -70,8 +78,9 @@ export function TeamDetailPage() {
             ))}
           </select>
           <button onClick={handleAddPlayer}
-            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold text-sm">
-            Add Player
+            disabled={submitting}
+            className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg font-semibold text-sm">
+            {submitting ? 'Adding...' : 'Add Player'}
           </button>
         </div>
       </div>
@@ -95,7 +104,7 @@ export function TeamDetailPage() {
                 <td className="px-4 py-2 text-sm text-slate-600">{p.defaultPosition}</td>
                 <td className="px-4 py-2">
                   <button onClick={() => handleDeletePlayer(p.id!)}
-                    className="text-red-500 hover:text-red-700 text-sm">
+                    className="text-red-500 hover:text-red-700 text-sm px-3 py-2">
                     Delete
                   </button>
                 </td>

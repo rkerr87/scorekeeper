@@ -32,13 +32,13 @@ function GameRow({ game, teams, linkTo, confirmDeleteId, onRequestDelete, onCanc
         <div className="flex gap-2">
           <button
             onClick={onCancelDelete}
-            className="text-sm px-3 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg font-semibold"
+            className="text-sm px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg font-semibold"
           >
             Cancel
           </button>
           <button
             onClick={() => onConfirmDelete(game.id!)}
-            className="text-sm px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold"
+            className="text-sm px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold"
           >
             Yes, delete
           </button>
@@ -48,7 +48,7 @@ function GameRow({ game, teams, linkTo, confirmDeleteId, onRequestDelete, onCanc
   }
 
   return (
-    <div className="flex items-stretch bg-white border border-slate-200 rounded-lg hover:bg-slate-50">
+    <div className="flex items-stretch bg-white border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
       <Link to={linkTo} className="flex-1 px-4 py-3">
         <div className="font-semibold text-slate-900">{title}</div>
         <div className="text-xs text-slate-500">{label}</div>
@@ -56,9 +56,9 @@ function GameRow({ game, teams, linkTo, confirmDeleteId, onRequestDelete, onCanc
       <button
         onClick={() => onRequestDelete(game.id!)}
         aria-label={`Delete game ${title}`}
-        className="px-3 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-r-lg transition-colors"
+        className="min-w-[44px] flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-r-lg transition-colors"
       >
-        ✕
+        <span aria-hidden="true">✕</span>
       </button>
     </div>
   )
@@ -228,7 +228,7 @@ export function HomePage() {
 
   return (
     <div className="max-w-lg mx-auto p-6">
-      <h1 className="text-3xl font-bold text-slate-900 mb-8">Scorekeeper</h1>
+      <h1 className="text-3xl font-bold text-slate-900 mb-8 font-heading uppercase tracking-wide">Scorekeeper</h1>
 
       <div className="space-y-4 mb-8">
         <Link
@@ -259,7 +259,7 @@ export function HomePage() {
       {/* New game dialog */}
       {showNewGame && (
         <div className="border border-slate-200 rounded-lg p-4 mb-6 bg-white">
-          <h2 className="text-lg font-semibold mb-3">New Game</h2>
+          <h2 className="text-lg font-semibold mb-3 font-heading uppercase tracking-wide">New Game</h2>
           <div className="space-y-3">
             <div>
               <label htmlFor="away-team-select" className="block text-sm font-medium text-slate-700 mb-1">
@@ -329,7 +329,7 @@ export function HomePage() {
       {/* In-progress games */}
       {inProgressGames.length > 0 && (
         <div className="mb-6">
-          <h2 className="text-lg font-semibold text-slate-800 mb-3">In Progress</h2>
+          <h2 className="text-lg font-semibold text-slate-800 mb-3 font-heading uppercase tracking-wide">In Progress</h2>
           <div className="space-y-2">
             {inProgressGames.map(g => (
               <GameRow
@@ -357,7 +357,7 @@ export function HomePage() {
       {/* Completed games */}
       {completedGames.length > 0 && (
         <div>
-          <h2 className="text-lg font-semibold text-slate-800 mb-3">Completed</h2>
+          <h2 className="text-lg font-semibold text-slate-800 mb-3 font-heading uppercase tracking-wide">Completed</h2>
           <div className="space-y-2">
             {completedGames.map(g => (
               <GameRow

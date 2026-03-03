@@ -79,7 +79,7 @@ export function PositionChangeDialog({ lineup, onConfirm, onCancel }: PositionCh
                 <button
                   key={slot.orderPosition}
                   onClick={() => handlePlayerSelect(slot)}
-                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-2"
+                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-2 cursor-pointer"
                 >
                   <span className="text-xs text-slate-400 font-mono w-4">{slot.orderPosition}.</span>
                   <span className="font-semibold text-slate-800">{slot.playerName}</span>
