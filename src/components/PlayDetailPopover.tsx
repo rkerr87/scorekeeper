@@ -11,12 +11,11 @@ interface PlayDetailPopoverProps {
     runsScoredOnPlay: number
   }
   playsAfterCount?: number
-  onEdit: (playId: number) => void
   onUndo: (playId: number) => void
   onClose: () => void
 }
 
-export function PlayDetailPopover({ play, playsAfterCount = 0, onEdit, onUndo, onClose }: PlayDetailPopoverProps) {
+export function PlayDetailPopover({ play, playsAfterCount = 0, onUndo, onClose }: PlayDetailPopoverProps) {
   const [confirmUndo, setConfirmUndo] = useState(false)
 
   // Compute pitch count summary
@@ -36,20 +35,12 @@ export function PlayDetailPopover({ play, playsAfterCount = 0, onEdit, onUndo, o
         </div>
 
         {!confirmUndo ? (
-          <div className="flex gap-2">
-            <button
-              onClick={() => play.id !== undefined && onEdit(play.id)}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold text-sm transition-all duration-150 active:scale-95"
-            >
-              Edit
-            </button>
-            <button
-              onClick={() => playsAfterCount > 0 ? setConfirmUndo(true) : (play.id !== undefined && onUndo(play.id))}
-              className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-bold text-sm transition-all duration-150 active:scale-95"
-            >
-              Undo
-            </button>
-          </div>
+          <button
+            onClick={() => playsAfterCount > 0 ? setConfirmUndo(true) : (play.id !== undefined && onUndo(play.id))}
+            className="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-bold text-sm transition-all duration-150 active:scale-95"
+          >
+            Undo
+          </button>
         ) : (
           <div>
             <p className="text-sm text-red-600 font-semibold mb-3">

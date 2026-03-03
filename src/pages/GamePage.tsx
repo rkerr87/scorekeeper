@@ -446,10 +446,6 @@ export function GamePage() {
         <PlayDetailPopover
           play={selectedPlay}
           playsAfterCount={plays.filter(p => p.sequenceNumber > selectedPlay.sequenceNumber).length}
-          onEdit={() => {
-            // For now: close popover (edit functionality is future work)
-            setSelectedPlay(null)
-          }}
           onUndo={async (playId) => {
             await undoFromPlay(playId)
             setSelectedPlay(null)

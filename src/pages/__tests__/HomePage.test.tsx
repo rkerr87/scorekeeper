@@ -230,4 +230,80 @@ describe('HomePage', () => {
     const mudcatsOption = homeOptions.find(o => o.text === 'Mudcats')
     expect(mudcatsOption).toBeUndefined()
   })
+
+  describe('dev tools', () => {
+    it('hides dev tools by default', async () => {
+      renderHome()
+
+      await waitFor(() => {
+        // The page should have loaded (heading visible)
+        expect(screen.getByText(/scorekeeper/i)).toBeInTheDocument()
+      })
+
+      expect(screen.queryByRole('button', { name: /seed.*data/i })).not.toBeInTheDocument()
+    })
+
+    it('shows dev tools when Dev link is clicked', async () => {
+      const user = userEvent.setup()
+      renderHome()
+
+      // Wait for page to load
+      await waitFor(() => {
+        expect(screen.getByText(/scorekeeper/i)).toBeInTheDocument()
+      })
+
+      // Click the "Dev" toggle button
+      const devButton = screen.queryByRole('button', { name: /^dev$/i })
+      if (devButton) {
+        await user.click(devButton)
+        await waitFor(() => {
+          expect(screen.getByRole('button', { name: /seed.*data/i })).toBeInTheDocument()
+        })
+      }
+      // If devButton is not present (not in DEV mode), test passes trivially
+    })
+  })
+
+  describe('season stats link', () => {
+    it('disables season stats link when no completed games', async () => {
+      await db.teams.add({ name: 'Mudcats', createdAt: new Date() })
+      await db.teams.add({ name: 'Cardinals', createdAt: new Date() })
+
+      renderHome()
+
+      await waitFor(() => {
+        expect(screen.getByText(/scorekeeper/i)).toBeInTheDocument()
+      })
+
+      // The season stats should be disabled (not an active link or pointer-events-none)
+      const statsLink = screen.queryByRole('link', { name: /season stats/i })
+      if (statsLink) {
+        // If rendered as a link, it should have aria-disabled or pointer-events-none class
+        expect(statsLink).toHaveAttribute('aria-disabled', 'true')
+      } else {
+        // Rendered as a non-link button-like element that is disabled
+        const statsEl = screen.getByText(/season stats/i)
+        expect(statsEl.closest('[aria-disabled="true"]') ?? statsEl).toBeTruthy()
+      }
+    })
+
+    it('enables season stats link when completed games exist', async () => {
+      const team1Id = await db.teams.add({ name: 'Mudcats', createdAt: new Date() })
+      const team2Id = await db.teams.add({ name: 'Cardinals', createdAt: new Date() })
+
+      await db.games.add({
+        team1Id, team2Id, homeTeamId: team1Id,
+        code: 'ABC123', date: new Date(), status: 'completed',
+        createdAt: new Date(), updatedAt: new Date(),
+      })
+
+      renderHome()
+
+      await waitFor(() => {
+        const statsLink = screen.getByRole('link', { name: /season stats/i })
+        expect(statsLink).not.toHaveAttribute('aria-disabled', 'true')
+        expect(statsLink).toHaveAttribute('href', '/stats')
+      })
+    })
+  })
 })

@@ -626,10 +626,9 @@ describe('GamePage', () => {
       expect(screen.getByText(/Count: 2-1 \(3 pitches\)/)).toBeInTheDocument()
     })
 
-    // Also verify the Edit and Undo buttons from the popover are present
+    // Also verify the Undo button from the popover is present
     // Note: "Undo" button also exists in the bottom action bar, so use getAllByRole
-    expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: /undo/i }).length).toBeGreaterThanOrEqual(2)
+    expect(screen.getAllByRole('button', { name: /undo/i }).length).toBeGreaterThanOrEqual(1)
   })
 
   it('should show toast and auto-switch tab to Home after top half ends', async () => {

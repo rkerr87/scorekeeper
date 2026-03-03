@@ -73,6 +73,7 @@ export function HomePage() {
   const [newAwayTeamId, setNewAwayTeamId] = useState<number | null>(null)
   const [newHomeTeamId, setNewHomeTeamId] = useState<number | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
+  const [showDevTools, setShowDevTools] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -225,6 +226,7 @@ export function HomePage() {
 
   const inProgressGames = games.filter(g => g.status === 'in_progress')
   const completedGames = games.filter(g => g.status === 'completed')
+  const hasCompletedGames = completedGames.length > 0
 
   return (
     <div className="max-w-lg mx-auto p-6">
@@ -354,9 +356,25 @@ export function HomePage() {
 
       {/* Season stats link */}
       <div className="mb-6">
-        <Link to="/stats" className="block w-full text-center bg-slate-500 hover:bg-slate-600 text-white py-3 px-4 rounded-lg font-semibold">
-          Season Stats
-        </Link>
+        {hasCompletedGames ? (
+          <Link
+            to="/stats"
+            className="block w-full text-center bg-slate-500 hover:bg-slate-600 text-white py-3 px-4 rounded-lg font-semibold"
+          >
+            Season Stats
+          </Link>
+        ) : (
+          <div>
+            <Link
+              to="/stats"
+              aria-disabled="true"
+              className="block w-full text-center bg-slate-300 text-slate-400 py-3 px-4 rounded-lg font-semibold pointer-events-none"
+            >
+              Season Stats
+            </Link>
+            <p className="text-xs text-slate-400 text-center mt-1">Complete a game to view season stats</p>
+          </div>
+        )}
       </div>
 
       {/* Completed games */}
@@ -380,25 +398,39 @@ export function HomePage() {
         </div>
       )}
 
-      {/* DEV: seed / clear test data — remove before shipping */}
-      <div className="mt-12 border border-dashed border-amber-400 rounded-lg p-4 bg-amber-50">
-        <div className="text-xs font-bold text-amber-700 mb-3">DEV TOOLS</div>
-        <div className="flex gap-2">
-          <button
-            onClick={handleSeedData}
-            disabled={seeding}
-            className="flex-1 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold"
-          >
-            {seeding ? 'Seeding...' : 'Seed test data'}
-          </button>
-          <button
-            onClick={handleClearData}
-            className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg text-sm font-semibold"
-          >
-            Clear all data
-          </button>
-        </div>
-      </div>
+      {/* DEV: seed / clear test data — hidden behind toggle */}
+      {import.meta.env.DEV && (
+        <>
+          {showDevTools ? (
+            <div className="mt-12 border border-dashed border-slate-300 rounded-lg p-4 bg-slate-50">
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSeedData}
+                  disabled={seeding}
+                  className="flex-1 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold"
+                >
+                  {seeding ? 'Seeding...' : 'Seed test data'}
+                </button>
+                <button
+                  onClick={handleClearData}
+                  className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg text-sm font-semibold"
+                >
+                  Clear all data
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-12 text-center">
+              <button
+                onClick={() => setShowDevTools(true)}
+                className="text-xs text-slate-300 hover:text-slate-500"
+              >
+                Dev
+              </button>
+            </div>
+          )}
+        </>
+      )}
     </div>
   )
 }
