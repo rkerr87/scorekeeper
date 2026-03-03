@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useGame } from '../contexts/GameContext'
 import { ScoreSummary } from '../components/ScoreSummary'
@@ -40,6 +40,12 @@ export function GamePage() {
   // auto-synced to. Updated during render (not in an effect) to avoid the
   // react-hooks/set-state-in-effect lint rule.
   const [trackedHalfKey, setTrackedHalfKey] = useState<string>('')
+  // prevHalfKeyRef tracks the half key seen by the last useEffect run so we can
+  // detect half changes after render and fire the "Side retired" toast. Using a ref
+  // avoids calling setState in an effect (which triggers the set-state-in-effect rule)
+  // and avoids calling showToast during render (which would update ToastProvider's
+  // cross-component state mid-render, violating React's rules).
+  const prevHalfKeyRef = useRef<string>('')
   const [showPlayEntry, setShowPlayEntry] = useState(false)
   const [currentAtBatPitches, setCurrentAtBatPitches] = useState<PitchResult[]>([])
   const [pendingPlay, setPendingPlay] = useState<PendingPlay | null>(null)
@@ -59,6 +65,22 @@ export function GamePage() {
     }
   }, [gId, game, loadGame])
 
+  // Show "Side retired" toast when the half changes. Using a ref (prevHalfKeyRef)
+  // avoids calling showToast (which updates cross-component ToastProvider state) during
+  // render (which would violate React's rules), while also avoiding setState-in-effect.
+  useEffect(() => {
+    const prev = prevHalfKeyRef.current
+    prevHalfKeyRef.current = trackedHalfKey
+    if (!prev || !trackedHalfKey || prev === trackedHalfKey) return
+    const prevGameId = prev.split('-')[0]
+    const gameChanged = prevGameId !== trackedHalfKey.split('-')[0]
+    if (gameChanged) return
+    // Half changed within the same game — fire the toast
+    const [, inningStr, half] = trackedHalfKey.split('-')
+    const halfLabel = half === 'top' ? 'Top' : 'Bot'
+    showToast(`Side retired — ${halfLabel} ${inningStr}`, 'info')
+  }, [trackedHalfKey, showToast])
+
   // Auto-dismiss beginner guide card after 5 seconds
   useEffect(() => {
     if (!lastRecordedPlay) return
@@ -77,16 +99,9 @@ export function GamePage() {
   // forces re-evaluation of which team is batting.
   const halfKey = `${game.id}-${snapshot.inning}-${snapshot.half}`
   if (trackedHalfKey !== halfKey && trackedHalfKey !== '') {
-    const prevGameId = trackedHalfKey.split('-')[0]
-    const gameChanged = prevGameId !== String(game.id)
     setTrackedHalfKey(halfKey)
     setActiveTab(snapshot.half === 'bottom' ? 'home' : 'away')
     setCurrentAtBatPitches([])
-    // Only show "Side retired" toast for half changes within the same game
-    if (!gameChanged) {
-      const halfLabel = snapshot.half === 'top' ? 'Top' : 'Bot'
-      showToast(`Side retired — ${halfLabel} ${snapshot.inning}`, 'info')
-    }
   } else if (trackedHalfKey === '') {
     // First render after game loads — sync tab to the currently batting team
     setTrackedHalfKey(halfKey)
