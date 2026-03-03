@@ -62,9 +62,8 @@ describe('PlayDetailPopover', () => {
   it('calls onClose when backdrop clicked', async () => {
     const onClose = vi.fn()
     const user = userEvent.setup()
-    const { container } = render(<PlayDetailPopover play={play} onUndo={vi.fn()} onClose={onClose} />)
-    // Click the backdrop (outermost div)
-    const backdrop = container.firstElementChild as HTMLElement
+    render(<PlayDetailPopover play={play} onUndo={vi.fn()} onClose={onClose} />)
+    const backdrop = screen.getByTestId('bottom-sheet-backdrop')
     await user.click(backdrop)
     expect(onClose).toHaveBeenCalled()
   })

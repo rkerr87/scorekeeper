@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { BottomSheet } from './BottomSheet'
 
 interface SubstitutionData {
   newPlayerName: string
@@ -33,62 +34,59 @@ export function SubstitutionDialog({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-6 max-w-sm w-full mx-4">
-        <h3 className="text-lg font-bold text-slate-900 mb-1">Substitution</h3>
-        <p className="text-sm text-slate-500 mb-4">
-          Replacing {currentPlayerName} (#{orderPosition} in order)
-        </p>
+    <BottomSheet onClose={onCancel} title="Substitution">
+      <p className="text-sm text-slate-500 mb-4">
+        Replacing {currentPlayerName} (#{orderPosition} in order)
+      </p>
 
-        <div className="space-y-3 mb-6">
-          <label className="sr-only" htmlFor="sub-player-name">Player name</label>
-          <input
-            id="sub-player-name"
-            type="text"
-            placeholder="New player name"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
-          />
-          <div className="flex gap-2">
-            <label className="sr-only" htmlFor="sub-jersey-number">Jersey number</label>
-            <input
-              id="sub-jersey-number"
-              type="text"
-              inputMode="numeric"
-              placeholder="Jersey #"
-              value={jersey}
-              onChange={e => setJersey(e.target.value)}
-              className="w-24 border border-slate-300 rounded-lg px-3 py-2 text-sm"
-            />
-            <label className="sr-only" htmlFor="sub-position">Position</label>
-            <input
-              id="sub-position"
-              type="text"
-              placeholder="Position"
-              value={position}
-              onChange={e => setPosition(e.target.value)}
-              className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm"
-            />
-          </div>
-        </div>
-
+      <div className="space-y-3 mb-6">
+        <label className="sr-only" htmlFor="sub-player-name">Player name</label>
+        <input
+          id="sub-player-name"
+          type="text"
+          placeholder="New player name"
+          value={name}
+          onChange={e => setName(e.target.value)}
+          className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
+        />
         <div className="flex gap-2">
-          <button
-            onClick={onCancel}
-            className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 py-2.5 rounded-lg font-semibold"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleConfirm}
-            disabled={!name.trim() || !jersey.trim()}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white py-2.5 rounded-lg font-semibold"
-          >
-            Confirm Sub
-          </button>
+          <label className="sr-only" htmlFor="sub-jersey-number">Jersey number</label>
+          <input
+            id="sub-jersey-number"
+            type="text"
+            inputMode="numeric"
+            placeholder="Jersey #"
+            value={jersey}
+            onChange={e => setJersey(e.target.value)}
+            className="w-24 border border-slate-300 rounded-lg px-3 py-2 text-sm"
+          />
+          <label className="sr-only" htmlFor="sub-position">Position</label>
+          <input
+            id="sub-position"
+            type="text"
+            placeholder="Position"
+            value={position}
+            onChange={e => setPosition(e.target.value)}
+            className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm"
+          />
         </div>
       </div>
-    </div>
+
+      <div className="flex gap-2">
+        <button
+          onClick={onCancel}
+          className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 py-2.5 rounded-lg font-semibold"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleConfirm}
+          disabled={!name.trim() || !jersey.trim()}
+          className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white py-2.5 rounded-lg font-semibold"
+        >
+          Confirm Sub
+        </button>
+      </div>
+    </BottomSheet>
   )
 }
