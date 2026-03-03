@@ -23,6 +23,37 @@ import { CSS } from '@dnd-kit/utilities'
 
 const ALL_POSITIONS = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'] as const
 
+function computeWarnings(
+  battingOrder: number[],
+  findPlayerFn: (id: number) => Player | undefined,
+  getPositionFn: (player: Player) => string,
+): string[] {
+  const warnings: string[] = []
+  const positions: string[] = []
+
+  for (const playerId of battingOrder) {
+    const player = findPlayerFn(playerId)
+    if (!player) continue
+    positions.push(getPositionFn(player))
+  }
+
+  if (!positions.includes('P')) {
+    warnings.push('No pitcher assigned')
+  }
+
+  const counts = new Map<string, number>()
+  for (const pos of positions) {
+    counts.set(pos, (counts.get(pos) ?? 0) + 1)
+  }
+  for (const [pos, count] of counts) {
+    if (count > 1) {
+      warnings.push(`Duplicate position: ${pos}`)
+    }
+  }
+
+  return warnings
+}
+
 interface PositionDropdownProps {
   position: string
   onPositionChange: (pos: string) => void
@@ -177,6 +208,7 @@ export function GameSetupPage() {
   const [homeGuestPlayers, setHomeGuestPlayers] = useState<Player[]>([])
   const [awayGuestPlayers, setAwayGuestPlayers] = useState<Player[]>([])
   const [guestSaveToRoster, setGuestSaveToRoster] = useState<Set<number>>(new Set())
+  const [nextTempId, setNextTempId] = useState(-1)
 
   const gId = parseInt(gameId ?? '0')
 
@@ -269,7 +301,8 @@ export function GameSetupPage() {
     const jerseyNum = parseInt(newPlayerJersey)
     if (isNaN(jerseyNum)) return
 
-    const tempId = -Date.now()
+    const tempId = nextTempId
+    setNextTempId(prev => prev - 1)
     const guestPlayer: Player = {
       id: tempId,
       teamId: addingPlayerSide === 'home' ? homeTeamId : awayTeamId,
@@ -327,6 +360,102 @@ export function GameSetupPage() {
     navigate(`/game/${gId}`)
   }
 
+  const renderTeamColumn = (side: 'home' | 'away') => {
+    const teamName = side === 'home' ? homeTeamName : awayTeamName
+    const label = side === 'home' ? 'Home' : 'Away'
+    const battingOrder = side === 'home' ? homeBattingOrder : awayBattingOrder
+    const benchIds = side === 'home' ? homeBench : awayBench
+    const rosterPlayers = side === 'home' ? homePlayers : awayPlayers
+    const guestPlayers = side === 'home' ? homeGuestPlayers : awayGuestPlayers
+
+    return (
+      <div>
+        <h2 className="text-lg font-semibold text-slate-800 mb-3">{teamName} ({label}) Batting Order</h2>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => handleDragEnd(side, e)}>
+          <SortableContext items={battingOrder} strategy={verticalListSortingStrategy}>
+            <div className="space-y-1">
+              {battingOrder.map((playerId, index) => {
+                const player = findPlayer(side, playerId)
+                if (!player) return null
+                return (
+                  <SortablePlayerRow
+                    key={playerId}
+                    playerId={playerId}
+                    index={index}
+                    player={player}
+                    position={getPosition(side, player)}
+                    onRemove={(id) => handleRemove(side, id)}
+                    onPositionChange={(pos) => handlePositionChange(side, playerId, pos)}
+                  />
+                )
+              })}
+            </div>
+          </SortableContext>
+        </DndContext>
+        <BenchSection benchIds={benchIds} players={[...rosterPlayers, ...guestPlayers]} onAddBack={(id) => handleAddBack(side, id)} />
+        {addingPlayerSide === side ? (
+          <div className="mt-2 space-y-2 bg-slate-50 border border-slate-200 rounded p-3">
+            <input
+              type="text"
+              placeholder="Player name"
+              value={newPlayerName}
+              onChange={e => setNewPlayerName(e.target.value)}
+              className="w-full border border-slate-300 rounded px-2 py-1 text-sm"
+            />
+            <input
+              type="text"
+              placeholder="Jersey #"
+              inputMode="numeric"
+              value={newPlayerJersey}
+              onChange={e => setNewPlayerJersey(e.target.value)}
+              className="w-full border border-slate-300 rounded px-2 py-1 text-sm"
+            />
+            <select
+              aria-label="Position"
+              value={newPlayerPosition}
+              onChange={e => setNewPlayerPosition(e.target.value)}
+              className="w-full border border-slate-300 rounded px-2 py-1 text-sm"
+            >
+              {ALL_POSITIONS.map(pos => (
+                <option key={pos} value={pos}>{pos}</option>
+              ))}
+            </select>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                aria-label="Add to team roster"
+                checked={saveToRoster}
+                onChange={e => setSaveToRoster(e.target.checked)}
+              />
+              Add to team roster
+            </label>
+            <div className="flex gap-2">
+              <button
+                onClick={handleSaveNewPlayer}
+                className="bg-blue-600 text-white px-3 py-1 rounded text-sm font-medium hover:bg-blue-700"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => { resetForm(); setAddingPlayerSide(null) }}
+                className="text-slate-600 px-3 py-1 rounded text-sm hover:text-slate-800"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setAddingPlayerSide(side)}
+            className="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
+          >
+            + Add Player
+          </button>
+        )}
+      </div>
+    )
+  }
+
   if (loading) return <div className="p-6">Loading...</div>
 
   return (
@@ -334,181 +463,37 @@ export function GameSetupPage() {
       <h1 className="text-2xl font-bold text-slate-900 mb-6">Game Setup</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Away batting order */}
-        <div>
-          <h2 className="text-lg font-semibold text-slate-800 mb-3">{awayTeamName} (Away) Batting Order</h2>
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => handleDragEnd('away', e)}>
-            <SortableContext items={awayBattingOrder} strategy={verticalListSortingStrategy}>
-              <div className="space-y-1">
-                {awayBattingOrder.map((playerId, index) => {
-                  const player = findPlayer('away', playerId)
-                  if (!player) return null
-                  return (
-                    <SortablePlayerRow
-                      key={playerId}
-                      playerId={playerId}
-                      index={index}
-                      player={player}
-                      position={getPosition('away', player)}
-                      onRemove={(id) => handleRemove('away', id)}
-                      onPositionChange={(pos) => handlePositionChange('away', playerId, pos)}
-                    />
-                  )
-                })}
-              </div>
-            </SortableContext>
-          </DndContext>
-          <BenchSection benchIds={awayBench} players={[...awayPlayers, ...awayGuestPlayers]} onAddBack={(id) => handleAddBack('away', id)} />
-          {addingPlayerSide === 'away' ? (
-            <div className="mt-2 space-y-2 bg-slate-50 border border-slate-200 rounded p-3">
-              <input
-                type="text"
-                placeholder="Player name"
-                value={newPlayerName}
-                onChange={e => setNewPlayerName(e.target.value)}
-                className="w-full border border-slate-300 rounded px-2 py-1 text-sm"
-              />
-              <input
-                type="text"
-                placeholder="Jersey #"
-                inputMode="numeric"
-                value={newPlayerJersey}
-                onChange={e => setNewPlayerJersey(e.target.value)}
-                className="w-full border border-slate-300 rounded px-2 py-1 text-sm"
-              />
-              <select
-                aria-label="Position"
-                value={newPlayerPosition}
-                onChange={e => setNewPlayerPosition(e.target.value)}
-                className="w-full border border-slate-300 rounded px-2 py-1 text-sm"
-              >
-                {ALL_POSITIONS.map(pos => (
-                  <option key={pos} value={pos}>{pos}</option>
-                ))}
-              </select>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  aria-label="Add to team roster"
-                  checked={saveToRoster}
-                  onChange={e => setSaveToRoster(e.target.checked)}
-                />
-                Add to team roster
-              </label>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleSaveNewPlayer}
-                  className="bg-blue-600 text-white px-3 py-1 rounded text-sm font-medium hover:bg-blue-700"
-                >
-                  Save
-                </button>
-                <button
-                  onClick={() => { resetForm(); setAddingPlayerSide(null) }}
-                  className="text-slate-600 px-3 py-1 rounded text-sm hover:text-slate-800"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => setAddingPlayerSide('away')}
-              className="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
-            >
-              + Add Player
-            </button>
-          )}
-        </div>
-
-        {/* Home batting order */}
-        <div>
-          <h2 className="text-lg font-semibold text-slate-800 mb-3">{homeTeamName} (Home) Batting Order</h2>
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => handleDragEnd('home', e)}>
-            <SortableContext items={homeBattingOrder} strategy={verticalListSortingStrategy}>
-              <div className="space-y-1">
-                {homeBattingOrder.map((playerId, index) => {
-                  const player = findPlayer('home', playerId)
-                  if (!player) return null
-                  return (
-                    <SortablePlayerRow
-                      key={playerId}
-                      playerId={playerId}
-                      index={index}
-                      player={player}
-                      position={getPosition('home', player)}
-                      onRemove={(id) => handleRemove('home', id)}
-                      onPositionChange={(pos) => handlePositionChange('home', playerId, pos)}
-                    />
-                  )
-                })}
-              </div>
-            </SortableContext>
-          </DndContext>
-          <BenchSection benchIds={homeBench} players={[...homePlayers, ...homeGuestPlayers]} onAddBack={(id) => handleAddBack('home', id)} />
-          {addingPlayerSide === 'home' ? (
-            <div className="mt-2 space-y-2 bg-slate-50 border border-slate-200 rounded p-3">
-              <input
-                type="text"
-                placeholder="Player name"
-                value={newPlayerName}
-                onChange={e => setNewPlayerName(e.target.value)}
-                className="w-full border border-slate-300 rounded px-2 py-1 text-sm"
-              />
-              <input
-                type="text"
-                placeholder="Jersey #"
-                inputMode="numeric"
-                value={newPlayerJersey}
-                onChange={e => setNewPlayerJersey(e.target.value)}
-                className="w-full border border-slate-300 rounded px-2 py-1 text-sm"
-              />
-              <select
-                aria-label="Position"
-                value={newPlayerPosition}
-                onChange={e => setNewPlayerPosition(e.target.value)}
-                className="w-full border border-slate-300 rounded px-2 py-1 text-sm"
-              >
-                {ALL_POSITIONS.map(pos => (
-                  <option key={pos} value={pos}>{pos}</option>
-                ))}
-              </select>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  aria-label="Add to team roster"
-                  checked={saveToRoster}
-                  onChange={e => setSaveToRoster(e.target.checked)}
-                />
-                Add to team roster
-              </label>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleSaveNewPlayer}
-                  className="bg-blue-600 text-white px-3 py-1 rounded text-sm font-medium hover:bg-blue-700"
-                >
-                  Save
-                </button>
-                <button
-                  onClick={() => { resetForm(); setAddingPlayerSide(null) }}
-                  className="text-slate-600 px-3 py-1 rounded text-sm hover:text-slate-800"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => setAddingPlayerSide('home')}
-              className="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
-            >
-              + Add Player
-            </button>
-          )}
-        </div>
+        {renderTeamColumn('away')}
+        {renderTeamColumn('home')}
       </div>
 
-      {/* Start game button */}
+      {/* Lineup warnings + Start game button */}
       <div className="mt-8">
+        {(() => {
+          const homeWarnings = computeWarnings(
+            homeBattingOrder,
+            (id) => findPlayer('home', id),
+            (player) => getPosition('home', player),
+          )
+          const awayWarnings = computeWarnings(
+            awayBattingOrder,
+            (id) => findPlayer('away', id),
+            (player) => getPosition('away', player),
+          )
+          const allWarnings = [
+            ...awayWarnings.map(w => `${awayTeamName}: ${w}`),
+            ...homeWarnings.map(w => `${homeTeamName}: ${w}`),
+          ]
+          return allWarnings.length > 0 ? (
+            <div className="mb-4 space-y-1">
+              {allWarnings.map((w, i) => (
+                <div key={i} className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+                  {w}
+                </div>
+              ))}
+            </div>
+          ) : null
+        })()}
         <button
           onClick={handleStartGame}
           disabled={homeBattingOrder.length === 0 || awayBattingOrder.length === 0}

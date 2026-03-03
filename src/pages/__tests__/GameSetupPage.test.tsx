@@ -405,6 +405,48 @@ describe('GameSetupPage', () => {
     expect(hankSlot!.playerId).toBeLessThan(0)
   })
 
+  it('warns when no pitcher assigned for a team', async () => {
+    const gameId = await seedTwoTeamsAndGame()
+    renderSetup(gameId)
+    await waitFor(() => {
+      expect(screen.getByText('Alice')).toBeInTheDocument()
+    })
+    // Change Alice's position from P to RF (home team)
+    // Position buttons are ordered: away (Dave, Eve, Frank) then home (Alice, Bob, Charlie)
+    const positionButtons = screen.getAllByRole('button', { name: /position/i })
+    await userEvent.click(positionButtons[3]) // Alice (first home player)
+    await userEvent.click(screen.getByRole('option', { name: 'RF' }))
+    expect(screen.getByText(/no pitcher assigned/i)).toBeInTheDocument()
+  })
+
+  it('warns when duplicate positions exist', async () => {
+    const gameId = await seedTwoTeamsAndGame()
+    renderSetup(gameId)
+    await waitFor(() => {
+      expect(screen.getByText('Alice')).toBeInTheDocument()
+    })
+    // Change Bob's position from C to P (duplicate with Alice in home team)
+    const positionButtons = screen.getAllByRole('button', { name: /position/i })
+    await userEvent.click(positionButtons[4]) // Bob (second home player)
+    await userEvent.click(screen.getByRole('option', { name: 'P' }))
+    expect(screen.getByText(/duplicate position.*P/i)).toBeInTheDocument()
+  })
+
+  it('does not block Start Game when warnings present', async () => {
+    const gameId = await seedTwoTeamsAndGame()
+    renderSetup(gameId)
+    await waitFor(() => {
+      expect(screen.getByText('Alice')).toBeInTheDocument()
+    })
+    // Change Alice's position to create a warning
+    const positionButtons = screen.getAllByRole('button', { name: /position/i })
+    await userEvent.click(positionButtons[3])
+    await userEvent.click(screen.getByRole('option', { name: 'RF' }))
+    // Warnings present but Start Game still enabled
+    expect(screen.getByText(/no pitcher assigned/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /start game/i })).toBeEnabled()
+  })
+
   it('should correctly identify home vs away when team2 is home', async () => {
     const team1Id = await db.teams.add({ name: 'Eagles', createdAt: new Date() })
     const team2Id = await db.teams.add({ name: 'Hawks', createdAt: new Date() })
