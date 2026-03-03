@@ -288,6 +288,8 @@ describe('GamePage', () => {
     renderGame(gameId as number)
     await waitFor(() => expect(screen.getByRole('button', { name: /record play/i })).toBeInTheDocument())
     await user.click(screen.getByRole('button', { name: /record play/i }))
+    // Switch to Shorthand tab (tabbed layout added in Task 13)
+    await user.click(screen.getByText('Shorthand'))
     // Use shorthand to record a strikeout (K button removed from outcome grid)
     await user.type(screen.getByPlaceholderText(/shorthand/i), 'K')
     await user.click(screen.getByRole('button', { name: /^enter$/i }))
@@ -667,6 +669,11 @@ describe('GamePage', () => {
 
     // Record the 3rd out (K) via shorthand
     await user.click(screen.getByRole('button', { name: /record play/i }))
+    // Switch to Shorthand tab (tabbed layout added in Task 13)
+    await waitFor(() => {
+      expect(screen.getByText('Shorthand')).toBeInTheDocument()
+    })
+    await user.click(screen.getByText('Shorthand'))
     await waitFor(() => {
       expect(screen.getByPlaceholderText(/shorthand/i)).toBeInTheDocument()
     })
