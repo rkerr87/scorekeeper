@@ -13,6 +13,7 @@ export function TeamsPage() {
   const [teamName, setTeamName] = useState('')
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     async function load() {
@@ -31,6 +32,11 @@ export function TeamsPage() {
 
   const handleCreateTeam = async () => {
     if (!teamName.trim() || creating) return
+    if (teams.some(t => t.team.name.toLowerCase() === teamName.trim().toLowerCase())) {
+      setError('A team with this name already exists')
+      return
+    }
+    setError('')
     setCreating(true)
     try {
       const t = await createTeam(teamName.trim())
@@ -70,16 +76,19 @@ export function TeamsPage() {
       <div className="border border-slate-200 rounded-lg p-4 bg-white">
         <h2 className="text-lg font-semibold text-slate-800 mb-3 font-heading uppercase">Add Team</h2>
         <div className="flex gap-2">
-          <label className="sr-only" htmlFor="team-name-input">Team name</label>
-          <input
-            id="team-name-input"
-            type="text"
-            placeholder="Team name"
-            value={teamName}
-            onChange={e => setTeamName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleCreateTeam()}
-            className="flex-1 border border-slate-300 rounded-lg px-3 py-2"
-          />
+          <div className="flex-1">
+            <label className="sr-only" htmlFor="team-name-input">Team name</label>
+            <input
+              id="team-name-input"
+              type="text"
+              placeholder="Team name"
+              value={teamName}
+              onChange={e => setTeamName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleCreateTeam()}
+              className="w-full border border-slate-300 rounded-lg px-3 py-2"
+            />
+            {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+          </div>
           <button
             onClick={handleCreateTeam}
             disabled={creating}

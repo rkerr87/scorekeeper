@@ -94,4 +94,29 @@ describe('TeamsPage', () => {
       expect(screen.getByText('1 player')).toBeInTheDocument()
     })
   })
+
+  it('shows error for duplicate team name', async () => {
+    const user = userEvent.setup()
+    renderWithRouter()
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText(/team name/i)).toBeInTheDocument()
+    })
+
+    // Create "Tigers"
+    await user.type(screen.getByPlaceholderText(/team name/i), 'Tigers')
+    await user.click(screen.getByRole('button', { name: /create/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Tigers')).toBeInTheDocument()
+    })
+
+    // Try to create "Tigers" again
+    await user.type(screen.getByPlaceholderText(/team name/i), 'Tigers')
+    await user.click(screen.getByRole('button', { name: /create/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText('A team with this name already exists')).toBeInTheDocument()
+    })
+  })
 })

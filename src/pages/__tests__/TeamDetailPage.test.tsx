@@ -148,4 +148,41 @@ describe('TeamDetailPage', () => {
       expect(screen.getByText('UT')).toBeInTheDocument()
     })
   })
+
+  it('shows error when jersey number is not numeric', async () => {
+    const user = userEvent.setup()
+    const teamId = await db.teams.add({ name: 'Mudcats', createdAt: new Date() })
+
+    renderWithRouter(String(teamId))
+
+    await waitFor(() => {
+      expect(screen.getByText('Mudcats')).toBeInTheDocument()
+    })
+
+    await user.type(screen.getByPlaceholderText(/player name/i), 'John Doe')
+    await user.type(screen.getByPlaceholderText(/jersey/i), 'abc')
+    await user.click(screen.getByRole('button', { name: /add player/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Jersey # must be a number')).toBeInTheDocument()
+    })
+  })
+
+  it('shows error when player name is empty on submit', async () => {
+    const user = userEvent.setup()
+    const teamId = await db.teams.add({ name: 'Mudcats', createdAt: new Date() })
+
+    renderWithRouter(String(teamId))
+
+    await waitFor(() => {
+      expect(screen.getByText('Mudcats')).toBeInTheDocument()
+    })
+
+    await user.type(screen.getByPlaceholderText(/jersey/i), '23')
+    await user.click(screen.getByRole('button', { name: /add player/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Name is required')).toBeInTheDocument()
+    })
+  })
 })

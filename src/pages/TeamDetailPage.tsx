@@ -14,6 +14,7 @@ export function TeamDetailPage() {
   const [jerseyNumber, setJerseyNumber] = useState('')
   const [position, setPosition] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [errors, setErrors] = useState<{ name?: string; jersey?: string }>({})
 
   const tId = parseInt(teamId ?? '0')
 
@@ -30,7 +31,15 @@ export function TeamDetailPage() {
   }, [tId])
 
   const handleAddPlayer = async () => {
-    if (!team?.id || !playerName.trim() || !jerseyNumber.trim() || submitting) return
+    if (!team?.id || submitting) return
+    const newErrors: { name?: string; jersey?: string } = {}
+    if (!playerName.trim()) newErrors.name = 'Name is required'
+    if (!jerseyNumber.trim() || isNaN(Number(jerseyNumber))) newErrors.jersey = 'Jersey # must be a number'
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
+      return
+    }
+    setErrors({})
     setSubmitting(true)
     try {
       const p = await addPlayer(team.id, playerName.trim(), parseInt(jerseyNumber), position.trim() || 'UT')
@@ -60,15 +69,21 @@ export function TeamDetailPage() {
       {/* Add player form */}
       <div className="border border-slate-200 rounded-lg p-4 mb-6 bg-white">
         <h2 className="text-lg font-semibold text-slate-800 mb-3 font-heading uppercase">Add Player</h2>
-        <div className="flex gap-2">
-          <label className="sr-only" htmlFor="player-name-input">Player name</label>
-          <input id="player-name-input" type="text" placeholder="Player name" value={playerName}
-            onChange={e => setPlayerName(e.target.value)}
-            className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm" />
-          <label className="sr-only" htmlFor="jersey-number-input">Jersey number</label>
-          <input id="jersey-number-input" type="text" inputMode="numeric" placeholder="Jersey #" value={jerseyNumber}
-            onChange={e => setJerseyNumber(e.target.value)}
-            className="w-20 border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+        <div className="flex gap-2 items-start">
+          <div className="flex-1">
+            <label className="sr-only" htmlFor="player-name-input">Player name</label>
+            <input id="player-name-input" type="text" placeholder="Player name" value={playerName}
+              onChange={e => setPlayerName(e.target.value)}
+              className={`w-full border rounded-lg px-3 py-2 text-sm ${errors.name ? 'border-red-400' : 'border-slate-300'}`} />
+            {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+          </div>
+          <div className="w-20">
+            <label className="sr-only" htmlFor="jersey-number-input">Jersey number</label>
+            <input id="jersey-number-input" type="text" inputMode="numeric" placeholder="Jersey #" value={jerseyNumber}
+              onChange={e => setJerseyNumber(e.target.value)}
+              className={`w-full border rounded-lg px-3 py-2 text-sm ${errors.jersey ? 'border-red-400' : 'border-slate-300'}`} />
+            {errors.jersey && <p className="text-red-500 text-xs mt-1">{errors.jersey}</p>}
+          </div>
           <select value={position} onChange={e => setPosition(e.target.value)}
             className="w-24 border border-slate-300 rounded-lg px-2 py-2 text-sm bg-white">
             <option value="">Pos</option>
