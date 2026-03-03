@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import type { Team } from '../engine/types'
 import { getAllTeams, getPlayersForTeam, createTeam } from '../db/gameService'
 import { useToast } from '../contexts/ToastContext'
+import { Spinner } from '../components/Spinner'
 
 interface TeamWithCount {
   team: Team
@@ -50,7 +51,7 @@ export function TeamsPage() {
     }
   }
 
-  if (loading) return <div className="p-6">Loading...</div>
+  if (loading) return <Spinner />
 
   return (
     <div className="max-w-lg mx-auto p-6">

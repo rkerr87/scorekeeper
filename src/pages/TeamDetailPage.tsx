@@ -84,6 +84,7 @@ export function TeamDetailPage() {
       : p
     ))
     setEditingPlayerId(null)
+    showToast('Player updated', 'success')
   }
 
   const handleDeletePlayer = async (id: number) => {
@@ -210,7 +211,13 @@ export function TeamDetailPage() {
                         className="w-20 border border-slate-300 rounded px-1 py-1 text-sm bg-white">
                         <option value="">UT</option>
                         {['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'].map(pos => (
-                          <option key={pos} value={pos}>{pos}</option>
+                          <option
+                            key={pos}
+                            value={pos}
+                            disabled={pos !== editPosition && players.some(p => p.defaultPosition === pos)}
+                          >
+                            {pos}
+                          </option>
                         ))}
                       </select>
                       <button onClick={saveEdit} className="bg-blue-600 text-white px-3 py-1 rounded text-sm font-semibold">Save</button>

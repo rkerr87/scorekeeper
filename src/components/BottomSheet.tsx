@@ -10,7 +10,7 @@ export function BottomSheet({ children, onClose, title }: BottomSheetProps) {
   return (
     <div className="fixed inset-0 z-50">
       <div data-testid="bottom-sheet-backdrop" className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="absolute inset-x-0 bottom-0 bg-white rounded-t-2xl max-h-[85vh] overflow-y-auto">
+      <div className="absolute inset-x-0 bottom-0 bg-white rounded-t-2xl max-h-[85vh] overflow-y-auto animate-[slideUp_200ms_ease-out]">
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 bg-slate-300 rounded-full" />
         </div>
