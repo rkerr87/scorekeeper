@@ -21,7 +21,7 @@ interface FieldDiagramProps {
 
 export function FieldDiagram({ selectedPositions, onPositionClick }: FieldDiagramProps) {
   return (
-    <div className="relative w-72 h-72 mx-auto">
+    <div className="relative w-full max-w-72 aspect-square mx-auto">
       <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100">
         {/* Outfield grass — straight foul lines with curved outfield wall */}
         <path
@@ -87,7 +87,7 @@ export function FieldDiagram({ selectedPositions, onPositionClick }: FieldDiagra
             onClick={() => onPositionClick(pos.num)}
             aria-label={`${pos.num} ${pos.label}`}
             className={`
-              absolute w-10 h-10 rounded-full flex flex-col items-center justify-center
+              absolute w-12 h-12 rounded-full flex flex-col items-center justify-center
               text-xs font-bold transition-all duration-150 active:scale-95 transform -translate-x-1/2 -translate-y-1/2
               shadow-md border
               ${isSelected
@@ -97,7 +97,7 @@ export function FieldDiagram({ selectedPositions, onPositionClick }: FieldDiagra
             `}
             style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
           >
-            <span className="text-[9px] leading-none">{pos.label}</span>
+            <span className="text-[11px] leading-none">{pos.label}</span>
             <span className="text-xs leading-none">{pos.num}</span>
           </button>
         )

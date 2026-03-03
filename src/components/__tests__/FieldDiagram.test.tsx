@@ -24,4 +24,10 @@ describe('FieldDiagram', () => {
     await user.click(screen.getByRole('button', { name: /6.*SS/i }))
     expect(onPositionClick).toHaveBeenCalledWith(6)
   })
+
+  it('uses responsive container without fixed width', () => {
+    const { container } = render(<FieldDiagram selectedPositions={[]} onPositionClick={() => {}} />)
+    const containerDiv = container.querySelector('.relative')
+    expect(containerDiv).not.toHaveClass('w-72')
+  })
 })
