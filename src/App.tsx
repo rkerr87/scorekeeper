@@ -1,4 +1,5 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { ToastProvider } from './contexts/ToastContext'
 import { PreferencesProvider } from './contexts/PreferencesContext'
 import { GameProvider } from './contexts/GameContext'
 import { AppLayout } from './layouts/AppLayout'
@@ -30,11 +31,13 @@ const router = createBrowserRouter([
 
 function App() {
   return (
-    <PreferencesProvider>
-      <GameProvider>
-        <RouterProvider router={router} />
-      </GameProvider>
-    </PreferencesProvider>
+    <ToastProvider>
+      <PreferencesProvider>
+        <GameProvider>
+          <RouterProvider router={router} />
+        </GameProvider>
+      </PreferencesProvider>
+    </ToastProvider>
   )
 }
 
