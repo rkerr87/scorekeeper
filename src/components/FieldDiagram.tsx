@@ -1,13 +1,13 @@
 const POSITIONS = [
-  { num: 1, label: 'P',  x: 50, y: 60 },  // pitcher — center mound
-  { num: 2, label: 'C',  x: 50, y: 90 },  // catcher — behind home plate
-  { num: 3, label: '1B', x: 73, y: 66 },  // first base
-  { num: 4, label: '2B', x: 58, y: 45 },  // second base — right of 2nd
-  { num: 5, label: '3B', x: 27, y: 66 },  // third base
-  { num: 6, label: 'SS', x: 38, y: 48 },  // shortstop — left of 2nd
-  { num: 7, label: 'LF', x: 16, y: 24 },  // left field
-  { num: 8, label: 'CF', x: 50, y: 12 },  // center field
-  { num: 9, label: 'RF', x: 84, y: 24 },  // right field
+  { num: 1, label: 'P',  x: 50, y: 57 },  // pitcher — center mound
+  { num: 2, label: 'C',  x: 50, y: 91 },  // catcher — behind home plate
+  { num: 3, label: '1B', x: 72, y: 67 },  // first base
+  { num: 4, label: '2B', x: 60, y: 44 },  // second base — right of 2nd
+  { num: 5, label: '3B', x: 28, y: 67 },  // third base
+  { num: 6, label: 'SS', x: 38, y: 47 },  // shortstop — left of 2nd
+  { num: 7, label: 'LF', x: 15, y: 25 },  // left field
+  { num: 8, label: 'CF', x: 50, y: 13 },  // center field
+  { num: 9, label: 'RF', x: 85, y: 25 },  // right field
 ]
 
 interface FieldDiagramProps {
@@ -16,58 +16,56 @@ interface FieldDiagramProps {
 }
 
 export function FieldDiagram({ selectedPositions, onPositionClick }: FieldDiagramProps) {
+  // Key geometry points
+  // Home plate: (50, 82)
+  // 1B: (71, 60), 2B: (50, 40), 3B: (29, 60)
+  // Pitcher's mound: (50, 58)
+
   return (
     <div className="relative w-72 h-72 mx-auto">
       <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100">
-        {/* Outfield grass — rounded shield shape */}
+        {/* Outfield grass — smooth rounded shape */}
         <path
-          d="M 50 92 L 3 30 Q 3 5 50 3 Q 97 5 97 30 Z"
+          d="M 50 85 L 5 38 C 5 8 50 2 50 2 C 50 2 95 8 95 38 Z"
           fill="#2d8a4e"
         />
 
-        {/* Infield dirt — arc behind bases */}
+        {/* Foul lines — from home plate to outfield edges */}
+        <line x1="50" y1="82" x2="5" y2="38" stroke="rgba(255,255,255,0.5)" strokeWidth="0.6" />
+        <line x1="50" y1="82" x2="95" y2="38" stroke="rgba(255,255,255,0.5)" strokeWidth="0.6" />
+
+        {/* Infield dirt — smooth arc from 3B side to 1B side, curving up behind 2B */}
         <path
-          d="M 22 72 Q 22 38 50 35 Q 78 38 78 72 Z"
+          d="M 20 68 C 20 34 50 28 50 28 C 50 28 80 34 80 68 L 71 60 L 50 82 L 29 60 Z"
           fill="#c4956a"
         />
 
-        {/* Infield grass — diamond inside dirt */}
+        {/* Infield grass — diamond shape */}
         <polygon
-          points="50,78 72,58 50,40 28,58"
+          points="50,82 71,60 50,40 29,60"
           fill="#3a9d5e"
         />
 
         {/* Base paths — white lines */}
-        <line x1="50" y1="80" x2="72" y2="58" stroke="#fff" strokeWidth="0.7" />
-        <line x1="72" y1="58" x2="50" y2="38" stroke="#fff" strokeWidth="0.7" />
-        <line x1="50" y1="38" x2="28" y2="58" stroke="#fff" strokeWidth="0.7" />
-        <line x1="28" y1="58" x2="50" y2="80" stroke="#fff" strokeWidth="0.7" />
+        <line x1="50" y1="82" x2="71" y2="60" stroke="#fff" strokeWidth="0.8" />
+        <line x1="71" y1="60" x2="50" y2="40" stroke="#fff" strokeWidth="0.8" />
+        <line x1="50" y1="40" x2="29" y2="60" stroke="#fff" strokeWidth="0.8" />
+        <line x1="29" y1="60" x2="50" y2="82" stroke="#fff" strokeWidth="0.8" />
 
-        {/* Foul lines — from home plate to outfield edges */}
-        <line x1="50" y1="80" x2="3" y2="30" stroke="#fff" strokeWidth="0.6" />
-        <line x1="50" y1="80" x2="97" y2="30" stroke="#fff" strokeWidth="0.6" />
+        {/* Bases — white diamond squares */}
+        <rect x="69.5" y="58.5" width="3" height="3" fill="#fff" transform="rotate(45 71 60)" />
+        <rect x="48.5" y="38.5" width="3" height="3" fill="#fff" transform="rotate(45 50 40)" />
+        <rect x="27.5" y="58.5" width="3" height="3" fill="#fff" transform="rotate(45 29 60)" />
 
-        {/* Bases — white squares */}
-        <rect x="70" y="56" width="4" height="4" fill="#fff" transform="rotate(45 72 58)" />
-        <rect x="48" y="36" width="4" height="4" fill="#fff" transform="rotate(45 50 38)" />
-        <rect x="26" y="56" width="4" height="4" fill="#fff" transform="rotate(45 28 58)" />
+        {/* Home plate area — dirt circle behind home */}
+        <circle cx="50" cy="82" r="6" fill="#c4956a" />
 
-        {/* Home plate */}
-        <polygon points="50,82 52.5,80 52.5,78 47.5,78 47.5,80" fill="#fff" />
+        {/* Home plate — white pentagon */}
+        <polygon points="50,83.5 52,82 52,80 48,80 48,82" fill="#fff" />
 
-        {/* Pitcher's mound */}
-        <circle cx="50" cy="58" r="2.5" fill="#b8845a" />
-
-        {/* Dirt cutouts at bases */}
-        <circle cx="72" cy="58" r="4" fill="#c4956a" />
-        <circle cx="28" cy="58" r="4" fill="#c4956a" />
-        <circle cx="50" cy="38" r="4" fill="#c4956a" />
-
-        {/* Home plate dirt area */}
-        <path
-          d="M 42 78 Q 42 86 50 88 Q 58 86 58 78 Z"
-          fill="#c4956a"
-        />
+        {/* Pitcher's mound — dirt circle + rubber */}
+        <circle cx="50" cy="55" r="4" fill="#c4956a" />
+        <rect x="48.5" y="54.5" width="3" height="1" fill="#fff" />
       </svg>
 
       {/* Position buttons */}
