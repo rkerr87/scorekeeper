@@ -10,6 +10,7 @@ function renderWithRouter(teamId: string) {
     <MemoryRouter initialEntries={[`/teams/${teamId}`]}>
       <Routes>
         <Route path="/teams/:teamId" element={<TeamDetailPage />} />
+        <Route path="/teams" element={<div>Teams List</div>} />
       </Routes>
     </MemoryRouter>
   )
@@ -101,7 +102,7 @@ describe('TeamDetailPage', () => {
       expect(screen.getByText('John Doe')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: /delete/i }))
+    await user.click(screen.getByRole('button', { name: /^delete$/i }))
     await user.click(screen.getByRole('button', { name: /yes/i }))
 
     await waitFor(() => {
@@ -121,7 +122,7 @@ describe('TeamDetailPage', () => {
     })
 
     // Click delete — should show confirmation, not immediately delete
-    await user.click(screen.getByRole('button', { name: /delete/i }))
+    await user.click(screen.getByRole('button', { name: /^delete$/i }))
     expect(screen.getByText(/delete john doe\?/i)).toBeInTheDocument()
     expect(screen.getByText('John Doe')).toBeInTheDocument()
 
@@ -131,7 +132,7 @@ describe('TeamDetailPage', () => {
     expect(screen.queryByText(/delete john doe\?/i)).not.toBeInTheDocument()
 
     // Click Delete again, then Yes — player removed
-    await user.click(screen.getByRole('button', { name: /delete/i }))
+    await user.click(screen.getByRole('button', { name: /^delete$/i }))
     await user.click(screen.getByRole('button', { name: /yes/i }))
 
     await waitFor(() => {
@@ -214,6 +215,107 @@ describe('TeamDetailPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Name is required')).toBeInTheDocument()
+    })
+  })
+
+  describe('Delete Team', () => {
+    it('shows a Delete Team button', async () => {
+      const teamId = await db.teams.add({ name: 'Mudcats', createdAt: new Date() })
+
+      renderWithRouter(String(teamId))
+
+      await waitFor(() => {
+        expect(screen.getByText('Mudcats')).toBeInTheDocument()
+      })
+
+      expect(screen.getByRole('button', { name: /delete team/i })).toBeInTheDocument()
+    })
+
+    it('shows confirmation dialog when no games exist', async () => {
+      const user = userEvent.setup()
+      const teamId = await db.teams.add({ name: 'Mudcats', createdAt: new Date() })
+
+      renderWithRouter(String(teamId))
+
+      await waitFor(() => {
+        expect(screen.getByText('Mudcats')).toBeInTheDocument()
+      })
+
+      await user.click(screen.getByRole('button', { name: /delete team/i }))
+
+      expect(screen.getByText(/delete mudcats\? this cannot be undone/i)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /yes, delete/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument()
+    })
+
+    it('shows blocking message when team has games', async () => {
+      const user = userEvent.setup()
+      const teamId = await db.teams.add({ name: 'Mudcats', createdAt: new Date() })
+      const team2Id = await db.teams.add({ name: 'Cardinals', createdAt: new Date() })
+      await db.games.add({
+        team1Id: teamId,
+        team2Id: team2Id,
+        homeTeamId: teamId,
+        code: 'ABC123',
+        date: new Date(),
+        status: 'in_progress',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+
+      renderWithRouter(String(teamId))
+
+      await waitFor(() => {
+        expect(screen.getByText('Mudcats')).toBeInTheDocument()
+      })
+
+      await user.click(screen.getByRole('button', { name: /delete team/i }))
+
+      expect(screen.getByText(/can't delete.*this team has games/i)).toBeInTheDocument()
+      expect(screen.queryByText(/delete mudcats\? this cannot be undone/i)).not.toBeInTheDocument()
+    })
+
+    it('cancel hides the confirmation dialog', async () => {
+      const user = userEvent.setup()
+      const teamId = await db.teams.add({ name: 'Mudcats', createdAt: new Date() })
+
+      renderWithRouter(String(teamId))
+
+      await waitFor(() => {
+        expect(screen.getByText('Mudcats')).toBeInTheDocument()
+      })
+
+      await user.click(screen.getByRole('button', { name: /delete team/i }))
+      expect(screen.getByText(/delete mudcats\? this cannot be undone/i)).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: /cancel/i }))
+      expect(screen.queryByText(/delete mudcats\? this cannot be undone/i)).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /delete team/i })).toBeInTheDocument()
+    })
+
+    it('deletes team and navigates to /teams on confirm', async () => {
+      const user = userEvent.setup()
+      const teamId = await db.teams.add({ name: 'Mudcats', createdAt: new Date() })
+      await db.players.add({ teamId, name: 'Player A', jerseyNumber: 7, defaultPosition: 'P', createdAt: new Date() })
+
+      renderWithRouter(String(teamId))
+
+      await waitFor(() => {
+        expect(screen.getByText('Mudcats')).toBeInTheDocument()
+      })
+
+      await user.click(screen.getByRole('button', { name: /delete team/i }))
+      await user.click(screen.getByRole('button', { name: /yes, delete/i }))
+
+      await waitFor(() => {
+        expect(screen.getByText('Teams List')).toBeInTheDocument()
+      })
+
+      // Verify team and players were removed from DB
+      const teamInDb = await db.teams.get(teamId)
+      expect(teamInDb).toBeUndefined()
+      const playersInDb = await db.players.where('teamId').equals(teamId).toArray()
+      expect(playersInDb).toHaveLength(0)
     })
   })
 })

@@ -17,6 +17,13 @@ export async function getAllTeams(): Promise<Team[]> {
   return db.teams.toArray()
 }
 
+export async function deleteTeam(teamId: number): Promise<void> {
+  await db.transaction('rw', [db.players, db.teams], async () => {
+    await db.players.where('teamId').equals(teamId).delete()
+    await db.teams.delete(teamId)
+  })
+}
+
 // --- Players ---
 
 export async function addPlayer(

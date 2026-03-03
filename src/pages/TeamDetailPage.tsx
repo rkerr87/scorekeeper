@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import type { Team, Player } from '../engine/types'
-import { getTeam, getPlayersForTeam, addPlayer, deletePlayer } from '../db/gameService'
+import { getTeam, getPlayersForTeam, addPlayer, deletePlayer, getGamesForTeam, deleteTeam } from '../db/gameService'
 import { Spinner } from '../components/Spinner'
 
 export function TeamDetailPage() {
   const { teamId } = useParams()
+  const navigate = useNavigate()
   const [team, setTeam] = useState<Team | null>(null)
   const [players, setPlayers] = useState<Player[]>([])
   const [loading, setLoading] = useState(true)
@@ -16,6 +17,8 @@ export function TeamDetailPage() {
   const [submitting, setSubmitting] = useState(false)
   const [errors, setErrors] = useState<{ name?: string; jersey?: string }>({})
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
+  const [showDeleteTeam, setShowDeleteTeam] = useState(false)
+  const [deleteTeamBlocked, setDeleteTeamBlocked] = useState(false)
 
   const tId = parseInt(teamId ?? '0')
 
@@ -57,6 +60,20 @@ export function TeamDetailPage() {
     await deletePlayer(id)
     setPlayers(players.filter(p => p.id !== id))
     setConfirmDeleteId(null)
+  }
+
+  const handleDeleteTeam = async () => {
+    const games = await getGamesForTeam(tId)
+    if (games.length > 0) {
+      setDeleteTeamBlocked(true)
+      return
+    }
+    setShowDeleteTeam(true)
+  }
+
+  const confirmDeleteTeam = async () => {
+    await deleteTeam(tId)
+    navigate('/teams')
   }
 
   if (loading) return <Spinner />
@@ -144,6 +161,24 @@ export function TeamDetailPage() {
           </tbody>
         </table>
       )}
+
+      {/* Delete Team section */}
+      <div className="mt-8 pt-6 border-t border-slate-200">
+        {deleteTeamBlocked && (
+          <p className="text-sm text-red-600 mb-2">Can't delete — this team has games. Delete those games first.</p>
+        )}
+        {showDeleteTeam ? (
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-red-600 font-medium">Delete {team.name}? This cannot be undone.</span>
+            <button onClick={confirmDeleteTeam} className="text-red-600 font-bold text-sm">Yes, Delete</button>
+            <button onClick={() => setShowDeleteTeam(false)} className="text-slate-500 text-sm">Cancel</button>
+          </div>
+        ) : (
+          <button onClick={handleDeleteTeam} className="text-red-500 hover:text-red-700 text-sm border border-red-300 rounded-lg px-4 py-2">
+            Delete Team
+          </button>
+        )}
+      </div>
     </div>
   )
 }
