@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import type { Team, Player } from '../engine/types'
-import { getTeam, getPlayersForTeam, addPlayer, deletePlayer, getGamesForTeam, deleteTeam } from '../db/gameService'
+import { getTeam, getPlayersForTeam, addPlayer, deletePlayer, getGamesForTeam, deleteTeam, updateTeamName } from '../db/gameService'
 import { Spinner } from '../components/Spinner'
 
 export function TeamDetailPage() {
@@ -16,6 +16,8 @@ export function TeamDetailPage() {
   const [position, setPosition] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [errors, setErrors] = useState<{ name?: string; jersey?: string }>({})
+  const [isEditingName, setIsEditingName] = useState(false)
+  const [editName, setEditName] = useState('')
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [showDeleteTeam, setShowDeleteTeam] = useState(false)
   const [deleteTeamBlocked, setDeleteTeamBlocked] = useState(false)
@@ -71,6 +73,20 @@ export function TeamDetailPage() {
     setShowDeleteTeam(true)
   }
 
+  const handleStartRename = () => {
+    setEditName(team!.name)
+    setIsEditingName(true)
+  }
+
+  const handleSaveRename = async () => {
+    const trimmed = editName.trim()
+    if (trimmed && trimmed !== team!.name) {
+      await updateTeamName(tId, trimmed)
+      setTeam({ ...team!, name: trimmed })
+    }
+    setIsEditingName(false)
+  }
+
   const confirmDeleteTeam = async () => {
     await deleteTeam(tId)
     navigate('/teams')
@@ -82,7 +98,20 @@ export function TeamDetailPage() {
   return (
     <div className="max-w-2xl mx-auto p-6">
       <Link to="/teams" className="text-blue-600 hover:underline text-sm">&larr; Teams</Link>
-      <h1 className="text-2xl font-bold text-slate-900 mt-4 mb-2 font-heading uppercase tracking-wide">{team.name}</h1>
+      {isEditingName ? (
+        <input
+          autoFocus
+          value={editName}
+          onChange={e => setEditName(e.target.value)}
+          onBlur={handleSaveRename}
+          onKeyDown={e => e.key === 'Enter' && handleSaveRename()}
+          className="text-2xl font-bold text-slate-900 mt-4 mb-2 border-b-2 border-blue-500 outline-none bg-transparent w-full"
+        />
+      ) : (
+        <h1 onClick={handleStartRename} className="text-2xl font-bold text-slate-900 mt-4 mb-2 font-heading uppercase tracking-wide cursor-pointer hover:text-blue-600 group">
+          {team.name} <span aria-hidden="true" className="text-slate-300 text-sm group-hover:text-blue-400">✎</span>
+        </h1>
+      )}
       <p className="text-slate-500 mb-6">{players.length} player{players.length !== 1 ? 's' : ''}</p>
 
       {/* Add player form */}

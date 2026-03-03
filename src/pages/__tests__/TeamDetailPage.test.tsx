@@ -218,6 +218,65 @@ describe('TeamDetailPage', () => {
     })
   })
 
+  describe('Team Rename', () => {
+    it('allows renaming the team by clicking the name', async () => {
+      const user = userEvent.setup()
+      const teamId = await db.teams.add({ name: 'Mudcats', createdAt: new Date() })
+
+      renderWithRouter(String(teamId))
+
+      await waitFor(() => {
+        expect(screen.getByRole('heading', { name: /mudcats/i })).toBeInTheDocument()
+      })
+
+      // Click the team name heading
+      await user.click(screen.getByRole('heading', { name: /mudcats/i }))
+
+      // Input appears with current name
+      const input = screen.getByDisplayValue('Mudcats')
+      expect(input).toBeInTheDocument()
+
+      // Change to "New Name" and press Enter
+      await user.clear(input)
+      await user.type(input, 'New Name')
+      await user.keyboard('{Enter}')
+
+      // Heading now shows "New Name"
+      await waitFor(() => {
+        expect(screen.getByRole('heading', { name: /new name/i })).toBeInTheDocument()
+      })
+
+      // Verify persisted to DB
+      const updatedTeam = await db.teams.get(teamId)
+      expect(updatedTeam?.name).toBe('New Name')
+    })
+
+    it('cancels rename on blur without changes', async () => {
+      const user = userEvent.setup()
+      const teamId = await db.teams.add({ name: 'Mudcats', createdAt: new Date() })
+
+      renderWithRouter(String(teamId))
+
+      await waitFor(() => {
+        expect(screen.getByRole('heading', { name: /mudcats/i })).toBeInTheDocument()
+      })
+
+      // Click the heading to start editing
+      await user.click(screen.getByRole('heading', { name: /mudcats/i }))
+
+      const input = screen.getByDisplayValue('Mudcats')
+      expect(input).toBeInTheDocument()
+
+      // Blur without changing — heading is restored
+      await user.keyboard('{Tab}')
+
+      await waitFor(() => {
+        expect(screen.getByRole('heading', { name: /mudcats/i })).toBeInTheDocument()
+      })
+      expect(screen.queryByDisplayValue('Mudcats')).not.toBeInTheDocument()
+    })
+  })
+
   describe('Delete Team', () => {
     it('shows a Delete Team button', async () => {
       const teamId = await db.teams.add({ name: 'Mudcats', createdAt: new Date() })
