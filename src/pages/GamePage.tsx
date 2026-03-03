@@ -11,6 +11,7 @@ import { BeginnerGuide } from '../components/BeginnerGuide'
 import { PlayDetailPopover } from '../components/PlayDetailPopover'
 import { PositionChangeDialog } from '../components/PositionChangeDialog'
 import { Spinner } from '../components/Spinner'
+import { BottomSheet } from '../components/BottomSheet'
 import { useToast } from '../contexts/ToastContext'
 
 type ActiveTab = 'home' | 'away'
@@ -55,6 +56,7 @@ export function GamePage() {
   const [showStrikeoutConfirm, setShowStrikeoutConfirm] = useState(false)
   const [selectedPlay, setSelectedPlay] = useState<Play | null>(null)
   const [showPosChange, setShowPosChange] = useState(false)
+  const [showPitchCounts, setShowPitchCounts] = useState(false)
 
   const gId = parseInt(gameId ?? '0')
 
@@ -336,6 +338,7 @@ export function GamePage() {
         awayTeamName={awayTeam?.name ?? 'Away'}
         pitchCount={pitchCount}
         pitcherName={pitcherName}
+        onPitchCountClick={() => setShowPitchCounts(true)}
       />
 
       {/* Home/Away tabs — away always left, home always right */}
@@ -480,6 +483,39 @@ export function GamePage() {
           onConfirm={handlePositionChange}
           onCancel={() => setShowPosChange(false)}
         />
+      )}
+
+      {/* Pitch count summary */}
+      {showPitchCounts && (
+        <BottomSheet onClose={() => setShowPitchCounts(false)} title="Pitch Counts">
+          {[
+            { label: awayTeam?.name ?? 'Away', lineup: lineupAway },
+            { label: homeTeam?.name ?? 'Home', lineup: lineupHome },
+          ].map(({ label, lineup }) => {
+            const pitchers = lineup.battingOrder.filter(
+              s => snapshot.pitchCountByPitcher.has(s.playerName)
+            )
+            if (pitchers.length === 0) return null
+            return (
+              <div key={label} className="mb-4">
+                <div className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">{label}</div>
+                {pitchers.map(p => {
+                  const count = snapshot.pitchCountByPitcher.get(p.playerName) ?? 0
+                  const isCurrent = p.playerName === pitcherName
+                  return (
+                    <div
+                      key={p.playerName}
+                      className={`flex justify-between items-center py-2 px-3 rounded ${isCurrent ? 'bg-blue-50 font-bold' : ''}`}
+                    >
+                      <span className={isCurrent ? 'text-blue-700' : 'text-slate-700'}>{p.playerName}</span>
+                      <span className={`text-lg font-mono ${isCurrent ? 'text-blue-700' : 'text-slate-900'}`}>{count}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })}
+        </BottomSheet>
       )}
 
       {/* Runner confirmation */}

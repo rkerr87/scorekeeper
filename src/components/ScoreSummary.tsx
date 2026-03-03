@@ -10,6 +10,7 @@ interface ScoreSummaryProps {
   awayTeamName: string
   pitchCount: number
   pitcherName: string
+  onPitchCountClick?: () => void
 }
 
 export function ScoreSummary({
@@ -22,6 +23,7 @@ export function ScoreSummary({
   awayTeamName,
   pitchCount,
   pitcherName,
+  onPitchCountClick,
 }: ScoreSummaryProps) {
   return (
     <div className="bg-slate-800 text-white px-4 py-3 flex items-center justify-between gap-4">
@@ -59,10 +61,14 @@ export function ScoreSummary({
       </div>
 
       {/* Pitcher + pitch count */}
-      <div className="text-right">
+      <button
+        onClick={onPitchCountClick}
+        aria-label="Pitch count details"
+        className="text-right"
+      >
         <div className="text-xs text-slate-300">{pitcherName}</div>
         <div className="text-lg font-mono font-bold">PC: {pitchCount}</div>
-      </div>
+      </button>
     </div>
   )
 }

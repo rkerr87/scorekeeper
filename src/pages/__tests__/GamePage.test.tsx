@@ -966,4 +966,41 @@ describe('GamePage', () => {
       expect(screen.getByText('2 pitches')).toBeInTheDocument()
     })
   })
+
+  it('should show pitch count summary sheet when tapping pitch count in header', async () => {
+    const user = userEvent.setup()
+    const gameId = await seedFullGame()
+    // Seed a play so home pitcher (Player1) has a pitch count
+    // Top of 1st = away batting, home team pitching (Player1 is P)
+    await db.plays.add({
+      gameId, sequenceNumber: 1, inning: 1, half: 'top',
+      batterOrderPosition: 1,
+      playType: 'K', notation: 'K',
+      fieldersInvolved: [], basesReached: [], runsScoredOnPlay: 0,
+      rbis: 0, pitches: ['S', 'S', 'S'], isAtBat: true, timestamp: new Date(),
+    })
+
+    renderGame(gameId as number)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /pitch count/i })).toBeInTheDocument()
+    })
+
+    // Tap the pitch count area
+    await user.click(screen.getByRole('button', { name: /pitch count/i }))
+
+    // BottomSheet should appear with pitcher data
+    await waitFor(() => {
+      expect(screen.getByText('Pitch Counts')).toBeInTheDocument()
+      // Home team pitcher (Player1) appears in both header and sheet
+      expect(screen.getAllByText('Player1').length).toBeGreaterThanOrEqual(2)
+    })
+
+    // Find the pitch count value inside the bottom sheet
+    const sheet = screen.getByTestId('bottom-sheet-backdrop').parentElement!
+    // Player1 row should contain the count "3"
+    const player1Elements = screen.getAllByText('Player1')
+    const sheetPlayer = player1Elements.find(el => sheet.contains(el))!
+    expect(sheetPlayer.closest('div[class*="flex"]')!.textContent).toContain('3')
+  })
 })

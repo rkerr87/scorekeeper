@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
+import { vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { ScoreSummary } from '../ScoreSummary'
 
 const defaults = {
@@ -90,5 +92,15 @@ describe('ScoreSummary', () => {
     )
     expect(screen.getByText('Tigers')).toBeInTheDocument()
     expect(screen.getByText('Lions')).toBeInTheDocument()
+  })
+
+  it('calls onPitchCountClick when pitch count area is tapped', async () => {
+    const user = userEvent.setup()
+    const onClick = vi.fn()
+    render(
+      <ScoreSummary inning={1} half="top" outs={0} scoreHome={0} scoreAway={0} {...defaults} pitchCount={47} pitcherName="Smith" onPitchCountClick={onClick} />
+    )
+    await user.click(screen.getByRole('button', { name: /pitch count/i }))
+    expect(onClick).toHaveBeenCalledOnce()
   })
 })
