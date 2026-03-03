@@ -240,6 +240,59 @@ describe('GameSetupPage', () => {
     expect(awayNames).toContain('Frank')
   })
 
+  it('shows position as tappable and opens dropdown on click', async () => {
+    const gameId = await seedTwoTeamsAndGame()
+    renderSetup(gameId)
+    await waitFor(() => {
+      expect(screen.getByText('Alice')).toBeInTheDocument()
+    })
+    const positionButtons = screen.getAllByRole('button', { name: /position/i })
+    expect(positionButtons.length).toBeGreaterThan(0)
+    await userEvent.click(positionButtons[0])
+    expect(screen.getByRole('option', { name: 'SS' })).toBeInTheDocument()
+  })
+
+  it('changes position when dropdown option selected', async () => {
+    const gameId = await seedTwoTeamsAndGame()
+    renderSetup(gameId)
+    await waitFor(() => {
+      expect(screen.getByText('Alice')).toBeInTheDocument()
+    })
+    const positionButtons = screen.getAllByRole('button', { name: /position/i })
+    // First position button is Dave (away) whose default is P
+    await userEvent.click(positionButtons[0])
+    await userEvent.click(screen.getByRole('option', { name: 'SS' }))
+    expect(screen.getAllByRole('button', { name: /position/i })[0]).toHaveTextContent('SS')
+  })
+
+  it('saves position overrides in lineup on Start Game', async () => {
+    const user = userEvent.setup()
+    const gameId = await seedTwoTeamsAndGame()
+    renderSetup(gameId)
+    await waitFor(() => {
+      expect(screen.getByText('Dave')).toBeInTheDocument()
+    })
+    // Change Dave's position from P to CF
+    const positionButtons = screen.getAllByRole('button', { name: /position/i })
+    await user.click(positionButtons[0])
+    await user.click(screen.getByRole('option', { name: 'CF' }))
+    expect(positionButtons[0]).toHaveTextContent('CF')
+
+    // Start the game
+    const startBtn = screen.getByRole('button', { name: /start game/i })
+    await user.click(startBtn)
+
+    await waitFor(() => {
+      expect(screen.getByText('Game Page')).toBeInTheDocument()
+    })
+
+    // Verify Dave's position was saved as CF (not his default P)
+    const lineups = await db.lineups.where('gameId').equals(gameId).toArray()
+    const awaySide = lineups.find(l => l.side === 'away')
+    const daveSlot = awaySide!.battingOrder.find(s => s.playerName === 'Dave')
+    expect(daveSlot!.position).toBe('CF')
+  })
+
   it('should correctly identify home vs away when team2 is home', async () => {
     const team1Id = await db.teams.add({ name: 'Eagles', createdAt: new Date() })
     const team2Id = await db.teams.add({ name: 'Hawks', createdAt: new Date() })

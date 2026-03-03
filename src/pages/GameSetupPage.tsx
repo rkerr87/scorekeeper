@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import type { Player, LineupSlot } from '../engine/types'
 import { useGame } from '../contexts/GameContext'
@@ -21,14 +21,70 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
+const ALL_POSITIONS = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'] as const
+
+interface PositionDropdownProps {
+  position: string
+  onPositionChange: (pos: string) => void
+}
+
+function PositionDropdown({ position, onPositionChange }: PositionDropdownProps) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        aria-label={`position: ${position}`}
+        onClick={() => setOpen(!open)}
+        className="text-xs text-blue-600 font-medium w-8 text-center hover:text-blue-800"
+      >
+        {position}
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded shadow-lg z-10 py-1 min-w-[4rem]">
+          {ALL_POSITIONS.map(pos => (
+            <div
+              key={pos}
+              role="option"
+              aria-label={pos}
+              aria-selected={pos === position}
+              onClick={() => {
+                onPositionChange(pos)
+                setOpen(false)
+              }}
+              className={`px-3 py-1 text-xs cursor-pointer hover:bg-blue-50 ${pos === position ? 'bg-blue-100 font-semibold' : ''}`}
+            >
+              {pos}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 interface SortablePlayerRowProps {
   playerId: number
   index: number
   player: Player
+  position: string
   onRemove: (playerId: number) => void
+  onPositionChange: (pos: string) => void
 }
 
-function SortablePlayerRow({ playerId, index, player, onRemove }: SortablePlayerRowProps) {
+function SortablePlayerRow({ playerId, index, player, position, onRemove, onPositionChange }: SortablePlayerRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: playerId })
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -47,7 +103,7 @@ function SortablePlayerRow({ playerId, index, player, onRemove }: SortablePlayer
       <span className="text-sm font-mono text-slate-400 w-6">{index + 1}.</span>
       <span className="text-sm font-semibold flex-1">{player.name}</span>
       <span className="text-xs text-slate-500">#{player.jerseyNumber}</span>
-      <span className="text-xs text-slate-500 w-8">{player.defaultPosition}</span>
+      <PositionDropdown position={position} onPositionChange={onPositionChange} />
       <button
         aria-label="Remove from lineup"
         onClick={() => onRemove(playerId)}
@@ -106,6 +162,8 @@ export function GameSetupPage() {
   const [awayBattingOrder, setAwayBattingOrder] = useState<number[]>([])
   const [homeBench, setHomeBench] = useState<number[]>([])
   const [awayBench, setAwayBench] = useState<number[]>([])
+  const [homePositions, setHomePositions] = useState<Map<number, string>>(new Map())
+  const [awayPositions, setAwayPositions] = useState<Map<number, string>>(new Map())
   const [loading, setLoading] = useState(true)
 
   const gId = parseInt(gameId ?? '0')
@@ -140,10 +198,16 @@ export function GameSetupPage() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
-  const handleHomeDragEnd = (event: DragEndEvent) => {
+  const getPosition = (side: 'home' | 'away', player: Player): string => {
+    const overrides = side === 'home' ? homePositions : awayPositions
+    return overrides.get(player.id!) ?? player.defaultPosition
+  }
+
+  const handleDragEnd = (side: 'home' | 'away', event: DragEndEvent) => {
     const { active, over } = event
     if (over && active.id !== over.id) {
-      setHomeBattingOrder(prev => {
+      const setter = side === 'home' ? setHomeBattingOrder : setAwayBattingOrder
+      setter(prev => {
         const oldIndex = prev.indexOf(Number(active.id))
         const newIndex = prev.indexOf(Number(over.id))
         return arrayMove(prev, oldIndex, newIndex)
@@ -151,64 +215,47 @@ export function GameSetupPage() {
     }
   }
 
-  const handleAwayDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event
-    if (over && active.id !== over.id) {
-      setAwayBattingOrder(prev => {
-        const oldIndex = prev.indexOf(Number(active.id))
-        const newIndex = prev.indexOf(Number(over.id))
-        return arrayMove(prev, oldIndex, newIndex)
-      })
+  const handleRemove = (side: 'home' | 'away', playerId: number) => {
+    const setOrder = side === 'home' ? setHomeBattingOrder : setAwayBattingOrder
+    const setBench = side === 'home' ? setHomeBench : setAwayBench
+    setOrder(prev => prev.filter(id => id !== playerId))
+    setBench(prev => [...prev, playerId])
+  }
+
+  const handleAddBack = (side: 'home' | 'away', playerId: number) => {
+    const setBench = side === 'home' ? setHomeBench : setAwayBench
+    const setOrder = side === 'home' ? setHomeBattingOrder : setAwayBattingOrder
+    setBench(prev => prev.filter(id => id !== playerId))
+    setOrder(prev => [...prev, playerId])
+  }
+
+  const handlePositionChange = (side: 'home' | 'away', playerId: number, newPosition: string) => {
+    if (side === 'home') {
+      setHomePositions(prev => new Map(prev).set(playerId, newPosition))
+    } else {
+      setAwayPositions(prev => new Map(prev).set(playerId, newPosition))
     }
   }
 
-  const handleRemoveHome = (playerId: number) => {
-    setHomeBattingOrder(prev => prev.filter(id => id !== playerId))
-    setHomeBench(prev => [...prev, playerId])
-  }
-
-  const handleAddBackHome = (playerId: number) => {
-    setHomeBench(prev => prev.filter(id => id !== playerId))
-    setHomeBattingOrder(prev => [...prev, playerId])
-  }
-
-  const handleRemoveAway = (playerId: number) => {
-    setAwayBattingOrder(prev => prev.filter(id => id !== playerId))
-    setAwayBench(prev => [...prev, playerId])
-  }
-
-  const handleAddBackAway = (playerId: number) => {
-    setAwayBench(prev => prev.filter(id => id !== playerId))
-    setAwayBattingOrder(prev => [...prev, playerId])
+  const buildSlots = (side: 'home' | 'away'): LineupSlot[] => {
+    const order = side === 'home' ? homeBattingOrder : awayBattingOrder
+    const players = side === 'home' ? homePlayers : awayPlayers
+    return order.map((playerId, i) => {
+      const player = players.find(p => p.id === playerId)!
+      return {
+        orderPosition: i + 1,
+        playerId: player.id!,
+        playerName: player.name,
+        jerseyNumber: player.jerseyNumber,
+        position: getPosition(side, player),
+        substitutions: [],
+      }
+    })
   }
 
   const handleStartGame = async () => {
-    const homeSlots: LineupSlot[] = homeBattingOrder.map((playerId, i) => {
-      const player = homePlayers.find(p => p.id === playerId)!
-      return {
-        orderPosition: i + 1,
-        playerId: player.id!,
-        playerName: player.name,
-        jerseyNumber: player.jerseyNumber,
-        position: player.defaultPosition,
-        substitutions: [],
-      }
-    })
-
-    const awaySlots: LineupSlot[] = awayBattingOrder.map((playerId, i) => {
-      const player = awayPlayers.find(p => p.id === playerId)!
-      return {
-        orderPosition: i + 1,
-        playerId: player.id!,
-        playerName: player.name,
-        jerseyNumber: player.jerseyNumber,
-        position: player.defaultPosition,
-        substitutions: [],
-      }
-    })
-
-    await saveLineup(gId, 'home', homeSlots)
-    await saveLineup(gId, 'away', awaySlots)
+    await saveLineup(gId, 'home', buildSlots('home'))
+    await saveLineup(gId, 'away', buildSlots('away'))
     await updateGameStatus(gId, 'in_progress')
     await loadGame(gId)
     navigate(`/game/${gId}`)
@@ -224,7 +271,7 @@ export function GameSetupPage() {
         {/* Away batting order */}
         <div>
           <h2 className="text-lg font-semibold text-slate-800 mb-3">{awayTeamName} (Away) Batting Order</h2>
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleAwayDragEnd}>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => handleDragEnd('away', e)}>
             <SortableContext items={awayBattingOrder} strategy={verticalListSortingStrategy}>
               <div className="space-y-1">
                 {awayBattingOrder.map((playerId, index) => {
@@ -236,20 +283,22 @@ export function GameSetupPage() {
                       playerId={playerId}
                       index={index}
                       player={player}
-                      onRemove={handleRemoveAway}
+                      position={getPosition('away', player)}
+                      onRemove={(id) => handleRemove('away', id)}
+                      onPositionChange={(pos) => handlePositionChange('away', playerId, pos)}
                     />
                   )
                 })}
               </div>
             </SortableContext>
           </DndContext>
-          <BenchSection benchIds={awayBench} players={awayPlayers} onAddBack={handleAddBackAway} />
+          <BenchSection benchIds={awayBench} players={awayPlayers} onAddBack={(id) => handleAddBack('away', id)} />
         </div>
 
         {/* Home batting order */}
         <div>
           <h2 className="text-lg font-semibold text-slate-800 mb-3">{homeTeamName} (Home) Batting Order</h2>
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleHomeDragEnd}>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => handleDragEnd('home', e)}>
             <SortableContext items={homeBattingOrder} strategy={verticalListSortingStrategy}>
               <div className="space-y-1">
                 {homeBattingOrder.map((playerId, index) => {
@@ -261,14 +310,16 @@ export function GameSetupPage() {
                       playerId={playerId}
                       index={index}
                       player={player}
-                      onRemove={handleRemoveHome}
+                      position={getPosition('home', player)}
+                      onRemove={(id) => handleRemove('home', id)}
+                      onPositionChange={(pos) => handlePositionChange('home', playerId, pos)}
                     />
                   )
                 })}
               </div>
             </SortableContext>
           </DndContext>
-          <BenchSection benchIds={homeBench} players={homePlayers} onAddBack={handleAddBackHome} />
+          <BenchSection benchIds={homeBench} players={homePlayers} onAddBack={(id) => handleAddBack('home', id)} />
         </div>
       </div>
 
