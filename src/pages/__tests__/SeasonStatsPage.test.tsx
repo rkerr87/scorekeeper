@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor, within, cleanup } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { SeasonStatsPage } from '../SeasonStatsPage'
 import { db } from '../../db/database'
@@ -19,8 +19,6 @@ describe('SeasonStatsPage', () => {
   })
 
   afterEach(async () => {
-    cleanup()
-    await new Promise<void>(r => setTimeout(r, 50))
     await db.close()
   })
 
@@ -68,8 +66,12 @@ describe('SeasonStatsPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Alice')).toBeInTheDocument()
-      // AB column header confirms stats table rendered
       expect(screen.getByRole('columnheader', { name: 'AB' })).toBeInTheDocument()
+      // Alice had one at-bat
+      const rows = screen.getAllByRole('row')
+      const aliceRow = rows.find(r => r.textContent?.includes('Alice'))!
+      const cells = within(aliceRow).getAllByRole('cell')
+      expect(cells[2].textContent).toBe('1') // AB column (index 2)
     })
   })
 
@@ -134,7 +136,8 @@ describe('SeasonStatsPage', () => {
       expect(aliceRow).toBeDefined()
       // Column order: Player(0) | G(1) | AB(2) | R(3) | H(4) | 2B | 3B | HR | RBI | BB | K | AVG | OBP | SLG
       const cells = within(aliceRow).getAllByRole('cell')
-      expect(cells[4].textContent).toBe('2') // H column
+      expect(cells[1].textContent).toBe('2') // G column (2 games)
+      expect(cells[4].textContent).toBe('2') // H column (2 hits)
     })
   })
 
