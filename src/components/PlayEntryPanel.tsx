@@ -26,7 +26,7 @@ interface PlayEntryPanelProps {
   onClose: () => void
 }
 
-type PanelMode = 'select' | 'fielding' | 'sb-runner-select'
+type PanelMode = 'select' | 'fielding' | 'sb-runner-select' | 'error-batter-outcome'
 type TabType = 'hit' | 'out' | 'special' | 'shorthand'
 
 const HIT_PLAYS: { label: string; playType: PlayType; basesReached: number[] }[] = [
@@ -65,6 +65,8 @@ export function PlayEntryPanel({ batterName, baseRunners, pitches, outs, onAddPi
   const [selectedPositions, setSelectedPositions] = useState<number[]>([])
   const [shorthand, setShorthand] = useState('')
   const [shorthandError, setShorthandError] = useState('')
+  const [pendingErrorNotation, setPendingErrorNotation] = useState('')
+  const [pendingErrorFielders, setPendingErrorFielders] = useState<number[]>([])
 
   const recordSimplePlay = (playType: PlayType, basesReached: number[], isAtBat = true) => {
     onPlayRecorded({
@@ -72,7 +74,7 @@ export function PlayEntryPanel({ batterName, baseRunners, pitches, outs, onAddPi
       notation: generateNotation(playType, []),
       fieldersInvolved: [],
       basesReached,
-      pitches,
+      pitches: isAtBat ? pitches : [],
       isAtBat,
     })
   }
@@ -94,14 +96,10 @@ export function PlayEntryPanel({ batterName, baseRunners, pitches, outs, onAddPi
   const handleConfirmFielding = () => {
     const notation = generateNotation(fieldingPlayType, selectedPositions)
     if (fieldingPlayType === 'E') {
-      onPlayRecorded({
-        playType: 'E',
-        notation,
-        fieldersInvolved: selectedPositions,
-        basesReached: [1],
-        pitches,
-        isAtBat: true,
-      })
+      setPendingErrorNotation(notation)
+      setPendingErrorFielders([...selectedPositions])
+      setMode('error-batter-outcome')
+      return
     } else {
       onPlayRecorded({
         playType: fieldingPlayType,
@@ -154,7 +152,7 @@ export function PlayEntryPanel({ batterName, baseRunners, pitches, outs, onAddPi
   const handleSbRunnerSelect = (stealing: 'first' | 'second' | 'third') => {
     if (stealing === 'third') {
       // Stealing home — no override; engine advances the 3rd-base runner to score
-      onPlayRecorded({ playType: 'SB', notation: 'SB', fieldersInvolved: [], basesReached: [], pitches, isAtBat: false })
+      onPlayRecorded({ playType: 'SB', notation: 'SB', fieldersInvolved: [], basesReached: [], pitches: [], isAtBat: false })
       return
     }
     onPlayRecorded({
@@ -162,7 +160,7 @@ export function PlayEntryPanel({ batterName, baseRunners, pitches, outs, onAddPi
       notation: 'SB',
       fieldersInvolved: [],
       basesReached: [],
-      pitches,
+      pitches: [],
       isAtBat: false,
       runnerOverrides: computeSbOverride(stealing),
     })
@@ -361,6 +359,51 @@ export function PlayEntryPanel({ batterName, baseRunners, pitches, outs, onAddPi
               className="w-full mt-2 bg-slate-200 hover:bg-slate-300 text-slate-700 py-3 rounded font-bold text-sm transition-all duration-150"
             >
               Cancel
+            </button>
+          </div>
+        )}
+        {mode === 'error-batter-outcome' && (
+          <div>
+            <div className="text-sm font-semibold text-slate-700 mb-3 text-center">
+              What happened to the batter?
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  onPlayRecorded({
+                    playType: 'E',
+                    notation: pendingErrorNotation,
+                    fieldersInvolved: pendingErrorFielders,
+                    basesReached: [],
+                    pitches: [],
+                    isAtBat: false,
+                  })
+                }}
+                className="flex-1 bg-amber-600 hover:bg-amber-700 text-white py-3 rounded-lg font-bold text-sm transition-all duration-150 active:scale-95"
+              >
+                Stayed at bat
+              </button>
+              <button
+                onClick={() => {
+                  onPlayRecorded({
+                    playType: 'E',
+                    notation: pendingErrorNotation,
+                    fieldersInvolved: pendingErrorFielders,
+                    basesReached: [1],
+                    pitches,
+                    isAtBat: true,
+                  })
+                }}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold text-sm transition-all duration-150 active:scale-95"
+              >
+                Reached base
+              </button>
+            </div>
+            <button
+              onClick={() => setMode('fielding')}
+              className="w-full mt-2 bg-slate-200 hover:bg-slate-300 text-slate-700 py-3 rounded font-bold text-sm transition-all duration-150"
+            >
+              Back
             </button>
           </div>
         )}

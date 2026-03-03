@@ -253,15 +253,83 @@ describe('PlayEntryPanel', () => {
     expect(onPlayRecorded).not.toHaveBeenCalled()
   })
 
-  it('records error with position number via field diagram', async () => {
+  it('shows batter outcome screen after selecting fielder for error', async () => {
     const user = userEvent.setup()
     const onPlayRecorded = vi.fn()
     renderPanel({ onPlayRecorded })
     await user.click(screen.getByText('Special'))
     await user.click(screen.getByRole('button', { name: 'E' }))
-    // Select SS (position 6)
     await user.click(screen.getByRole('button', { name: /6.*SS/i }))
     await user.click(screen.getByRole('button', { name: /confirm/i }))
+    // Should NOT have recorded yet — should show batter outcome
+    expect(onPlayRecorded).not.toHaveBeenCalled()
+    expect(screen.getByText(/what happened to the batter/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /stayed at bat/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /reached base/i })).toBeInTheDocument()
+  })
+
+  it('records non-at-bat error when "Stayed at bat" chosen', async () => {
+    const user = userEvent.setup()
+    const onPlayRecorded = vi.fn()
+    renderPanel({ onPlayRecorded })
+    await user.click(screen.getByText('Special'))
+    await user.click(screen.getByRole('button', { name: 'E' }))
+    await user.click(screen.getByRole('button', { name: /6.*SS/i }))
+    await user.click(screen.getByRole('button', { name: /confirm/i }))
+    await user.click(screen.getByRole('button', { name: /stayed at bat/i }))
+    expect(onPlayRecorded).toHaveBeenCalledWith(
+      expect.objectContaining({
+        playType: 'E',
+        notation: 'E6',
+        fieldersInvolved: [6],
+        basesReached: [],
+        isAtBat: false,
+      })
+    )
+  })
+
+  it('non-at-bat error records with empty pitches (pitches belong to ongoing at-bat)', async () => {
+    const user = userEvent.setup()
+    const onPlayRecorded = vi.fn()
+    renderPanel({ onPlayRecorded, pitches: ['B', 'S', 'F'] })
+    await user.click(screen.getByText('Special'))
+    await user.click(screen.getByRole('button', { name: 'E' }))
+    await user.click(screen.getByRole('button', { name: /6.*SS/i }))
+    await user.click(screen.getByRole('button', { name: /confirm/i }))
+    await user.click(screen.getByRole('button', { name: /stayed at bat/i }))
+    const call = onPlayRecorded.mock.calls[0][0]
+    expect(call.pitches).toEqual([])
+  })
+
+  it('non-at-bat SB records with empty pitches', async () => {
+    const user = userEvent.setup()
+    const onPlayRecorded = vi.fn()
+    renderPanel({ onPlayRecorded, pitches: ['B', 'S'], baseRunners: runnersOnFirst })
+    await user.click(screen.getByText('Special'))
+    await user.click(screen.getByRole('button', { name: /^SB$/i }))
+    const call = onPlayRecorded.mock.calls[0][0]
+    expect(call.pitches).toEqual([])
+  })
+
+  it('non-at-bat WP records with empty pitches', async () => {
+    const user = userEvent.setup()
+    const onPlayRecorded = vi.fn()
+    renderPanel({ onPlayRecorded, pitches: ['B'], baseRunners: runnersOnFirst })
+    await user.click(screen.getByText('Special'))
+    await user.click(screen.getByRole('button', { name: /^WP$/i }))
+    const call = onPlayRecorded.mock.calls[0][0]
+    expect(call.pitches).toEqual([])
+  })
+
+  it('records at-bat error when "Reached base" chosen', async () => {
+    const user = userEvent.setup()
+    const onPlayRecorded = vi.fn()
+    renderPanel({ onPlayRecorded })
+    await user.click(screen.getByText('Special'))
+    await user.click(screen.getByRole('button', { name: 'E' }))
+    await user.click(screen.getByRole('button', { name: /6.*SS/i }))
+    await user.click(screen.getByRole('button', { name: /confirm/i }))
+    await user.click(screen.getByRole('button', { name: /reached base/i }))
     expect(onPlayRecorded).toHaveBeenCalledWith(
       expect.objectContaining({
         playType: 'E',

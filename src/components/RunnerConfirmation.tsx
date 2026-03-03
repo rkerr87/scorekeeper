@@ -8,9 +8,11 @@ type RunnerDest = 'first' | 'second' | 'third' | 'scored' | 'out'
 interface RunnerConfirmationProps {
   runners: BaseRunners
   prePlayRunners?: BaseRunners
-  onConfirm: (result: { runners: BaseRunners; runsScored: number }) => void
+  onConfirm: (result: { runners: BaseRunners; runsScored: number; batterBase?: number }) => void
   onCancel: () => void
   initialRunsScored?: number
+  batterName?: string
+  batterDefaultBase?: number
 }
 
 const DEST_LABELS: { dest: RunnerDest; label: string }[] = [
@@ -29,6 +31,15 @@ const BASE_LABELS: Record<OrigBase, string> = {
 
 const BASE_ORDER: Record<OrigBase, number> = { first: 1, second: 2, third: 3 }
 const DEST_ORDER: Record<RunnerDest, number> = { first: 1, second: 2, third: 3, scored: 4, out: 0 }
+
+const NUM_TO_DEST: Record<number, OrigBase> = { 1: 'first', 2: 'second', 3: 'third' }
+
+type BatterDest = 'first' | 'second' | 'third'
+const BATTER_DEST_LABELS: { dest: BatterDest; label: string }[] = [
+  { dest: 'first', label: '1st' },
+  { dest: 'second', label: '2nd' },
+  { dest: 'third', label: '3rd' },
+]
 
 function isValidDest(orig: OrigBase, dest: RunnerDest): boolean {
   if (dest === 'out') return true
@@ -79,11 +90,14 @@ function computeResult(
   return { runners: result, runsScored }
 }
 
-export function RunnerConfirmation({ runners, prePlayRunners, onConfirm, onCancel, initialRunsScored = 0 }: RunnerConfirmationProps) {
+export function RunnerConfirmation({ runners, prePlayRunners, onConfirm, onCancel, initialRunsScored = 0, batterName, batterDefaultBase }: RunnerConfirmationProps) {
   // Use prePlayRunners for runner identity/labels; fall back to runners (post-play) for backward compat
   const sourceRunners = prePlayRunners ?? runners
   const [assignments, setAssignments] = useState<Map<OrigBase, RunnerDest>>(() => initAssignments(sourceRunners, runners))
   const [error, setError] = useState<string | null>(null)
+  const hasBatter = batterName !== undefined && batterDefaultBase !== undefined
+  const batterDefaultDest = hasBatter ? NUM_TO_DEST[batterDefaultBase] : undefined
+  const [batterDest, setBatterDest] = useState<BatterDest | undefined>(batterDefaultDest)
 
   const setDest = (orig: OrigBase, dest: RunnerDest) => {
     setError(null)
@@ -91,17 +105,26 @@ export function RunnerConfirmation({ runners, prePlayRunners, onConfirm, onCance
   }
 
   const handleConfirm = () => {
-    // Check for base collisions (two runners assigned to same base)
-    const baseDests = Array.from(assignments.values()).filter(
-      d => d !== 'scored' && d !== 'out'
+    // Collect all base destinations (runners + batter) for collision detection
+    const baseDests: OrigBase[] = Array.from(assignments.values()).filter(
+      (d): d is OrigBase => d !== 'scored' && d !== 'out'
     )
+    if (hasBatter && batterDest) {
+      baseDests.push(batterDest)
+    }
     const uniqueBaseDests = new Set(baseDests)
     if (baseDests.length !== uniqueBaseDests.size) {
       setError('Two runners cannot share the same base')
       return
     }
     setError(null)
-    onConfirm(computeResult(sourceRunners, assignments, initialRunsScored))
+    const result = computeResult(sourceRunners, assignments, initialRunsScored)
+    // Only include batterBase when it differs from default
+    if (hasBatter && batterDest && batterDest !== batterDefaultDest) {
+      onConfirm({ ...result, batterBase: DEST_ORDER[batterDest] })
+    } else {
+      onConfirm(result)
+    }
   }
 
   const occupiedBases: OrigBase[] = (['third', 'second', 'first'] as OrigBase[]).filter(b => sourceRunners[b] !== null)
@@ -114,6 +137,36 @@ export function RunnerConfirmation({ runners, prePlayRunners, onConfirm, onCance
       </div>
 
       <div className="space-y-4 mb-6">
+        {hasBatter && batterDefaultBase !== undefined && (
+          <div className="bg-slate-50 rounded-lg p-3">
+            <div className="text-xs font-semibold text-slate-500 mb-2">
+              Batter: {batterName}
+            </div>
+            <div className="flex gap-1 flex-wrap">
+              {BATTER_DEST_LABELS.map(({ dest, label }) => {
+                const destNum = DEST_ORDER[dest]
+                const valid = destNum >= batterDefaultBase
+                return (
+                  <button
+                    key={dest}
+                    onClick={() => { setError(null); setBatterDest(dest) }}
+                    disabled={!valid}
+                    className={`px-3.5 py-2.5 rounded text-xs font-bold transition-all duration-150 ${
+                      !valid
+                        ? 'bg-slate-100 text-slate-300 cursor-not-allowed'
+                        : batterDest === dest
+                          ? 'bg-blue-600 text-white ring-2 ring-blue-800 active:scale-95'
+                          : 'bg-slate-200 text-slate-700 hover:bg-slate-300 active:scale-95'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {occupiedBases.map(orig => {
           const runner = sourceRunners[orig]!
           const currentDest = assignments.get(orig) ?? orig
@@ -151,7 +204,7 @@ export function RunnerConfirmation({ runners, prePlayRunners, onConfirm, onCance
           )
         })}
 
-        {occupiedBases.length === 0 && (
+        {occupiedBases.length === 0 && !hasBatter && (
           <p className="text-sm text-slate-400 text-center py-2">No runners on base</p>
         )}
       </div>

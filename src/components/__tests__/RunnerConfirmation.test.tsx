@@ -313,4 +313,142 @@ describe('RunnerConfirmation', () => {
       expect(outButtons[0]).toBeEnabled()
     })
   })
+
+  describe('batter base advancement', () => {
+    const emptyBases: BaseRunners = { first: null, second: null, third: null }
+
+    it('renders batter section with name and base buttons when batterName and batterDefaultBase provided', () => {
+      render(
+        <RunnerConfirmation
+          runners={emptyBases}
+          batterName="Jones"
+          batterDefaultBase={1}
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />
+      )
+      expect(screen.getByText(/jones/i)).toBeInTheDocument()
+      // Should have base buttons for 1st, 2nd, 3rd (batter can advance from default)
+      const firstButtons = screen.getAllByRole('button', { name: /^1st$/i })
+      const secondButtons = screen.getAllByRole('button', { name: /^2nd$/i })
+      const thirdButtons = screen.getAllByRole('button', { name: /^3rd$/i })
+      expect(firstButtons.length).toBeGreaterThanOrEqual(1)
+      expect(secondButtons.length).toBeGreaterThanOrEqual(1)
+      expect(thirdButtons.length).toBeGreaterThanOrEqual(1)
+    })
+
+    it('pre-selects the default base for the batter', () => {
+      render(
+        <RunnerConfirmation
+          runners={emptyBases}
+          batterName="Jones"
+          batterDefaultBase={2}
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />
+      )
+      // 2nd base button for batter should be visually selected (have ring styling)
+      const secondButtons = screen.getAllByRole('button', { name: /^2nd$/i })
+      // The batter's 2nd button should have selected styling (bg-blue-600)
+      expect(secondButtons[0].className).toMatch(/bg-blue-600/)
+    })
+
+    it('allows selecting a higher base for the batter', async () => {
+      const user = userEvent.setup()
+      const onConfirm = vi.fn()
+      render(
+        <RunnerConfirmation
+          runners={emptyBases}
+          batterName="Jones"
+          batterDefaultBase={1}
+          onConfirm={onConfirm}
+          onCancel={vi.fn()}
+        />
+      )
+      // Select 2nd base for batter
+      const secondButtons = screen.getAllByRole('button', { name: /^2nd$/i })
+      await user.click(secondButtons[0])
+      await user.click(screen.getByRole('button', { name: /confirm/i }))
+      expect(onConfirm).toHaveBeenCalledWith(
+        expect.objectContaining({ batterBase: 2 })
+      )
+    })
+
+    it('does not return batterBase when batter stays at default', async () => {
+      const user = userEvent.setup()
+      const onConfirm = vi.fn()
+      render(
+        <RunnerConfirmation
+          runners={emptyBases}
+          batterName="Jones"
+          batterDefaultBase={1}
+          onConfirm={onConfirm}
+          onCancel={vi.fn()}
+        />
+      )
+      await user.click(screen.getByRole('button', { name: /confirm/i }))
+      const result = onConfirm.mock.calls[0][0]
+      expect(result.batterBase).toBeUndefined()
+    })
+
+    it('includes batter base in collision detection with runners', async () => {
+      const user = userEvent.setup()
+      const runnersOnFirst: BaseRunners = {
+        first: { playerName: 'Smith', orderPosition: 3 },
+        second: null,
+        third: null,
+      }
+      render(
+        <RunnerConfirmation
+          runners={runnersOnFirst}
+          prePlayRunners={runnersOnFirst}
+          batterName="Jones"
+          batterDefaultBase={1}
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />
+      )
+      // Batter defaults to 1st, Smith is still on 1st — try to confirm
+      // Smith should be defaulted to 2nd by engine, but let's manually set Smith to 1st
+      // to force a collision with the batter on 1st
+      const firstButtons = screen.getAllByRole('button', { name: /^1st$/i })
+      // Click 1st for Smith (the runner section button)
+      // The runner section comes after the batter section
+      await user.click(firstButtons[firstButtons.length - 1])
+      await user.click(screen.getByRole('button', { name: /confirm/i }))
+      expect(screen.getByText(/two runners cannot share the same base/i)).toBeInTheDocument()
+    })
+
+    it('does not show batter section when batterName is not provided', () => {
+      render(
+        <RunnerConfirmation
+          runners={runners}
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />
+      )
+      // Should not have any "Batter" section header
+      expect(screen.queryByText(/batter/i)).not.toBeInTheDocument()
+    })
+
+    it('disables bases below the default for the batter', () => {
+      render(
+        <RunnerConfirmation
+          runners={emptyBases}
+          batterName="Jones"
+          batterDefaultBase={2}
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />
+      )
+      // 1st should be disabled (below default of 2nd)
+      const firstButtons = screen.getAllByRole('button', { name: /^1st$/i })
+      expect(firstButtons[0]).toBeDisabled()
+      // 2nd and 3rd should be enabled
+      const secondButtons = screen.getAllByRole('button', { name: /^2nd$/i })
+      const thirdButtons = screen.getAllByRole('button', { name: /^3rd$/i })
+      expect(secondButtons[0]).toBeEnabled()
+      expect(thirdButtons[0]).toBeEnabled()
+    })
+  })
 })

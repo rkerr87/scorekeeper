@@ -414,6 +414,29 @@ describe('replayGame — pitch count', () => {
     // 3 + 4 = 7, no implicit pitches added
     expect(snapshot.pitchCountByPitcher.get('home-Player1')).toBe(7)
   })
+
+  it('should NOT count implicit pitch for non-at-bat E (no pitch thrown)', () => {
+    const plays: Play[] = [
+      // 1B with 0 tracked pitches → 1 implicit = 1 pitch
+      makePlay({
+        sequenceNumber: 1, half: 'top', batterOrderPosition: 1,
+        playType: '1B', basesReached: [1], pitches: [],
+      }),
+      // Non-at-bat E (batter stayed at bat): isAtBat=false, pitches=[]
+      makePlay({
+        sequenceNumber: 2, half: 'top', batterOrderPosition: 2,
+        playType: 'E', basesReached: [], pitches: [], isAtBat: false,
+      }),
+      // Batter 2 finishes at-bat: K with 4 tracked pitches (B, S, S, S)
+      makePlay({
+        sequenceNumber: 3, half: 'top', batterOrderPosition: 2,
+        playType: 'K', pitches: ['B', 'S', 'S', 'S'],
+      }),
+    ]
+    const snapshot = replayGame(plays, lineupHome, lineupAway)
+    // 1 (1B implicit) + 0 (non-at-bat E, no implicit) + 4 (K tracked) = 5
+    expect(snapshot.pitchCountByPitcher.get('home-Player1')).toBe(5)
+  })
 })
 
 describe('replayGame — isGameOver', () => {

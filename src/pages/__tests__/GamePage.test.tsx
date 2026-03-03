@@ -761,4 +761,209 @@ describe('GamePage', () => {
       expect(scoreSection.textContent).toContain('1')
     })
   })
+
+  it('should show RunnerConfirmation for 1B with empty bases (batter advancement)', async () => {
+    const user = userEvent.setup()
+    const gameId = await seedFullGame()
+    renderGame(gameId as number)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /record play/i })).toBeInTheDocument()
+    })
+
+    // Record a 1B with empty bases
+    await user.click(screen.getByRole('button', { name: /record play/i }))
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /^1B$/i })).toBeInTheDocument()
+    })
+    await user.click(screen.getByRole('button', { name: /^1B$/i }))
+
+    // Runner confirmation should appear with batter name
+    await waitFor(() => {
+      expect(screen.getByText(/where did they end up/i)).toBeInTheDocument()
+      expect(screen.getByText(/batter.*opp1/i)).toBeInTheDocument()
+    })
+  })
+
+  it('should NOT show RunnerConfirmation for BB with empty bases', async () => {
+    const user = userEvent.setup()
+    const gameId = await seedFullGame()
+    renderGame(gameId as number)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /record play/i })).toBeInTheDocument()
+    })
+
+    // Walk via 4 balls
+    await user.click(screen.getByRole('button', { name: /record play/i }))
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /^ball$/i })).toBeInTheDocument()
+    })
+    for (let i = 0; i < 4; i++) {
+      await user.click(screen.getByRole('button', { name: /^ball$/i }))
+    }
+
+    // Should NOT show runner confirmation — play should finalize directly
+    await waitFor(() => {
+      expect(screen.getByText(/play recorded/i)).toBeInTheDocument()
+    })
+    expect(screen.queryByText(/where did they end up/i)).not.toBeInTheDocument()
+  })
+
+  it('should NOT show RunnerConfirmation for HR with empty bases', async () => {
+    const user = userEvent.setup()
+    const gameId = await seedFullGame()
+    renderGame(gameId as number)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /record play/i })).toBeInTheDocument()
+    })
+
+    // Record HR via shorthand
+    await user.click(screen.getByRole('button', { name: /record play/i }))
+    await waitFor(() => {
+      expect(screen.getByText('Shorthand')).toBeInTheDocument()
+    })
+    await user.click(screen.getByText('Shorthand'))
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText(/shorthand/i)).toBeInTheDocument()
+    })
+    await user.type(screen.getByPlaceholderText(/shorthand/i), 'HR')
+    await user.click(screen.getByRole('button', { name: /^enter$/i }))
+
+    // Should NOT show runner confirmation
+    await waitFor(() => {
+      expect(screen.getByText(/play recorded/i)).toBeInTheDocument()
+    })
+    expect(screen.queryByText(/where did they end up/i)).not.toBeInTheDocument()
+  })
+
+  it('should update basesReached when batter takes extra base on a single', async () => {
+    const user = userEvent.setup()
+    const gameId = await seedFullGame()
+    renderGame(gameId as number)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /record play/i })).toBeInTheDocument()
+    })
+
+    // Record a 1B
+    await user.click(screen.getByRole('button', { name: /record play/i }))
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /^1B$/i })).toBeInTheDocument()
+    })
+    await user.click(screen.getByRole('button', { name: /^1B$/i }))
+
+    // Wait for runner confirmation with batter section
+    await waitFor(() => {
+      expect(screen.getByText(/where did they end up/i)).toBeInTheDocument()
+    })
+
+    // Select 2nd base for batter (takes extra base on the throw)
+    const secondButtons = screen.getAllByRole('button', { name: /^2nd$/i })
+    await user.click(secondButtons[0])
+
+    // Confirm
+    await user.click(screen.getByRole('button', { name: /confirm/i }))
+
+    // Play should be recorded
+    await waitFor(() => {
+      expect(screen.getByText(/play recorded/i)).toBeInTheDocument()
+    })
+
+    // Verify the play was saved with batter on 2nd — check the DB
+    const savedPlays = await db.plays.toArray()
+    const lastPlay = savedPlays[savedPlays.length - 1]
+    expect(lastPlay.playType).toBe('1B')
+    expect(lastPlay.basesReached).toEqual([1, 2])
+  })
+
+  it('should show RunnerConfirmation with batter section for E "Reached base" with empty bases', async () => {
+    const user = userEvent.setup()
+    const gameId = await seedFullGame()
+    renderGame(gameId as number)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /record play/i })).toBeInTheDocument()
+    })
+
+    // Record E: Special tab -> E -> select fielder -> confirm -> "Reached base"
+    await user.click(screen.getByRole('button', { name: /record play/i }))
+    await waitFor(() => {
+      expect(screen.getByText('Special')).toBeInTheDocument()
+    })
+    await user.click(screen.getByText('Special'))
+    await user.click(screen.getByRole('button', { name: 'E' }))
+    await waitFor(() => {
+      expect(screen.getByText(/error by/i)).toBeInTheDocument()
+    })
+    await user.click(screen.getByRole('button', { name: /6.*SS/i }))
+    await user.click(screen.getByRole('button', { name: /confirm/i }))
+    // Choose "Reached base"
+    await user.click(screen.getByRole('button', { name: /reached base/i }))
+
+    // RunnerConfirmation should appear with batter section
+    await waitFor(() => {
+      expect(screen.getByText(/where did they end up/i)).toBeInTheDocument()
+      expect(screen.getByText(/batter.*opp1/i)).toBeInTheDocument()
+    })
+  })
+
+  it('should preserve pitches when non-at-bat E is recorded', async () => {
+    const user = userEvent.setup()
+    const gameId = await seedFullGame()
+    // Seed a runner on 2nd so E "Stayed at bat" can advance them
+    await db.plays.add({
+      gameId, sequenceNumber: 1, inning: 1, half: 'top',
+      batterOrderPosition: 1,
+      playType: '2B', notation: '2B',
+      fieldersInvolved: [8], basesReached: [1, 2], runsScoredOnPlay: 0,
+      rbis: 0, pitches: [], isAtBat: true, timestamp: new Date(),
+    })
+
+    renderGame(gameId as number)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /record play/i })).toBeInTheDocument()
+    })
+
+    // Open play entry panel and add 2 pitches (ball, strike) to build a count
+    await user.click(screen.getByRole('button', { name: /record play/i }))
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /^ball$/i })).toBeInTheDocument()
+    })
+    await user.click(screen.getByRole('button', { name: /^ball$/i }))
+    await user.click(screen.getByRole('button', { name: /^strike$/i }))
+
+    // Count should show 1-1
+    expect(screen.getByText('1-1')).toBeInTheDocument()
+
+    // Record E "Stayed at bat": Special -> E -> fielder -> confirm -> "Stayed at bat"
+    await user.click(screen.getByText('Special'))
+    await user.click(screen.getByRole('button', { name: 'E' }))
+    await waitFor(() => {
+      expect(screen.getByText(/error by/i)).toBeInTheDocument()
+    })
+    await user.click(screen.getByRole('button', { name: /6.*SS/i }))
+    await user.click(screen.getByRole('button', { name: /confirm/i }))
+    await user.click(screen.getByRole('button', { name: /stayed at bat/i }))
+
+    // RunnerConfirmation should appear for the runner advancement
+    await waitFor(() => {
+      expect(screen.getByText(/where did they end up/i)).toBeInTheDocument()
+    })
+    await user.click(screen.getByRole('button', { name: /confirm/i }))
+
+    // Play recorded toast should appear
+    await waitFor(() => {
+      expect(screen.getByText(/play recorded/i)).toBeInTheDocument()
+    })
+
+    // Reopen play entry panel — pitches should be preserved (1-1 count)
+    await user.click(screen.getByRole('button', { name: /record play/i }))
+    await waitFor(() => {
+      expect(screen.getByText('1-1')).toBeInTheDocument()
+      expect(screen.getByText('2 pitches')).toBeInTheDocument()
+    })
+  })
 })

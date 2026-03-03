@@ -255,7 +255,7 @@ export function replayGame(
     const BALL_IN_PLAY: Set<string> = new Set([
       '1B', '2B', '3B', 'HR', 'GO', 'FO', 'LO', 'PO', 'E', 'FC', 'DP', 'SAC', 'HBP',
     ])
-    const implicitPitch = BALL_IN_PLAY.has(play.playType) ? 1 : 0
+    const implicitPitch = BALL_IN_PLAY.has(play.playType) && play.isAtBat ? 1 : 0
     const totalPitches = play.pitches.length + implicitPitch
     if (totalPitches > 0) {
       const pitcherLineup = play.half === 'bottom' ? lineupAway : lineupHome

@@ -203,8 +203,12 @@ export function GamePage() {
     const affectsRunners = data.basesReached.length > 0 ||
       ['SB', 'WP', 'PB', 'BK', 'FC', 'E'].includes(data.playType)
     const isOut = ['K', 'KL', 'GO', 'FO', 'LO', 'PO', 'SAC', 'DP'].includes(data.playType)
+    // Show RunnerConfirmation for plays where batter reaches base (1B/2B/3B, E),
+    // even with empty bases, so scorekeeper can adjust batter advancement
+    const isBatterReachingBase = ['1B', '2B', '3B'].includes(data.playType) ||
+      (data.playType === 'E' && data.isAtBat)
 
-    if (hasRunnersOnBase && (affectsRunners || isOut)) {
+    if (hasRunnersOnBase && (affectsRunners || isOut) || isBatterReachingBase) {
       // Only count batter's own run (HR) as initialRunsScored.
       // Runner runs are counted by RunnerConfirmation via assignments — don't double-count.
       const batterScored = data.basesReached.includes(4) ? 1 : 0
@@ -264,7 +268,9 @@ export function GamePage() {
         : undefined,
     })
 
-    setCurrentAtBatPitches([])
+    if (data.isAtBat) {
+      setCurrentAtBatPitches([])
+    }
     setLastRecordedPlay({ playType: data.playType, notation: data.notation })
     setShowPlayEntry(false)
     setPendingPlay(null)
@@ -274,9 +280,18 @@ export function GamePage() {
     showToast(`Play recorded — ${data.playType}`, 'success')
   }
 
-  const handleRunnerConfirm = (result: { runners: BaseRunners; runsScored: number }) => {
+  const handleRunnerConfirm = (result: { runners: BaseRunners; runsScored: number; batterBase?: number }) => {
     if (pendingPlay) {
-      finalizePlay(pendingPlay, result.runners, result.runsScored)
+      let playData = pendingPlay
+      if (result.batterBase !== undefined) {
+        // Batter took an extra base — extend basesReached up to their final base
+        const basesReached = Array.from(
+          { length: result.batterBase },
+          (_, i) => i + 1
+        )
+        playData = { ...pendingPlay, basesReached }
+      }
+      finalizePlay(playData, result.runners, result.runsScored)
     }
   }
 
@@ -468,13 +483,17 @@ export function GamePage() {
       )}
 
       {/* Runner confirmation */}
-      {pendingRunners && (
+      {pendingRunners && pendingPlay && (
         <RunnerConfirmation
           prePlayRunners={pendingPrePlayRunners ?? undefined}
           runners={pendingRunners}
           initialRunsScored={pendingPreRunsScored}
           onConfirm={handleRunnerConfirm}
           onCancel={handleRunnerCancel}
+          {...((['1B', '2B', '3B'].includes(pendingPlay.playType) || (pendingPlay.playType === 'E' && pendingPlay.isAtBat)) && pendingPlay.basesReached.length > 0 ? {
+            batterName: currentBatterSlot?.playerName ?? 'Unknown',
+            batterDefaultBase: Math.max(...pendingPlay.basesReached),
+          } : {})}
         />
       )}
 
