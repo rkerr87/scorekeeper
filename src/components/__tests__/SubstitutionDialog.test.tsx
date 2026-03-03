@@ -75,4 +75,21 @@ describe('SubstitutionDialog', () => {
     // Nothing typed yet — button must be disabled
     expect(screen.getByRole('button', { name: /confirm sub/i })).toBeDisabled()
   })
+
+  it('should disable Confirm Sub button when jersey is empty', async () => {
+    const user = userEvent.setup()
+    render(
+      <SubstitutionDialog
+        currentPlayerName="Alice"
+        orderPosition={3}
+        onConfirm={() => {}}
+        onCancel={() => {}}
+      />
+    )
+
+    await user.type(screen.getByPlaceholderText(/new player name/i), 'Dave')
+    // Jersey left empty
+
+    expect(screen.getByRole('button', { name: /confirm sub/i })).toBeDisabled()
+  })
 })
