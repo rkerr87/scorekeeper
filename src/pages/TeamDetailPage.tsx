@@ -60,9 +60,15 @@ export function TeamDetailPage() {
           <input type="text" inputMode="numeric" placeholder="Jersey #" value={jerseyNumber}
             onChange={e => setJerseyNumber(e.target.value)}
             className="w-20 border border-slate-300 rounded-lg px-3 py-2 text-sm" />
-          <input type="text" placeholder="Position" value={position}
-            onChange={e => setPosition(e.target.value)}
-            className="w-20 border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+          <select value={position} onChange={e => setPosition(e.target.value)}
+            className="w-24 border border-slate-300 rounded-lg px-2 py-2 text-sm bg-white">
+            <option value="">Pos</option>
+            {['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'].map(pos => (
+              <option key={pos} value={pos} disabled={players.some(p => p.defaultPosition === pos)}>
+                {pos}
+              </option>
+            ))}
+          </select>
           <button onClick={handleAddPlayer}
             className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold text-sm">
             Add Player
