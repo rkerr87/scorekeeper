@@ -80,15 +80,18 @@ export function GamePage() {
     showToast(`Side retired — ${halfLabel} ${inningStr}`, 'info')
   }, [trackedHalfKey, showToast])
 
-  // Auto-dismiss beginner guide card after 5 seconds
-  useEffect(() => {
-    if (!lastRecordedPlay) return
-    const timer = setTimeout(() => setLastRecordedPlay(null), 5000)
-    return () => clearTimeout(timer)
-  }, [lastRecordedPlay])
 
   if (!game || !snapshot || !lineupHome || !lineupAway) {
     return <Spinner />
+  }
+
+  const beginnerGuideDismissCount = parseInt(localStorage.getItem('beginnerGuideDismisses') ?? '0')
+  const showBeginnerGuide = beginnerGuideDismissCount < 3 && lastRecordedPlay !== null
+
+  const handleDismissGuide = () => {
+    const count = parseInt(localStorage.getItem('beginnerGuideDismisses') ?? '0') + 1
+    localStorage.setItem('beginnerGuideDismisses', String(count))
+    setLastRecordedPlay(null)
   }
 
   // Auto-switch tab when the half or game changes (during render, not in an effect).
@@ -368,16 +371,13 @@ export function GamePage() {
       </div>
 
       {/* Beginner guide card */}
-      {lastRecordedPlay && (
-        <div className="px-3 pt-2 bg-white border-t border-slate-100 relative">
-          <button
-            onClick={() => setLastRecordedPlay(null)}
-            aria-label="Dismiss guide"
-            className="absolute top-2 right-3 min-w-[44px] min-h-[44px] flex items-center justify-center text-blue-300 hover:text-blue-500 text-xl leading-none z-10"
-          >
-            ×
-          </button>
-          <BeginnerGuide playType={lastRecordedPlay.playType} notation={lastRecordedPlay.notation} />
+      {showBeginnerGuide && lastRecordedPlay && (
+        <div className="px-3 pt-2 bg-white border-t border-slate-100">
+          <BeginnerGuide
+            playType={lastRecordedPlay.playType}
+            notation={lastRecordedPlay.notation}
+            onDismiss={handleDismissGuide}
+          />
         </div>
       )}
 

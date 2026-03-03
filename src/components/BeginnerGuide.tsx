@@ -57,21 +57,29 @@ function getBasesForPlay(playType: PlayType): number[] {
 interface BeginnerGuideProps {
   playType: PlayType
   notation: string
+  onDismiss: () => void
 }
 
-export function BeginnerGuide({ playType, notation }: BeginnerGuideProps) {
+export function BeginnerGuide({ playType, notation, onDismiss }: BeginnerGuideProps) {
   const explanation = getExplanation(playType, notation)
   const bases = getBasesForPlay(playType)
 
   return (
-    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mx-4 mb-4">
+    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mx-4 mb-4 relative">
+      <button
+        onClick={onDismiss}
+        aria-label="Dismiss"
+        className="absolute top-2 right-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-blue-300 hover:text-blue-500 text-xl leading-none"
+      >
+        ×
+      </button>
       <div className="flex items-start gap-4">
         <Diamond
           basesReached={bases}
           runScored={playType === 'HR'}
           size={80}
         />
-        <div className="flex-1">
+        <div className="flex-1 pr-8">
           <div className="text-lg font-bold text-blue-900 mb-1">{notation}</div>
           <p className="text-sm text-blue-800">{explanation}</p>
         </div>

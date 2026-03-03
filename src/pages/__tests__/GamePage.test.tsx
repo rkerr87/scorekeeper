@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom'
@@ -6,6 +6,18 @@ import { GameProvider } from '../../contexts/GameContext'
 import { ToastProvider } from '../../contexts/ToastContext'
 import { GamePage } from '../GamePage'
 import { db } from '../../db/database'
+
+const localStorageMock = (() => {
+  let store: Record<string, string> = {}
+  return {
+    getItem: (key: string) => store[key] ?? null,
+    setItem: (key: string, value: string) => { store[key] = value },
+    removeItem: (key: string) => { delete store[key] },
+    clear: () => { store = {} },
+  }
+})()
+
+vi.stubGlobal('localStorage', localStorageMock)
 
 const POSITIONS = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF']
 
@@ -87,6 +99,7 @@ function renderGame(gameId: number) {
 
 describe('GamePage', () => {
   beforeEach(async () => {
+    localStorageMock.clear()
     await db.delete()
     await db.open()
   })
