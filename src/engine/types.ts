@@ -115,6 +115,7 @@ export interface Play {
   pitches: PitchResult[]       // per-pitch tracking: ["B", "S", "F", "B", "S"]
   isAtBat: boolean             // true for plays that advance the batting order
   runnerOverrides?: BaseRunnerOverride  // scorekeeper adjustments from confirm step
+  pitcherName?: string               // who was pitching when this play was recorded
   timestamp: Date
 }
 

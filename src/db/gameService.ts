@@ -158,6 +158,7 @@ interface AddPlayInput {
   pitches: PitchResult[]
   isAtBat: boolean
   runnerOverrides?: BaseRunnerOverride
+  pitcherName?: string
 }
 
 export async function addPlay(gameId: number, input: AddPlayInput): Promise<Play> {

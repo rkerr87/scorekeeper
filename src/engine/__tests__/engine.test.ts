@@ -437,6 +437,116 @@ describe('replayGame — pitch count', () => {
     // 1 (1B implicit) + 0 (non-at-bat E, no implicit) + 4 (K tracked) = 5
     expect(snapshot.pitchCountByPitcher.get('home-Player1')).toBe(5)
   })
+
+  it('should attribute pitches to correct pitcher after position change', () => {
+    // Home lineup AFTER position change: Player1 moved P→RF, Player9 moved RF→P at inning 2 top
+    const homeWithChange: Lineup = {
+      gameId: 1,
+      side: 'home',
+      battingOrder: [
+        { orderPosition: 1, playerId: 1, playerName: 'home-Player1', jerseyNumber: 10, position: 'RF',
+          substitutions: [{ inning: 2, half: 'top', newPlayerName: 'home-Player1', newJerseyNumber: 10, newPosition: 'RF' }] },
+        { orderPosition: 2, playerId: 2, playerName: 'home-Player2', jerseyNumber: 20, position: 'C', substitutions: [] },
+        { orderPosition: 3, playerId: 3, playerName: 'home-Player3', jerseyNumber: 30, position: '1B', substitutions: [] },
+        { orderPosition: 4, playerId: 4, playerName: 'home-Player4', jerseyNumber: 40, position: '2B', substitutions: [] },
+        { orderPosition: 5, playerId: 5, playerName: 'home-Player5', jerseyNumber: 50, position: '3B', substitutions: [] },
+        { orderPosition: 6, playerId: 6, playerName: 'home-Player6', jerseyNumber: 60, position: 'SS', substitutions: [] },
+        { orderPosition: 7, playerId: 7, playerName: 'home-Player7', jerseyNumber: 70, position: 'LF', substitutions: [] },
+        { orderPosition: 8, playerId: 8, playerName: 'home-Player8', jerseyNumber: 80, position: 'CF', substitutions: [] },
+        { orderPosition: 9, playerId: 9, playerName: 'home-Player9', jerseyNumber: 90, position: 'P',
+          substitutions: [{ inning: 2, half: 'top', newPlayerName: 'home-Player9', newJerseyNumber: 90, newPosition: 'P' }] },
+      ],
+    }
+
+    const plays: Play[] = [
+      // Inning 1 top: home-Player1 should be pitching (before change at inning 2)
+      makePlay({ sequenceNumber: 1, inning: 1, half: 'top', batterOrderPosition: 1, playType: 'K', pitches: ['S', 'S', 'S'] }),
+      makePlay({ sequenceNumber: 2, inning: 1, half: 'top', batterOrderPosition: 2, playType: 'K', pitches: ['S', 'S', 'S'] }),
+      makePlay({ sequenceNumber: 3, inning: 1, half: 'top', batterOrderPosition: 3, playType: 'K', pitches: ['S', 'S', 'S'] }),
+      // Inning 2 top: home-Player9 is now pitching (change took effect)
+      makePlay({ sequenceNumber: 4, inning: 2, half: 'top', batterOrderPosition: 4, playType: 'K', pitches: ['S', 'S', 'S'] }),
+      makePlay({ sequenceNumber: 5, inning: 2, half: 'top', batterOrderPosition: 5, playType: 'K', pitches: ['S', 'S', 'S'] }),
+    ]
+
+    const snapshot = replayGame(plays, homeWithChange, lineupAway)
+    // Player1 pitched inning 1: 3 K's × 3 pitches = 9
+    expect(snapshot.pitchCountByPitcher.get('home-Player1')).toBe(9)
+    // Player9 pitched inning 2: 2 K's × 3 pitches = 6
+    expect(snapshot.pitchCountByPitcher.get('home-Player9')).toBe(6)
+  })
+
+  it('should use play.pitcherName for mid-inning pitcher change', () => {
+    // Position change happens MID-inning: both the play before and the sub are at (2, top)
+    // play.pitcherName resolves the ambiguity
+    const homeWithChange: Lineup = {
+      gameId: 1,
+      side: 'home',
+      battingOrder: [
+        { orderPosition: 1, playerId: 1, playerName: 'home-Player1', jerseyNumber: 10, position: 'RF',
+          substitutions: [{ inning: 2, half: 'top', newPlayerName: 'home-Player1', newJerseyNumber: 10, newPosition: 'RF' }] },
+        { orderPosition: 2, playerId: 2, playerName: 'home-Player2', jerseyNumber: 20, position: 'C', substitutions: [] },
+        { orderPosition: 3, playerId: 3, playerName: 'home-Player3', jerseyNumber: 30, position: '1B', substitutions: [] },
+        { orderPosition: 4, playerId: 4, playerName: 'home-Player4', jerseyNumber: 40, position: '2B', substitutions: [] },
+        { orderPosition: 5, playerId: 5, playerName: 'home-Player5', jerseyNumber: 50, position: '3B', substitutions: [] },
+        { orderPosition: 6, playerId: 6, playerName: 'home-Player6', jerseyNumber: 60, position: 'SS', substitutions: [] },
+        { orderPosition: 7, playerId: 7, playerName: 'home-Player7', jerseyNumber: 70, position: 'LF', substitutions: [] },
+        { orderPosition: 8, playerId: 8, playerName: 'home-Player8', jerseyNumber: 80, position: 'CF', substitutions: [] },
+        { orderPosition: 9, playerId: 9, playerName: 'home-Player9', jerseyNumber: 90, position: 'P',
+          substitutions: [{ inning: 2, half: 'top', newPlayerName: 'home-Player9', newJerseyNumber: 90, newPosition: 'P' }] },
+      ],
+    }
+
+    const plays: Play[] = [
+      // Inning 2 top, BEFORE position change: Player1 still pitching
+      makePlay({ sequenceNumber: 1, inning: 2, half: 'top', batterOrderPosition: 1, playType: 'K', pitches: ['S', 'S', 'S'], pitcherName: 'home-Player1' }),
+      // Position change happens here (also recorded at inning 2, top)
+      // Inning 2 top, AFTER position change: Player9 now pitching
+      makePlay({ sequenceNumber: 2, inning: 2, half: 'top', batterOrderPosition: 2, playType: 'K', pitches: ['S', 'S', 'S'], pitcherName: 'home-Player9' }),
+    ]
+
+    const snapshot = replayGame(plays, homeWithChange, lineupAway)
+    expect(snapshot.pitchCountByPitcher.get('home-Player1')).toBe(3)
+    expect(snapshot.pitchCountByPitcher.get('home-Player9')).toBe(3)
+  })
+
+  it('should handle multiple pitcher changes across a game', () => {
+    // Three pitchers: Player1 (original), Player9 (from inning 2), Player8 (from inning 3)
+    const homeWithChanges: Lineup = {
+      gameId: 1,
+      side: 'home',
+      battingOrder: [
+        { orderPosition: 1, playerId: 1, playerName: 'home-Player1', jerseyNumber: 10, position: 'RF',
+          substitutions: [{ inning: 2, half: 'top', newPlayerName: 'home-Player1', newJerseyNumber: 10, newPosition: 'RF' }] },
+        { orderPosition: 2, playerId: 2, playerName: 'home-Player2', jerseyNumber: 20, position: 'C', substitutions: [] },
+        { orderPosition: 3, playerId: 3, playerName: 'home-Player3', jerseyNumber: 30, position: '1B', substitutions: [] },
+        { orderPosition: 4, playerId: 4, playerName: 'home-Player4', jerseyNumber: 40, position: '2B', substitutions: [] },
+        { orderPosition: 5, playerId: 5, playerName: 'home-Player5', jerseyNumber: 50, position: '3B', substitutions: [] },
+        { orderPosition: 6, playerId: 6, playerName: 'home-Player6', jerseyNumber: 60, position: 'SS', substitutions: [] },
+        { orderPosition: 7, playerId: 7, playerName: 'home-Player7', jerseyNumber: 70, position: 'LF', substitutions: [] },
+        { orderPosition: 8, playerId: 8, playerName: 'home-Player8', jerseyNumber: 80, position: 'P',
+          substitutions: [{ inning: 3, half: 'top', newPlayerName: 'home-Player8', newJerseyNumber: 80, newPosition: 'P' }] },
+        { orderPosition: 9, playerId: 9, playerName: 'home-Player9', jerseyNumber: 90, position: 'CF',
+          substitutions: [
+            { inning: 2, half: 'top', newPlayerName: 'home-Player9', newJerseyNumber: 90, newPosition: 'P' },
+            { inning: 3, half: 'top', newPlayerName: 'home-Player9', newJerseyNumber: 90, newPosition: 'CF' },
+          ] },
+      ],
+    }
+
+    const plays: Play[] = [
+      // Inning 1: Player1 pitching
+      makePlay({ sequenceNumber: 1, inning: 1, half: 'top', batterOrderPosition: 1, playType: 'K', pitches: ['S', 'S', 'S'] }),
+      // Inning 2: Player9 pitching
+      makePlay({ sequenceNumber: 2, inning: 2, half: 'top', batterOrderPosition: 2, playType: 'K', pitches: ['S', 'S', 'S'] }),
+      // Inning 3: Player8 pitching
+      makePlay({ sequenceNumber: 3, inning: 3, half: 'top', batterOrderPosition: 3, playType: 'K', pitches: ['S', 'S', 'S'] }),
+    ]
+
+    const snapshot = replayGame(plays, homeWithChanges, lineupAway)
+    expect(snapshot.pitchCountByPitcher.get('home-Player1')).toBe(3)
+    expect(snapshot.pitchCountByPitcher.get('home-Player9')).toBe(3)
+    expect(snapshot.pitchCountByPitcher.get('home-Player8')).toBe(3)
+  })
 })
 
 describe('replayGame — isGameOver', () => {

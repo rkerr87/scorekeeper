@@ -234,6 +234,68 @@ function applyBaseRunning(
   return { runsScored, scorers }
 }
 
+function halfInningOrder(inning: number, half: HalfInning): number {
+  return inning * 2 + (half === 'bottom' ? 1 : 0)
+}
+
+/**
+ * Determine who was pitching at a given (inning, half) by examining
+ * substitution history. Position changes record when players swap positions,
+ * including the inning/half when it happened.
+ */
+function findPitcherName(lineup: Lineup, inning: number, half: HalfInning): string | undefined {
+  // Collect all events where someone became pitcher via substitution
+  const becamePitcher: { playerName: string; order: number }[] = []
+
+  for (const slot of lineup.battingOrder) {
+    for (const sub of slot.substitutions) {
+      if (sub.newPosition === 'P') {
+        becamePitcher.push({
+          playerName: sub.newPlayerName,
+          order: halfInningOrder(sub.inning, sub.half),
+        })
+      }
+    }
+  }
+
+  if (becamePitcher.length === 0) {
+    // No pitcher changes — current P is the original pitcher
+    return lineup.battingOrder.find(s => s.position === 'P')?.playerName
+  }
+
+  // Sort chronologically
+  becamePitcher.sort((a, b) => a.order - b.order)
+
+  const targetOrder = halfInningOrder(inning, half)
+
+  // Find the latest pitcher change at or before the target time
+  let pitcherName: string | undefined
+  for (const event of becamePitcher) {
+    if (event.order <= targetOrder) {
+      pitcherName = event.playerName
+    } else {
+      break
+    }
+  }
+
+  if (pitcherName) return pitcherName
+
+  // All pitcher changes are AFTER this play — find the original pitcher.
+  // The original pitcher left 'P' at the time of the first pitcher change.
+  // In a 2-way swap, the other slot at that time has newPosition !== 'P'.
+  const firstChange = becamePitcher[0]
+  for (const slot of lineup.battingOrder) {
+    for (const sub of slot.substitutions) {
+      if (halfInningOrder(sub.inning, sub.half) === firstChange.order && sub.newPosition !== 'P') {
+        return slot.playerName
+      }
+    }
+  }
+
+  // Fallback
+  return lineup.battingOrder.find(s => s.position === 'P')?.playerName
+}
+
 export function replayGame(
   plays: Play[],
   lineupHome: Lineup,
@@ -258,12 +320,13 @@ export function replayGame(
     const implicitPitch = BALL_IN_PLAY.has(play.playType) && play.isAtBat ? 1 : 0
     const totalPitches = play.pitches.length + implicitPitch
     if (totalPitches > 0) {
+      // Use play.pitcherName if recorded (handles mid-inning changes precisely).
+      // Fall back to substitution-history lookup for legacy plays without it.
       const pitcherLineup = play.half === 'bottom' ? lineupAway : lineupHome
-      const pitcher = pitcherLineup.battingOrder.find(s => s.position === 'P')
-      if (pitcher) {
-        const key = pitcher.playerName
-        const current = snapshot.pitchCountByPitcher.get(key) ?? 0
-        snapshot.pitchCountByPitcher.set(key, current + totalPitches)
+      const pitcherKey = play.pitcherName ?? findPitcherName(pitcherLineup, play.inning, play.half)
+      if (pitcherKey) {
+        const current = snapshot.pitchCountByPitcher.get(pitcherKey) ?? 0
+        snapshot.pitchCountByPitcher.set(pitcherKey, current + totalPitches)
       }
     }
 

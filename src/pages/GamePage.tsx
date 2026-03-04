@@ -268,6 +268,7 @@ export function GamePage() {
       runnerOverrides: runnerOverrides
         ? { first: runnerOverrides.first, second: runnerOverrides.second, third: runnerOverrides.third }
         : undefined,
+      pitcherName,
     })
 
     if (data.isAtBat) {

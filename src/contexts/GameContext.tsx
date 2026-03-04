@@ -15,6 +15,7 @@ interface RecordPlayInput {
   runsScoredOnPlay: number
   rbis: number
   pitches: PitchResult[]
+  pitcherName?: string
   isAtBat: boolean
   runnerOverrides?: BaseRunnerOverride
 }
