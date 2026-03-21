@@ -149,35 +149,37 @@ export function TeamDetailPage() {
       {/* Add player form */}
       <div className="border border-slate-200 rounded-lg p-4 mb-6 bg-white">
         <h2 className="text-lg font-semibold text-slate-800 mb-3 font-heading uppercase">Add Player</h2>
-        <div className="flex gap-2 items-start">
-          <div className="flex-1">
+        <div className="space-y-2">
+          <div>
             <label className="sr-only" htmlFor="player-name-input">Player name</label>
             <input id="player-name-input" type="text" placeholder="Player name" value={playerName}
               onChange={e => setPlayerName(e.target.value)}
               className={`w-full border rounded-lg px-3 py-2 text-sm ${errors.name ? 'border-red-400' : 'border-slate-300'}`} />
             {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
           </div>
-          <div className="w-20">
-            <label className="sr-only" htmlFor="jersey-number-input">Jersey number</label>
-            <input id="jersey-number-input" type="text" inputMode="numeric" placeholder="Jersey #" value={jerseyNumber}
-              onChange={e => setJerseyNumber(e.target.value)}
-              className={`w-full border rounded-lg px-3 py-2 text-sm ${errors.jersey ? 'border-red-400' : 'border-slate-300'}`} />
-            {errors.jersey && <p className="text-red-500 text-xs mt-1">{errors.jersey}</p>}
+          <div className="flex gap-2 items-start">
+            <div className="w-20">
+              <label className="sr-only" htmlFor="jersey-number-input">Jersey number</label>
+              <input id="jersey-number-input" type="text" inputMode="numeric" placeholder="Jersey #" value={jerseyNumber}
+                onChange={e => setJerseyNumber(e.target.value)}
+                className={`w-full border rounded-lg px-3 py-2 text-sm ${errors.jersey ? 'border-red-400' : 'border-slate-300'}`} />
+              {errors.jersey && <p className="text-red-500 text-xs mt-1">{errors.jersey}</p>}
+            </div>
+            <select value={position} onChange={e => setPosition(e.target.value)}
+              className="flex-1 border border-slate-300 rounded-lg px-2 py-2 text-sm bg-white">
+              <option value="">Pos</option>
+              {['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'].map(pos => (
+                <option key={pos} value={pos} disabled={players.some(p => p.defaultPosition === pos)}>
+                  {pos}
+                </option>
+              ))}
+            </select>
+            <button onClick={handleAddPlayer}
+              disabled={submitting}
+              className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg font-semibold text-sm">
+              {submitting ? 'Adding...' : 'Add Player'}
+            </button>
           </div>
-          <select value={position} onChange={e => setPosition(e.target.value)}
-            className="w-24 border border-slate-300 rounded-lg px-2 py-2 text-sm bg-white">
-            <option value="">Pos</option>
-            {['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'].map(pos => (
-              <option key={pos} value={pos} disabled={players.some(p => p.defaultPosition === pos)}>
-                {pos}
-              </option>
-            ))}
-          </select>
-          <button onClick={handleAddPlayer}
-            disabled={submitting}
-            className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg font-semibold text-sm">
-            {submitting ? 'Adding...' : 'Add Player'}
-          </button>
         </div>
       </div>
 
