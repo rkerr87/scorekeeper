@@ -372,6 +372,23 @@ export function replayGame(
       }
     }
 
+    // 5-run rule: in innings 1-5, a half-inning ends when a team scores 5 runs
+    // (6th inning and beyond have unlimited runs)
+    if (!snapshot.isGameOver && play.inning <= 5) {
+      const runsThisHalfInning = isHomeBatting
+        ? snapshot.runsPerInningHome[play.inning - 1]
+        : snapshot.runsPerInningAway[play.inning - 1]
+      if (runsThisHalfInning >= 5) {
+        advanceHalfInning(snapshot)
+
+        if (snapshot.half === 'bottom' && snapshot.inning >= 6) {
+          if (snapshot.scoreHome > snapshot.scoreAway) {
+            snapshot.isGameOver = true
+          }
+        }
+      }
+    }
+
     // Check for inning change (standard 6-inning LL game)
     if (!snapshot.isGameOver && snapshot.outs >= 3) {
       advanceHalfInning(snapshot)

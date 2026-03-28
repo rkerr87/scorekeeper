@@ -280,6 +280,141 @@ describe('replayGame — scoring', () => {
   })
 })
 
+describe('replayGame — 5-run rule', () => {
+  it('should end the half-inning when a team scores 5 runs in innings 1-5', () => {
+    // Away team scores 5 runs in the top of the 1st via solo HRs and a grand slam
+    const plays: Play[] = [
+      makePlay({ sequenceNumber: 1, inning: 1, half: 'top', batterOrderPosition: 1, playType: '1B', basesReached: [1] }),
+      makePlay({ sequenceNumber: 2, inning: 1, half: 'top', batterOrderPosition: 2, playType: '1B', basesReached: [1] }),
+      makePlay({ sequenceNumber: 3, inning: 1, half: 'top', batterOrderPosition: 3, playType: '1B', basesReached: [1] }),
+      // Bases loaded, grand slam scores 4
+      makePlay({ sequenceNumber: 4, inning: 1, half: 'top', batterOrderPosition: 4, playType: 'HR', basesReached: [1, 2, 3, 4], runsScoredOnPlay: 4 }),
+      // 5th run: solo HR
+      makePlay({ sequenceNumber: 5, inning: 1, half: 'top', batterOrderPosition: 5, playType: 'HR', basesReached: [1, 2, 3, 4], runsScoredOnPlay: 1 }),
+    ]
+    const snapshot = replayGame(plays, lineupHome, lineupAway)
+    // 5 runs scored, half-inning should have advanced to bottom of 1st
+    expect(snapshot.scoreAway).toBe(5)
+    expect(snapshot.runsPerInningAway[0]).toBe(5)
+    expect(snapshot.inning).toBe(1)
+    expect(snapshot.half).toBe('bottom')
+    expect(snapshot.outs).toBe(0)
+    // Bases should be cleared
+    expect(snapshot.baseRunners.first).toBeNull()
+    expect(snapshot.baseRunners.second).toBeNull()
+    expect(snapshot.baseRunners.third).toBeNull()
+  })
+
+  it('should end half-inning when exactly 5 runs are reached via a multi-run play', () => {
+    // 3 singles to load bases, then grand slam = 4 runs, then another HR = 5
+    // But let's test: 4 runs already scored, then a 2-run HR brings it to 6
+    // All runs count, but inning ends
+    const plays: Play[] = [
+      makePlay({ sequenceNumber: 1, inning: 1, half: 'top', batterOrderPosition: 1, playType: '1B', basesReached: [1] }),
+      makePlay({ sequenceNumber: 2, inning: 1, half: 'top', batterOrderPosition: 2, playType: '1B', basesReached: [1] }),
+      makePlay({ sequenceNumber: 3, inning: 1, half: 'top', batterOrderPosition: 3, playType: '1B', basesReached: [1] }),
+      // Grand slam: 4 runs scored on this play
+      makePlay({ sequenceNumber: 4, inning: 1, half: 'top', batterOrderPosition: 4, playType: 'HR', basesReached: [1, 2, 3, 4], runsScoredOnPlay: 4 }),
+      // Next batter: single with runner on 1st scoring = 5th run
+      makePlay({ sequenceNumber: 5, inning: 1, half: 'top', batterOrderPosition: 5, playType: '1B', basesReached: [1] }),
+      makePlay({ sequenceNumber: 6, inning: 1, half: 'top', batterOrderPosition: 6, playType: 'HR', basesReached: [1, 2, 3, 4], runsScoredOnPlay: 2 }),
+    ]
+    const snapshot = replayGame(plays, lineupHome, lineupAway)
+    // All 6 runs count, but inning should have ended after the 6th run play
+    expect(snapshot.scoreAway).toBe(6)
+    expect(snapshot.runsPerInningAway[0]).toBe(6)
+    expect(snapshot.inning).toBe(1)
+    expect(snapshot.half).toBe('bottom')
+  })
+
+  it('should NOT apply the 5-run rule in the 6th inning', () => {
+    // Build plays to get to 6th inning, then score 6 runs
+    const plays: Play[] = []
+    let seq = 1
+    // Innings 1-5: 3 quick outs each half
+    for (let inn = 1; inn <= 5; inn++) {
+      for (const half of ['top', 'bottom'] as const) {
+        for (let b = 1; b <= 3; b++) {
+          plays.push(makePlay({ sequenceNumber: seq++, inning: inn, half, batterOrderPosition: ((seq - 2) % 9) + 1, playType: 'K' }))
+        }
+      }
+    }
+    // 6th inning top: away scores 6 runs (should be allowed)
+    const sixthInningBatterStart = (seq - 1) % 9
+    plays.push(makePlay({ sequenceNumber: seq++, inning: 6, half: 'top', batterOrderPosition: (sixthInningBatterStart % 9) + 1, playType: '1B', basesReached: [1] }))
+    plays.push(makePlay({ sequenceNumber: seq++, inning: 6, half: 'top', batterOrderPosition: ((sixthInningBatterStart + 1) % 9) + 1, playType: '1B', basesReached: [1] }))
+    plays.push(makePlay({ sequenceNumber: seq++, inning: 6, half: 'top', batterOrderPosition: ((sixthInningBatterStart + 2) % 9) + 1, playType: 'HR', basesReached: [1, 2, 3, 4], runsScoredOnPlay: 3 }))
+    plays.push(makePlay({ sequenceNumber: seq++, inning: 6, half: 'top', batterOrderPosition: ((sixthInningBatterStart + 3) % 9) + 1, playType: '1B', basesReached: [1] }))
+    plays.push(makePlay({ sequenceNumber: seq++, inning: 6, half: 'top', batterOrderPosition: ((sixthInningBatterStart + 4) % 9) + 1, playType: '1B', basesReached: [1] }))
+    plays.push(makePlay({ sequenceNumber: seq++, inning: 6, half: 'top', batterOrderPosition: ((sixthInningBatterStart + 5) % 9) + 1, playType: 'HR', basesReached: [1, 2, 3, 4], runsScoredOnPlay: 3 }))
+
+    const snapshot = replayGame(plays, lineupHome, lineupAway)
+    // Should have scored 6 runs and still be in the 6th inning top (not forced to advance)
+    expect(snapshot.scoreAway).toBe(6)
+    expect(snapshot.inning).toBe(6)
+    expect(snapshot.half).toBe('top')
+  })
+
+  it('should apply the 5-run rule in the 5th inning', () => {
+    const plays: Play[] = []
+    let seq = 1
+    // Innings 1-4: 3 quick outs each half
+    for (let inn = 1; inn <= 4; inn++) {
+      for (const half of ['top', 'bottom'] as const) {
+        for (let b = 1; b <= 3; b++) {
+          plays.push(makePlay({ sequenceNumber: seq++, inning: inn, half, batterOrderPosition: ((seq - 2) % 9) + 1, playType: 'K' }))
+        }
+      }
+    }
+    // 5th inning top: score 5 runs
+    const bp = (seq - 1) % 9
+    for (let i = 0; i < 5; i++) {
+      plays.push(makePlay({ sequenceNumber: seq++, inning: 5, half: 'top', batterOrderPosition: ((bp + i) % 9) + 1, playType: 'HR', basesReached: [1, 2, 3, 4], runsScoredOnPlay: 1 }))
+    }
+
+    const snapshot = replayGame(plays, lineupHome, lineupAway)
+    expect(snapshot.scoreAway).toBe(5)
+    expect(snapshot.inning).toBe(5)
+    expect(snapshot.half).toBe('bottom')
+    expect(snapshot.outs).toBe(0)
+  })
+
+  it('should apply the 5-run rule to the home team in the bottom half', () => {
+    // Top of 1st: 3 outs
+    const plays: Play[] = [
+      makePlay({ sequenceNumber: 1, inning: 1, half: 'top', batterOrderPosition: 1, playType: 'K' }),
+      makePlay({ sequenceNumber: 2, inning: 1, half: 'top', batterOrderPosition: 2, playType: 'K' }),
+      makePlay({ sequenceNumber: 3, inning: 1, half: 'top', batterOrderPosition: 3, playType: 'K' }),
+      // Bottom of 1st: home scores 5 HRs
+      makePlay({ sequenceNumber: 4, inning: 1, half: 'bottom', batterOrderPosition: 1, playType: 'HR', basesReached: [1, 2, 3, 4], runsScoredOnPlay: 1 }),
+      makePlay({ sequenceNumber: 5, inning: 1, half: 'bottom', batterOrderPosition: 2, playType: 'HR', basesReached: [1, 2, 3, 4], runsScoredOnPlay: 1 }),
+      makePlay({ sequenceNumber: 6, inning: 1, half: 'bottom', batterOrderPosition: 3, playType: 'HR', basesReached: [1, 2, 3, 4], runsScoredOnPlay: 1 }),
+      makePlay({ sequenceNumber: 7, inning: 1, half: 'bottom', batterOrderPosition: 4, playType: 'HR', basesReached: [1, 2, 3, 4], runsScoredOnPlay: 1 }),
+      makePlay({ sequenceNumber: 8, inning: 1, half: 'bottom', batterOrderPosition: 5, playType: 'HR', basesReached: [1, 2, 3, 4], runsScoredOnPlay: 1 }),
+    ]
+    const snapshot = replayGame(plays, lineupHome, lineupAway)
+    expect(snapshot.scoreHome).toBe(5)
+    expect(snapshot.inning).toBe(2)
+    expect(snapshot.half).toBe('top')
+    expect(snapshot.outs).toBe(0)
+  })
+
+  it('should allow fewer than 5 runs without ending the inning', () => {
+    // Away team scores 4 runs with no outs — inning should continue
+    const plays: Play[] = [
+      makePlay({ sequenceNumber: 1, inning: 1, half: 'top', batterOrderPosition: 1, playType: 'HR', basesReached: [1, 2, 3, 4], runsScoredOnPlay: 1 }),
+      makePlay({ sequenceNumber: 2, inning: 1, half: 'top', batterOrderPosition: 2, playType: 'HR', basesReached: [1, 2, 3, 4], runsScoredOnPlay: 1 }),
+      makePlay({ sequenceNumber: 3, inning: 1, half: 'top', batterOrderPosition: 3, playType: 'HR', basesReached: [1, 2, 3, 4], runsScoredOnPlay: 1 }),
+      makePlay({ sequenceNumber: 4, inning: 1, half: 'top', batterOrderPosition: 4, playType: 'HR', basesReached: [1, 2, 3, 4], runsScoredOnPlay: 1 }),
+    ]
+    const snapshot = replayGame(plays, lineupHome, lineupAway)
+    expect(snapshot.scoreAway).toBe(4)
+    expect(snapshot.inning).toBe(1)
+    expect(snapshot.half).toBe('top')
+    expect(snapshot.outs).toBe(0)
+  })
+})
+
 describe('replayGame — runnerOverrides must also place the batter', () => {
   it('should place batter on reached base when runnerOverrides is used', () => {
     const plays: Play[] = [
@@ -641,17 +776,13 @@ describe('replayGame — walk-off and skip bottom of last inning', () => {
     plays.push(...makeHalfInning(seq, 1, 'top'))
     seq += 3
 
-    // Bottom 1: home scores 5 runs via HR with bases loaded + solo HR
+    // Bottom 1: home scores 5 runs via HR with bases loaded + solo HR (5-run rule ends half)
     plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'bottom', batterOrderPosition: 1, playType: '1B', basesReached: [1] }))
     plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'bottom', batterOrderPosition: 2, playType: '1B', basesReached: [1] }))
     plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'bottom', batterOrderPosition: 3, playType: '1B', basesReached: [1] }))
     plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'bottom', batterOrderPosition: 4, playType: 'HR', basesReached: [1, 2, 3, 4] }))
-    // Score: home 4, away 0. Then HR:
+    // Score: home 4, away 0. Then HR for 5th run — 5-run rule ends the inning:
     plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'bottom', batterOrderPosition: 5, playType: 'HR', basesReached: [1, 2, 3, 4] }))
-    // Score: home 5, away 0. Now 3 outs to end bottom 1:
-    plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'bottom', batterOrderPosition: 6, playType: 'K' }))
-    plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'bottom', batterOrderPosition: 7, playType: 'K' }))
-    plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'bottom', batterOrderPosition: 8, playType: 'K' }))
 
     // Innings 2-5: all scoreless
     for (let inn = 2; inn <= 5; inn++) {
@@ -678,17 +809,14 @@ describe('replayGame — walk-off and skip bottom of last inning', () => {
     const plays: Play[] = []
     let seq = 1
 
-    // Top 1: away scores 5 runs
+    // Top 1: away scores 5 runs (5-run rule ends the half-inning)
     plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'top', batterOrderPosition: 1, playType: '1B', basesReached: [1] }))
     plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'top', batterOrderPosition: 2, playType: '1B', basesReached: [1] }))
     plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'top', batterOrderPosition: 3, playType: '1B', basesReached: [1] }))
     plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'top', batterOrderPosition: 4, playType: 'HR', basesReached: [1, 2, 3, 4] }))
     plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'top', batterOrderPosition: 5, playType: 'HR', basesReached: [1, 2, 3, 4] }))
-    plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'top', batterOrderPosition: 6, playType: 'K' }))
-    plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'top', batterOrderPosition: 7, playType: 'K' }))
-    plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'top', batterOrderPosition: 8, playType: 'K' }))
 
-    // Bottom 1: home scores 0
+    // Bottom 1: home scores 0 (5-run rule already advanced to bottom)
     plays.push(...makeHalfInning(seq, 1, 'bottom'))
     seq += 3
 
@@ -816,17 +944,14 @@ describe('replayGame — walk-off and skip bottom of last inning', () => {
     const plays: Play[] = []
     let seq = 1
 
-    // Top 1: away scores 5
+    // Top 1: away scores 5 (5-run rule ends the half-inning)
     plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'top', batterOrderPosition: 1, playType: '1B', basesReached: [1] }))
     plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'top', batterOrderPosition: 2, playType: '1B', basesReached: [1] }))
     plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'top', batterOrderPosition: 3, playType: '1B', basesReached: [1] }))
     plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'top', batterOrderPosition: 4, playType: 'HR', basesReached: [1, 2, 3, 4] }))
     plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'top', batterOrderPosition: 5, playType: 'HR', basesReached: [1, 2, 3, 4] }))
-    plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'top', batterOrderPosition: 6, playType: 'K' }))
-    plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'top', batterOrderPosition: 7, playType: 'K' }))
-    plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'top', batterOrderPosition: 8, playType: 'K' }))
 
-    // Bottom 1: home scores 0
+    // Bottom 1: home scores 0 (5-run rule already advanced to bottom)
     plays.push(...makeHalfInning(seq, 1, 'bottom'))
     seq += 3
 
@@ -860,15 +985,12 @@ describe('replayGame — walk-off and skip bottom of last inning', () => {
     plays.push(...makeHalfInning(seq, 1, 'top'))
     seq += 3
 
-    // Bottom 1: home scores 5
+    // Bottom 1: home scores 5 (5-run rule ends the half-inning)
     plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'bottom', batterOrderPosition: 1, playType: '1B', basesReached: [1] }))
     plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'bottom', batterOrderPosition: 2, playType: '1B', basesReached: [1] }))
     plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'bottom', batterOrderPosition: 3, playType: '1B', basesReached: [1] }))
     plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'bottom', batterOrderPosition: 4, playType: 'HR', basesReached: [1, 2, 3, 4] }))
     plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'bottom', batterOrderPosition: 5, playType: 'HR', basesReached: [1, 2, 3, 4] }))
-    plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'bottom', batterOrderPosition: 6, playType: 'K' }))
-    plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'bottom', batterOrderPosition: 7, playType: 'K' }))
-    plays.push(makePlay({ sequenceNumber: seq++, inning: 1, half: 'bottom', batterOrderPosition: 8, playType: 'K' }))
 
     // Innings 2-5: scoreless
     for (let inn = 2; inn <= 5; inn++) {
