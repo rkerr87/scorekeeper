@@ -337,20 +337,27 @@ export function replayGame(
     // Apply outs
     snapshot.outs += outsOnPlay
 
-    // Apply runs
+    // Apply runs (capped by 5-run rule in innings 1-5)
     const isHomeBatting = play.half === 'bottom'
+    const runsArr = isHomeBatting ? snapshot.runsPerInningHome : snapshot.runsPerInningAway
+    ensureInningArray(runsArr, play.inning)
+    const runsSoFar = runsArr[play.inning - 1]
+    const runLimit = play.inning <= 5 ? 5 : Infinity
+    const allowedRuns = Math.min(runsScored, runLimit - runsSoFar)
+    const actualRuns = Math.max(0, allowedRuns)
+
     if (isHomeBatting) {
-      snapshot.scoreHome += runsScored
-      ensureInningArray(snapshot.runsPerInningHome, play.inning)
-      snapshot.runsPerInningHome[play.inning - 1] += runsScored
-      for (const pos of scorers) {
+      snapshot.scoreHome += actualRuns
+      snapshot.runsPerInningHome[play.inning - 1] += actualRuns
+      for (let i = 0; i < actualRuns; i++) {
+        const pos = scorers[i]
         snapshot.runsScoredByPositionHome.set(pos, (snapshot.runsScoredByPositionHome.get(pos) ?? 0) + 1)
       }
     } else {
-      snapshot.scoreAway += runsScored
-      ensureInningArray(snapshot.runsPerInningAway, play.inning)
-      snapshot.runsPerInningAway[play.inning - 1] += runsScored
-      for (const pos of scorers) {
+      snapshot.scoreAway += actualRuns
+      snapshot.runsPerInningAway[play.inning - 1] += actualRuns
+      for (let i = 0; i < actualRuns; i++) {
+        const pos = scorers[i]
         snapshot.runsScoredByPositionAway.set(pos, (snapshot.runsScoredByPositionAway.get(pos) ?? 0) + 1)
       }
     }

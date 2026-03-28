@@ -305,25 +305,41 @@ describe('replayGame — 5-run rule', () => {
     expect(snapshot.baseRunners.third).toBeNull()
   })
 
-  it('should end half-inning when exactly 5 runs are reached via a multi-run play', () => {
-    // 3 singles to load bases, then grand slam = 4 runs, then another HR = 5
-    // But let's test: 4 runs already scored, then a 2-run HR brings it to 6
-    // All runs count, but inning ends
+  it('should cap runs at 5 when a multi-run play would exceed the limit', () => {
+    // 3 singles to load bases, then grand slam = 4 runs, only 1 more allowed
     const plays: Play[] = [
       makePlay({ sequenceNumber: 1, inning: 1, half: 'top', batterOrderPosition: 1, playType: '1B', basesReached: [1] }),
       makePlay({ sequenceNumber: 2, inning: 1, half: 'top', batterOrderPosition: 2, playType: '1B', basesReached: [1] }),
       makePlay({ sequenceNumber: 3, inning: 1, half: 'top', batterOrderPosition: 3, playType: '1B', basesReached: [1] }),
       // Grand slam: 4 runs scored on this play
       makePlay({ sequenceNumber: 4, inning: 1, half: 'top', batterOrderPosition: 4, playType: 'HR', basesReached: [1, 2, 3, 4], runsScoredOnPlay: 4 }),
-      // Next batter: single with runner on 1st scoring = 5th run
+      // 2-run HR but only 1 run allowed (cap at 5)
       makePlay({ sequenceNumber: 5, inning: 1, half: 'top', batterOrderPosition: 5, playType: '1B', basesReached: [1] }),
       makePlay({ sequenceNumber: 6, inning: 1, half: 'top', batterOrderPosition: 6, playType: 'HR', basesReached: [1, 2, 3, 4], runsScoredOnPlay: 2 }),
     ]
     const snapshot = replayGame(plays, lineupHome, lineupAway)
-    // All 6 runs count, but inning should have ended after the 6th run play
-    expect(snapshot.scoreAway).toBe(6)
-    expect(snapshot.runsPerInningAway[0]).toBe(6)
+    // Only 5 runs count, capped at limit
+    expect(snapshot.scoreAway).toBe(5)
+    expect(snapshot.runsPerInningAway[0]).toBe(5)
     expect(snapshot.inning).toBe(1)
+    expect(snapshot.half).toBe('bottom')
+  })
+
+  it('should cap a grand slam at 5 when 3 runs already scored', () => {
+    // 3 solo HRs then bases loaded grand slam — only 2 of the 4 runs count
+    const plays: Play[] = [
+      makePlay({ sequenceNumber: 1, inning: 2, half: 'top', batterOrderPosition: 1, playType: 'HR', basesReached: [1, 2, 3, 4], runsScoredOnPlay: 1 }),
+      makePlay({ sequenceNumber: 2, inning: 2, half: 'top', batterOrderPosition: 2, playType: 'HR', basesReached: [1, 2, 3, 4], runsScoredOnPlay: 1 }),
+      makePlay({ sequenceNumber: 3, inning: 2, half: 'top', batterOrderPosition: 3, playType: 'HR', basesReached: [1, 2, 3, 4], runsScoredOnPlay: 1 }),
+      makePlay({ sequenceNumber: 4, inning: 2, half: 'top', batterOrderPosition: 4, playType: '1B', basesReached: [1] }),
+      makePlay({ sequenceNumber: 5, inning: 2, half: 'top', batterOrderPosition: 5, playType: '1B', basesReached: [1] }),
+      makePlay({ sequenceNumber: 6, inning: 2, half: 'top', batterOrderPosition: 6, playType: '1B', basesReached: [1] }),
+      // Bases loaded, grand slam would score 4 but only 2 allowed
+      makePlay({ sequenceNumber: 7, inning: 2, half: 'top', batterOrderPosition: 7, playType: 'HR', basesReached: [1, 2, 3, 4], runsScoredOnPlay: 4 }),
+    ]
+    const snapshot = replayGame(plays, lineupHome, lineupAway)
+    expect(snapshot.scoreAway).toBe(5)
+    expect(snapshot.runsPerInningAway[1]).toBe(5)
     expect(snapshot.half).toBe('bottom')
   })
 
