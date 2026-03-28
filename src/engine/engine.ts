@@ -337,20 +337,27 @@ export function replayGame(
     // Apply outs
     snapshot.outs += outsOnPlay
 
-    // Apply runs
+    // Apply runs (capped by 5-run rule in innings 1-5)
     const isHomeBatting = play.half === 'bottom'
+    const runsArr = isHomeBatting ? snapshot.runsPerInningHome : snapshot.runsPerInningAway
+    ensureInningArray(runsArr, play.inning)
+    const runsSoFar = runsArr[play.inning - 1]
+    const runLimit = play.inning <= 5 ? 5 : Infinity
+    const allowedRuns = Math.min(runsScored, runLimit - runsSoFar)
+    const actualRuns = Math.max(0, allowedRuns)
+
     if (isHomeBatting) {
-      snapshot.scoreHome += runsScored
-      ensureInningArray(snapshot.runsPerInningHome, play.inning)
-      snapshot.runsPerInningHome[play.inning - 1] += runsScored
-      for (const pos of scorers) {
+      snapshot.scoreHome += actualRuns
+      snapshot.runsPerInningHome[play.inning - 1] += actualRuns
+      for (let i = 0; i < actualRuns; i++) {
+        const pos = scorers[i]
         snapshot.runsScoredByPositionHome.set(pos, (snapshot.runsScoredByPositionHome.get(pos) ?? 0) + 1)
       }
     } else {
-      snapshot.scoreAway += runsScored
-      ensureInningArray(snapshot.runsPerInningAway, play.inning)
-      snapshot.runsPerInningAway[play.inning - 1] += runsScored
-      for (const pos of scorers) {
+      snapshot.scoreAway += actualRuns
+      snapshot.runsPerInningAway[play.inning - 1] += actualRuns
+      for (let i = 0; i < actualRuns; i++) {
+        const pos = scorers[i]
         snapshot.runsScoredByPositionAway.set(pos, (snapshot.runsScoredByPositionAway.get(pos) ?? 0) + 1)
       }
     }
@@ -369,6 +376,23 @@ export function replayGame(
     if (snapshot.inning >= 6 && snapshot.half === 'bottom' && runsScored > 0) {
       if (snapshot.scoreHome > snapshot.scoreAway) {
         snapshot.isGameOver = true
+      }
+    }
+
+    // 5-run rule: in innings 1-5, a half-inning ends when a team scores 5 runs
+    // (6th inning and beyond have unlimited runs)
+    if (!snapshot.isGameOver && play.inning <= 5) {
+      const runsThisHalfInning = isHomeBatting
+        ? snapshot.runsPerInningHome[play.inning - 1]
+        : snapshot.runsPerInningAway[play.inning - 1]
+      if (runsThisHalfInning >= 5) {
+        advanceHalfInning(snapshot)
+
+        if (snapshot.half === 'bottom' && snapshot.inning >= 6) {
+          if (snapshot.scoreHome > snapshot.scoreAway) {
+            snapshot.isGameOver = true
+          }
+        }
       }
     }
 
