@@ -277,6 +277,33 @@ describe('computeRunnerJourneys', () => {
     expect(journeys.get(1)).toEqual([1, 2, 3, 4])
   })
 
+  it('handles 5-run rule: batter on 3rd is stranded, scored runners get journeys', () => {
+    // Inning 1: 2 HRs (3 runs), 3 singles (bases loaded), triple (scores 2 more, capped at 5)
+    const plays = [
+      makePlay({ sequenceNumber: 1, batterOrderPosition: 1, playType: '1B', basesReached: [1], notation: '1B' }),
+      makePlay({ sequenceNumber: 2, batterOrderPosition: 2, playType: '1B', basesReached: [1], notation: '1B' }),
+      // HR scores runners on 1st and 2nd + batter = 3 runs (but engine default: runner on 1st to 2nd, not 3rd)
+      makePlay({ sequenceNumber: 3, batterOrderPosition: 3, playType: 'HR', basesReached: [1, 2, 3, 4], notation: 'HR' }),
+      // Solo HR = 4 runs total
+      makePlay({ sequenceNumber: 4, batterOrderPosition: 4, playType: 'HR', basesReached: [1, 2, 3, 4], notation: 'HR', runsScoredOnPlay: 1 }),
+      // 3 singles load the bases (4 runs so far)
+      makePlay({ sequenceNumber: 5, batterOrderPosition: 5, playType: '1B', basesReached: [1], notation: '1B' }),
+      makePlay({ sequenceNumber: 6, batterOrderPosition: 6, playType: '1B', basesReached: [1], notation: '1B' }),
+      makePlay({ sequenceNumber: 7, batterOrderPosition: 7, playType: '1B', basesReached: [1], notation: '1B' }),
+      // Triple with bases loaded: 3 runners score but capped to 1 (4+1=5), batter on 3rd
+      makePlay({ sequenceNumber: 8, batterOrderPosition: 8, playType: '3B', basesReached: [1, 2, 3], notation: '3B' }),
+    ]
+    const journeys = computeRunnerJourneys(plays, lineupHome, lineupAway)
+    // Batter 8 (triple): should show [1,2,3] NOT [1,2,3,4] — stranded on 3rd by 5-run rule
+    expect(journeys.get(8)).toEqual([1, 2, 3])
+    // Batter 5 was on 3rd (scored, run #5) — journey should reach home
+    expect(journeys.get(5)).toEqual([1, 2, 3, 4])
+    // Batter 6 was on 2nd (would be run #6, capped) — should NOT reach home
+    expect(journeys.get(6)).toEqual([1, 2])
+    // Batter 7 was on 1st (would be run #7, capped) — should NOT reach home
+    expect(journeys.get(7)).toEqual([1])
+  })
+
   it('handles runner overrides from scorekeeper', () => {
     const plays = [
       makePlay({ sequenceNumber: 1, batterOrderPosition: 1, playType: '1B', basesReached: [1], notation: '1B' }),

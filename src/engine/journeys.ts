@@ -37,13 +37,61 @@ export function computeRunnerJourneys(
     const snapshot = replayGame(playSlice, lineupHome, lineupAway)
 
     // Detect half-inning transition: when the half changes, bases are cleared.
-    // Remove active runners from the half that just ended.
+    // Some runners may have scored on this play (e.g., 5-run rule or SAC for 3rd out).
+    // Extend their journeys before removing them from tracking.
     if (snapshot.half !== prevHalf) {
       const endedHalf = prevHalf
+      const endedHalfRunners: RunnerKey[] = []
+
       for (const [key] of activeRunners) {
         if (key.endsWith(`-${endedHalf}`)) {
-          activeRunners.delete(key)
+          endedHalfRunners.push(key)
         }
+      }
+
+      // Check if runs were scored on this play
+      if (endedHalfRunners.length > 0) {
+        const prevSnap = i > 0
+          ? replayGame(sorted.slice(0, i), lineupHome, lineupAway)
+          : null
+        const runsNow = getRunsForHalf(snapshot, endedHalf)
+        const runsBefore = prevSnap ? getRunsForHalf(prevSnap, endedHalf) : 0
+        const runsOnPlay = runsNow - runsBefore
+
+        if (runsOnPlay > 0 && prevSnap) {
+          // Determine which runners scored based on base position (3rd scores first)
+          const prevBases = prevSnap.baseRunners
+          const runnersWithBases: Array<{ key: RunnerKey; playId: number; base: number }> = []
+
+          for (const key of endedHalfRunners) {
+            const rPlayId = activeRunners.get(key)!
+            const orderPos = Number(key.split('-')[0])
+            let base = 0
+            if (prevBases.third?.orderPosition === orderPos) base = 3
+            else if (prevBases.second?.orderPosition === orderPos) base = 2
+            else if (prevBases.first?.orderPosition === orderPos) base = 1
+            if (base > 0) runnersWithBases.push({ key, playId: rPlayId, base })
+          }
+
+          // Sort by base descending (3rd scores first, then 2nd, then 1st)
+          runnersWithBases.sort((a, b) => b.base - a.base)
+
+          // Extend journeys only for runners who actually scored (up to runsOnPlay)
+          for (let r = 0; r < Math.min(runsOnPlay, runnersWithBases.length); r++) {
+            const journey = result.get(runnersWithBases[r].playId)
+            if (journey) {
+              const lastBase = journey.length > 0 ? journey[journey.length - 1] : 0
+              for (let b = lastBase + 1; b <= 4; b++) {
+                journey.push(b)
+              }
+            }
+          }
+        }
+      }
+
+      // Remove all runners from the ended half
+      for (const key of endedHalfRunners) {
+        activeRunners.delete(key)
       }
     }
 
@@ -107,8 +155,10 @@ export function computeRunnerJourneys(
               ? getRunsForHalf(prevSnapshot, half)
               : 0
 
-            if (runsNow - runsBefore > 0) {
+            if (runsNow - runsBefore > 0 && snapshot.half === play.half) {
               // Runner scored — fill in all bases from last position to home
+              // (only if the half didn't change; if it changed, the runner was
+              // stranded when the inning ended, e.g. batter on 3rd after 5-run rule)
               for (let b = lastBase + 1; b <= 4; b++) {
                 journey.push(b)
               }
