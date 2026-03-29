@@ -401,6 +401,8 @@ export function HomePage() {
         </div>
       )}
 
+      <p className="mt-12 text-center text-xs text-slate-300">build {__BUILD_HASH__}</p>
+
       {/* DEV: seed / clear test data — hidden behind toggle */}
       {import.meta.env.DEV && (
         <>
