@@ -25,12 +25,15 @@ describe('Diamond', () => {
     expect(container.textContent).toContain('1B')
   })
 
-  it('should render pitch dots', () => {
+  it('should render pitch count boxes', () => {
+    // B S F B S → balls: B B _ (2 filled), strikes: S F (2 filled, last S ignored since boxes full)
     const { container } = render(
       <Diamond basesReached={[]} pitches={['B', 'S', 'F', 'B', 'S']} />
     )
-    const dots = container.querySelectorAll('[data-testid="pitch-dot"]')
-    expect(dots.length).toBe(5)
+    expect(container.querySelectorAll('[data-testid="ball-box-filled"]').length).toBe(2)
+    expect(container.querySelectorAll('[data-testid="ball-box-empty"]').length).toBe(1)
+    expect(container.querySelectorAll('[data-testid="strike-box-filled"]').length).toBe(2)
+    expect(container.querySelectorAll('[data-testid="strike-box-empty"]').length).toBe(0)
   })
 
   it('should render a mirrored K for KL notation', () => {

@@ -53,11 +53,19 @@ export function Diamond({
     }
   }
 
-  // Pitch dot colors
-  const pitchColor = (p: PitchResult) => {
-    if (p === 'B') return '#3b82f6' // blue
-    if (p === 'S') return '#ef4444' // red
-    return '#f59e0b' // amber for foul
+  // Compute pitch boxes: 3 for balls, 2 for strikes (mirrors PitchTracker logic)
+  const ballBoxes: ('B' | null)[] = [null, null, null]
+  const strikeBoxes: ('S' | 'F' | null)[] = [null, null]
+  let bIdx = 0
+  let sIdx = 0
+  for (const p of pitches) {
+    if (p === 'B' && bIdx < 3) {
+      ballBoxes[bIdx++] = 'B'
+    } else if (p === 'S' && sIdx < 2) {
+      strikeBoxes[sIdx++] = 'S'
+    } else if (p === 'F' && sIdx < 2) {
+      strikeBoxes[sIdx++] = 'F'
+    }
   }
 
   return (
@@ -154,23 +162,33 @@ export function Diamond({
         )}
       </svg>
 
-      {/* Pitch tracking dots below diamond */}
-      {pitches.length > 0 && (
-        <div className="flex gap-0.5 mt-0.5 overflow-hidden" style={{ maxWidth: size }}>
-          {pitches.map((p, i) => (
+      {/* Pitch count boxes: 3 balls (top row) + 2 strikes (bottom row) */}
+      <div className="flex flex-col items-center gap-0.5 mt-1">
+        <div className="flex gap-0.5">
+          {ballBoxes.map((filled, i) => (
             <div
               key={i}
-              data-testid="pitch-dot"
-              className="rounded-full shrink-0"
-              style={{
-                width: 4,
-                height: 4,
-                backgroundColor: pitchColor(p),
-              }}
+              data-testid={filled ? 'ball-box-filled' : 'ball-box-empty'}
+              className={`rounded-sm border ${filled ? 'bg-blue-500 border-blue-500' : 'bg-white border-slate-300'}`}
+              style={{ width: 8, height: 5 }}
             />
           ))}
         </div>
-      )}
+        <div className="flex gap-0.5">
+          {strikeBoxes.map((filled, i) => (
+            <div
+              key={i}
+              data-testid={filled ? 'strike-box-filled' : 'strike-box-empty'}
+              className={`rounded-sm border ${
+                filled === 'S' ? 'bg-red-500 border-red-500' :
+                filled === 'F' ? 'bg-amber-500 border-amber-500' :
+                'bg-white border-slate-300'
+              }`}
+              style={{ width: 8, height: 5 }}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
