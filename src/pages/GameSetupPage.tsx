@@ -4,23 +4,6 @@ import type { Player, LineupSlot } from '../engine/types'
 import { useGame } from '../contexts/GameContext'
 import { getGame, getTeam, getPlayersForTeam, saveLineup, updateGameStatus, addPlayer } from '../db/gameService'
 import { Spinner } from '../components/Spinner'
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core'
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
 
 const ALL_POSITIONS = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'] as const
 
@@ -107,31 +90,39 @@ function PositionDropdown({ position, onPositionChange }: PositionDropdownProps)
   )
 }
 
-interface SortablePlayerRowProps {
+interface PlayerRowProps {
   playerId: number
   index: number
+  totalCount: number
   player: Player
   position: string
   onRemove: (playerId: number) => void
   onPositionChange: (pos: string) => void
+  onMoveUp: () => void
+  onMoveDown: () => void
 }
 
-function SortablePlayerRow({ playerId, index, player, position, onRemove, onPositionChange }: SortablePlayerRowProps) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: playerId })
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  }
+function PlayerRow({ playerId, index, totalCount, player, position, onRemove, onPositionChange, onMoveUp, onMoveDown }: PlayerRowProps) {
   return (
-    <div ref={setNodeRef} style={style} className="flex items-center gap-2 bg-white border border-slate-200 rounded px-3 py-2">
-      <button
-        {...attributes}
-        {...listeners}
-        aria-label="Drag to reorder"
-        className="text-slate-400 hover:text-slate-600 cursor-grab active:cursor-grabbing px-1 text-lg leading-none touch-none"
-      >
-        <span aria-hidden="true">≡</span>
-      </button>
+    <div className="flex items-center gap-2 bg-white border border-slate-200 rounded px-3 py-2">
+      <div className="flex flex-col">
+        <button
+          aria-label="Move up"
+          onClick={onMoveUp}
+          disabled={index === 0}
+          className="text-slate-400 hover:text-slate-600 disabled:text-slate-200 text-xs leading-none px-1 py-0.5 min-w-[28px] min-h-[22px] flex items-center justify-center"
+        >
+          ▲
+        </button>
+        <button
+          aria-label="Move down"
+          onClick={onMoveDown}
+          disabled={index === totalCount - 1}
+          className="text-slate-400 hover:text-slate-600 disabled:text-slate-200 text-xs leading-none px-1 py-0.5 min-w-[28px] min-h-[22px] flex items-center justify-center"
+        >
+          ▼
+        </button>
+      </div>
       <span className="text-sm font-mono text-slate-400 w-6">{index + 1}.</span>
       <span className="text-sm font-semibold flex-1">{player.name}</span>
       <span className="text-xs text-slate-500">#{player.jerseyNumber}</span>
@@ -145,6 +136,13 @@ function SortablePlayerRow({ playerId, index, player, position, onRemove, onPosi
       </button>
     </div>
   )
+}
+
+function moveItem(arr: number[], from: number, to: number): number[] {
+  const result = [...arr]
+  const [item] = result.splice(from, 1)
+  result.splice(to, 0, item)
+  return result
 }
 
 interface BenchSectionProps {
@@ -241,26 +239,23 @@ export function GameSetupPage() {
     load()
   }, [gId])
 
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  )
-
   const getPosition = (side: 'home' | 'away', player: Player): string => {
     const overrides = side === 'home' ? homePositions : awayPositions
     return overrides.get(player.id!) ?? player.defaultPosition
   }
 
-  const handleDragEnd = (side: 'home' | 'away', event: DragEndEvent) => {
-    const { active, over } = event
-    if (over && active.id !== over.id) {
-      const setter = side === 'home' ? setHomeBattingOrder : setAwayBattingOrder
-      setter(prev => {
-        const oldIndex = prev.indexOf(Number(active.id))
-        const newIndex = prev.indexOf(Number(over.id))
-        return arrayMove(prev, oldIndex, newIndex)
-      })
-    }
+  const handleMoveUp = (side: 'home' | 'away', index: number) => {
+    if (index === 0) return
+    const setter = side === 'home' ? setHomeBattingOrder : setAwayBattingOrder
+    setter(prev => moveItem(prev, index, index - 1))
+  }
+
+  const handleMoveDown = (side: 'home' | 'away', index: number) => {
+    const setter = side === 'home' ? setHomeBattingOrder : setAwayBattingOrder
+    setter(prev => {
+      if (index >= prev.length - 1) return prev
+      return moveItem(prev, index, index + 1)
+    })
   }
 
   const handleRemove = (side: 'home' | 'away', playerId: number) => {
@@ -379,27 +374,26 @@ export function GameSetupPage() {
     return (
       <div>
         <h2 className="text-lg font-semibold text-slate-800 mb-3 font-heading uppercase tracking-wide">{teamName} ({label}) Batting Order</h2>
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => handleDragEnd(side, e)}>
-          <SortableContext items={battingOrder} strategy={verticalListSortingStrategy}>
-            <div className="space-y-1">
-              {battingOrder.map((playerId, index) => {
-                const player = findPlayer(side, playerId)
-                if (!player) return null
-                return (
-                  <SortablePlayerRow
-                    key={playerId}
-                    playerId={playerId}
-                    index={index}
-                    player={player}
-                    position={getPosition(side, player)}
-                    onRemove={(id) => handleRemove(side, id)}
-                    onPositionChange={(pos) => handlePositionChange(side, playerId, pos)}
-                  />
-                )
-              })}
-            </div>
-          </SortableContext>
-        </DndContext>
+        <div className="space-y-1">
+          {battingOrder.map((playerId, index) => {
+            const player = findPlayer(side, playerId)
+            if (!player) return null
+            return (
+              <PlayerRow
+                key={playerId}
+                playerId={playerId}
+                index={index}
+                totalCount={battingOrder.length}
+                player={player}
+                position={getPosition(side, player)}
+                onRemove={(id) => handleRemove(side, id)}
+                onPositionChange={(pos) => handlePositionChange(side, playerId, pos)}
+                onMoveUp={() => handleMoveUp(side, index)}
+                onMoveDown={() => handleMoveDown(side, index)}
+              />
+            )
+          })}
+        </div>
         <BenchSection benchIds={benchIds} players={[...rosterPlayers, ...guestPlayers]} onAddBack={(id) => handleAddBack(side, id)} />
         {addingPlayerSide === side ? (
           <div className="mt-2 space-y-2 bg-slate-50 border border-slate-200 rounded p-3">

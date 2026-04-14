@@ -102,21 +102,22 @@ describe('GameSetupPage', () => {
     expect(startBtn).not.toBeDisabled()
   })
 
-  it('should render drag handles for each player in both batting orders', async () => {
+  it('should render up/down arrow buttons for each player in both batting orders', async () => {
     const gameId = await seedTwoTeamsAndGame()
     renderSetup(gameId)
     await waitFor(() => expect(screen.getByText('Alice')).toBeInTheDocument())
-    const handles = screen.getAllByRole('button', { name: /drag to reorder/i })
-    // 3 home + 3 away = 6 drag handles
-    expect(handles).toHaveLength(6)
+    // 3 home + 3 away = 6 players, each with a Move up and Move down button = 12 total
+    const upButtons = screen.getAllByRole('button', { name: /move up/i })
+    const downButtons = screen.getAllByRole('button', { name: /move down/i })
+    expect(upButtons).toHaveLength(6)
+    expect(downButtons).toHaveLength(6)
   })
 
-  it('should not render up/down arrow buttons', async () => {
+  it('should not render drag-handle buttons', async () => {
     const gameId = await seedTwoTeamsAndGame()
     renderSetup(gameId)
     await waitFor(() => expect(screen.getByText('Alice')).toBeInTheDocument())
-    expect(screen.queryByRole('button', { name: /move up/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /move down/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /drag to reorder/i })).not.toBeInTheDocument()
   })
 
   it('should save both lineups and navigate to game page on Start Game', async () => {
