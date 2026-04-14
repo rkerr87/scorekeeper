@@ -26,7 +26,7 @@ interface PlayEntryPanelProps {
   onClose: () => void
 }
 
-type PanelMode = 'select' | 'fielding' | 'sb-runner-select' | 'error-batter-outcome'
+type PanelMode = 'select' | 'fielding' | 'sb-runner-select' | 'cs-runner-select' | 'error-batter-outcome'
 type TabType = 'hit' | 'out' | 'special' | 'shorthand'
 
 const HIT_PLAYS: { label: string; playType: PlayType; basesReached: number[] }[] = [
@@ -50,12 +50,13 @@ const SPECIAL_PLAYS: { label: string; playType: PlayType; basesReached: number[]
   { label: 'DP', playType: 'DP', basesReached: [], isAtBat: true },
   { label: 'SAC', playType: 'SAC', basesReached: [], isAtBat: true },
   { label: 'SB', playType: 'SB', basesReached: [], isAtBat: false },
+  { label: 'CS', playType: 'CS', basesReached: [], isAtBat: false },
   { label: 'WP', playType: 'WP', basesReached: [], isAtBat: false },
   { label: 'PB', playType: 'PB', basesReached: [], isAtBat: false },
   { label: 'BK', playType: 'BK', basesReached: [], isAtBat: false },
 ]
 
-const RUNNER_REQUIRED: PlayType[] = ['FC', 'DP', 'SAC', 'SB', 'WP', 'PB', 'BK']
+const RUNNER_REQUIRED: PlayType[] = ['FC', 'DP', 'SAC', 'SB', 'CS', 'WP', 'PB', 'BK']
 
 export function PlayEntryPanel({ batterName, baseRunners, pitches, outs, onAddPitch, onRemovePitch, onClear, onPlayRecorded, onClose }: PlayEntryPanelProps) {
   const [mode, setMode] = useState<PanelMode>('select')
@@ -166,6 +167,35 @@ export function PlayEntryPanel({ batterName, baseRunners, pitches, outs, onAddPi
     })
   }
 
+  const handleCsClick = () => {
+    const runners = baseRunners ?? { first: null, second: null, third: null }
+    const occupied = (['third', 'second', 'first'] as const).filter(b => runners[b] !== null)
+    if (occupied.length <= 1) {
+      recordSimplePlay('CS', [], false)
+    } else {
+      setMode('cs-runner-select')
+    }
+  }
+
+  const computeCsOverride = (caught: 'first' | 'second' | 'third') => {
+    const runners = baseRunners ?? { first: null, second: null, third: null }
+    const result = { first: runners.first, second: runners.second, third: runners.third }
+    result[caught] = null  // runner is out
+    return result
+  }
+
+  const handleCsRunnerSelect = (caught: 'first' | 'second' | 'third') => {
+    onPlayRecorded({
+      playType: 'CS',
+      notation: 'CS',
+      fieldersInvolved: [],
+      basesReached: [],
+      pitches: [],
+      isAtBat: false,
+      runnerOverrides: computeCsOverride(caught),
+    })
+  }
+
   const TABS: { key: TabType; label: string }[] = [
     { key: 'hit', label: 'Hit' },
     { key: 'out', label: 'Out' },
@@ -256,6 +286,8 @@ export function PlayEntryPanel({ batterName, baseRunners, pitches, outs, onAddPi
                           setMode('fielding')
                         } else if (play.playType === 'SB') {
                           handleSbClick()
+                        } else if (play.playType === 'CS') {
+                          handleCsClick()
                         } else {
                           recordSimplePlay(play.playType, play.basesReached, play.isAtBat)
                         }
@@ -348,6 +380,34 @@ export function PlayEntryPanel({ batterName, baseRunners, pitches, outs, onAddPi
                     onClick={() => handleSbRunnerSelect(base)}
                     aria-label={`${runner.playerName} on ${baseLabel}`}
                     className="w-full bg-amber-600 hover:bg-amber-700 text-white py-3 rounded-lg font-bold text-sm transition-all duration-150 active:scale-95"
+                  >
+                    {runner.playerName} ({baseLabel})
+                  </button>
+                )
+              })}
+            </div>
+            <button
+              onClick={() => setMode('select')}
+              className="w-full mt-2 bg-slate-200 hover:bg-slate-300 text-slate-700 py-3 rounded font-bold text-sm transition-all duration-150"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+        {mode === 'cs-runner-select' && baseRunners && (
+          <div>
+            <div className="text-sm font-semibold text-slate-700 mb-3 text-center">Who was caught stealing?</div>
+            <div className="space-y-2">
+              {(['third', 'second', 'first'] as const).map(base => {
+                const runner = baseRunners[base]
+                if (!runner) return null
+                const baseLabel = base === 'first' ? '1st' : base === 'second' ? '2nd' : '3rd'
+                return (
+                  <button
+                    key={base}
+                    onClick={() => handleCsRunnerSelect(base)}
+                    aria-label={`${runner.playerName} on ${baseLabel}`}
+                    className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-bold text-sm transition-all duration-150 active:scale-95"
                   >
                     {runner.playerName} ({baseLabel})
                   </button>

@@ -215,6 +215,47 @@ describe('replayGame — baserunners', () => {
     expect(snapshot.currentBatterAway).toBe(2)
   })
 
+  it('should remove runner on caught stealing and record an out without advancing batter', () => {
+    const plays: Play[] = [
+      makePlay({ sequenceNumber: 1, half: 'top', batterOrderPosition: 1, playType: '1B', basesReached: [1] }),
+      makePlay({ sequenceNumber: 2, half: 'top', batterOrderPosition: 2, playType: 'CS', isAtBat: false }),
+    ]
+    const snapshot = replayGame(plays, lineupHome, lineupAway)
+    expect(snapshot.baseRunners.first).toBeNull()
+    expect(snapshot.baseRunners.second).toBeNull()
+    expect(snapshot.outs).toBe(1)
+    expect(snapshot.currentBatterAway).toBe(2)  // batter does NOT advance
+  })
+
+  it('should remove correct runner on caught stealing with runnerOverrides (multi-runner)', () => {
+    const plays: Play[] = [
+      makePlay({ sequenceNumber: 1, half: 'top', batterOrderPosition: 1, playType: '1B', basesReached: [1] }),
+      makePlay({ sequenceNumber: 2, half: 'top', batterOrderPosition: 2, playType: '1B', basesReached: [1] }),
+      // Runner on 2nd (batter 1) caught stealing; runner on 1st (batter 2) stays
+      makePlay({
+        sequenceNumber: 3, half: 'top', batterOrderPosition: 3, playType: 'CS', isAtBat: false,
+        runnerOverrides: { first: { playerName: 'away-Player2', orderPosition: 2 }, second: null, third: null },
+      }),
+    ]
+    const snapshot = replayGame(plays, lineupHome, lineupAway)
+    expect(snapshot.baseRunners.second).toBeNull()
+    expect(snapshot.baseRunners.first?.orderPosition).toBe(2)
+    expect(snapshot.outs).toBe(1)
+    expect(snapshot.currentBatterAway).toBe(3)  // batter does NOT advance
+  })
+
+  it('should end half-inning when caught stealing produces third out', () => {
+    const plays: Play[] = [
+      makePlay({ sequenceNumber: 1, half: 'top', batterOrderPosition: 1, playType: 'K' }),
+      makePlay({ sequenceNumber: 2, half: 'top', batterOrderPosition: 2, playType: 'K' }),
+      makePlay({ sequenceNumber: 3, half: 'top', batterOrderPosition: 3, playType: '1B', basesReached: [1] }),
+      makePlay({ sequenceNumber: 4, half: 'top', batterOrderPosition: 4, playType: 'CS', isAtBat: false }),
+    ]
+    const snapshot = replayGame(plays, lineupHome, lineupAway)
+    expect(snapshot.half).toBe('bottom')
+    expect(snapshot.outs).toBe(0)
+  })
+
   it('should advance all runners on wild pitch', () => {
     const plays: Play[] = [
       makePlay({ sequenceNumber: 1, half: 'top', batterOrderPosition: 1, playType: '2B', basesReached: [1, 2] }),

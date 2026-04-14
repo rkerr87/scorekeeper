@@ -27,6 +27,7 @@ export type AtBatPlayType =
 // Play types that do NOT advance the batter (happen during an at-bat)
 export type NonAtBatPlayType =
   | 'SB'          // stolen base
+  | 'CS'          // caught stealing
   | 'WP'          // wild pitch
   | 'PB'          // passed ball
   | 'BK'          // balk

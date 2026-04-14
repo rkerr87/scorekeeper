@@ -17,6 +17,7 @@ const SIMPLE_PLAYS: Record<string, { playType: PlayType; basesReached: number[];
   '3B': { playType: '3B', basesReached: [1, 2, 3], isAtBat: true },
   'HR': { playType: 'HR', basesReached: [1, 2, 3, 4], isAtBat: true },
   'SB': { playType: 'SB', basesReached: [], isAtBat: false },
+  'CS': { playType: 'CS', basesReached: [], isAtBat: false },
   'WP': { playType: 'WP', basesReached: [], isAtBat: false },
   'PB': { playType: 'PB', basesReached: [], isAtBat: false },
   'BK': { playType: 'BK', basesReached: [], isAtBat: false },

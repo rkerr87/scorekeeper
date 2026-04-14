@@ -20,6 +20,7 @@ function initialSnapshot(): GameSnapshot {
 }
 
 function getOutsForPlay(play: Play): number {
+  if (play.playType === 'CS') return 1  // caught stealing = out, even though isAtBat is false
   if (!play.isAtBat) return 0
   switch (play.playType) {
     case 'K':
@@ -156,6 +157,17 @@ function applyBaseRunning(
         snapshot.baseRunners.second = null
       } else if (runners.first) {
         snapshot.baseRunners.second = runners.first
+        snapshot.baseRunners.first = null
+      }
+      break
+    }
+    case 'CS': {
+      // Default: remove the leading runner (the one most likely attempting to steal)
+      if (runners.third) {
+        snapshot.baseRunners.third = null
+      } else if (runners.second) {
+        snapshot.baseRunners.second = null
+      } else if (runners.first) {
         snapshot.baseRunners.first = null
       }
       break
