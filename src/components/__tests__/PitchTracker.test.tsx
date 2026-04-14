@@ -17,10 +17,14 @@ describe('PitchTracker', () => {
     expect(screen.getByRole('button', { name: /strike/i })).toBeInTheDocument()
   })
 
-  it('should display current count', () => {
+  it('should display filled ball and strike boxes for current count', () => {
     render(<PitchTracker pitches={['B', 'S', 'B', 'F']} {...defaultProps} />)
-    // 2 balls, 1 strike + 1 foul = 2 strikes displayed
-    expect(screen.getByText('2-2')).toBeInTheDocument()
+    // 2 balls → 2 filled ball boxes, 1 empty
+    expect(screen.getAllByTestId('ball-box-filled')).toHaveLength(2)
+    expect(screen.getAllByTestId('ball-box-empty')).toHaveLength(1)
+    // 1 S + 1 F = 2 strikes → 2 filled strike boxes, 0 empty
+    expect(screen.getAllByTestId('strike-box-filled')).toHaveLength(2)
+    expect(screen.queryAllByTestId('strike-box-empty')).toHaveLength(0)
   })
 
   it('should call onAddPitch when ball pressed', async () => {
@@ -44,6 +48,19 @@ describe('PitchTracker', () => {
   it('should show total pitch count', () => {
     render(<PitchTracker pitches={['B', 'S', 'F', 'B', 'S']} {...defaultProps} />)
     expect(screen.getByText(/5 pitches/i)).toBeInTheDocument()
+  })
+
+  it('should render 3 ball boxes and 2 strike boxes', () => {
+    render(<PitchTracker pitches={[]} {...defaultProps} />)
+    expect(screen.getAllByTestId('ball-box-empty')).toHaveLength(3)
+    expect(screen.getAllByTestId('strike-box-empty')).toHaveLength(2)
+  })
+
+  it('foul should not fill 3rd strike box', () => {
+    // S, S fills both strike boxes; a subsequent F should not add more
+    render(<PitchTracker pitches={['S', 'S', 'F']} {...defaultProps} />)
+    expect(screen.getAllByTestId('strike-box-filled')).toHaveLength(2)
+    expect(screen.queryAllByTestId('strike-box-empty')).toHaveLength(0)
   })
 
   it('shows clear pitches button when pitches exist', () => {
@@ -78,9 +95,11 @@ describe('PitchTracker', () => {
     expect(screen.getByRole('button', { name: /clear pitches/i })).toBeInTheDocument()
   })
 
-  it('renders pitch dots for each pitch', () => {
+  it('renders correct filled boxes for B S F sequence', () => {
     render(<PitchTracker pitches={['B', 'S', 'F']} {...defaultProps} />)
-    const dots = screen.getAllByTestId('pitch-dot')
-    expect(dots).toHaveLength(3)
+    expect(screen.getAllByTestId('ball-box-filled')).toHaveLength(1)
+    expect(screen.getAllByTestId('ball-box-empty')).toHaveLength(2)
+    expect(screen.getAllByTestId('strike-box-filled')).toHaveLength(2)
+    expect(screen.queryAllByTestId('strike-box-empty')).toHaveLength(0)
   })
 })

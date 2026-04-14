@@ -11,35 +11,66 @@ interface PitchTrackerProps {
 export function PitchTracker({ pitches, onAddPitch, onRemovePitch, onClear }: PitchTrackerProps) {
   const [showClearConfirm, setShowClearConfirm] = useState(false)
 
-  let b = 0
-  let s = 0
+  // Fill boxes left-to-right as pitches accumulate.
+  // 3 ball boxes: the 4th ball triggers auto-walk (no 4th box needed).
+  // 2 strike boxes: the 3rd S triggers auto-K confirmation (no 3rd box needed).
+  // F fills a strike box only if below 2 strikes (can't foul into K).
+  const ballBoxes: ('B' | null)[] = [null, null, null]
+  const strikeBoxes: ('S' | 'F' | null)[] = [null, null]
+  let bIdx = 0
+  let sIdx = 0
   for (const p of pitches) {
-    if (p === 'B') b++
-    else if (p === 'S') s = Math.min(s + 1, 2)
-    else if (p === 'F') s = Math.min(s + 1, 2) // foul can bring to 2 but not 3
+    if (p === 'B' && bIdx < 3) {
+      ballBoxes[bIdx++] = 'B'
+    } else if (p === 'S' && sIdx < 2) {
+      strikeBoxes[sIdx++] = 'S'
+    } else if (p === 'F' && sIdx < 2) {
+      strikeBoxes[sIdx++] = 'F'
+    }
   }
 
   return (
     <div className="bg-slate-100 rounded-lg p-3">
-      <div className="flex items-center justify-between mb-2">
-        <div className="text-lg font-mono font-bold text-slate-800">{b}-{s}</div>
-        <div className="text-xs text-slate-500">{pitches.length} pitches</div>
-      </div>
-
-      <div className="flex items-center gap-1 mb-3">
-        {pitches.map((p, i) => (
-          <div
-            key={i}
-            data-testid="pitch-dot"
-            className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white ${
-              p === 'B' ? 'bg-blue-500' : p === 'S' ? 'bg-red-500' : 'bg-amber-500'
-            }`}
-          >
-            {p}
+      {/* Two-row box display */}
+      <div className="space-y-1.5 mb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-slate-500 w-12 shrink-0">Balls</span>
+          <div className="flex gap-1.5">
+            {ballBoxes.map((filled, i) => (
+              <div
+                key={i}
+                data-testid={filled ? 'ball-box-filled' : 'ball-box-empty'}
+                className={`w-9 h-8 rounded border-2 flex items-center justify-center text-sm font-bold ${
+                  filled ? 'bg-blue-500 border-blue-500 text-white' : 'bg-white border-slate-300'
+                }`}
+              >
+                {filled && 'B'}
+              </div>
+            ))}
           </div>
-        ))}
+          <span className="text-xs text-slate-400 ml-1">{pitches.length > 0 ? `${pitches.length} pitches` : ''}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-slate-500 w-12 shrink-0">Strikes</span>
+          <div className="flex gap-1.5">
+            {strikeBoxes.map((filled, i) => (
+              <div
+                key={i}
+                data-testid={filled ? 'strike-box-filled' : 'strike-box-empty'}
+                className={`w-9 h-8 rounded border-2 flex items-center justify-center text-sm font-bold ${
+                  filled === 'S' ? 'bg-red-500 border-red-500 text-white' :
+                  filled === 'F' ? 'bg-amber-500 border-amber-500 text-white' :
+                  'bg-white border-slate-300'
+                }`}
+              >
+                {filled ?? ''}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
+      {/* Pitch entry buttons */}
       <div className="flex gap-2">
         <button
           onClick={() => onAddPitch('B')}
